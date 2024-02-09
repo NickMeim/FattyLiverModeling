@@ -1,3 +1,18 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-__pypackages__/
+modeling/__pycache__/
+modeling/__pypackages__/
+optimization/__pycache__/
+optimization/__pypackages__/
+optimization/.Rproj.user
+modeling/.Rproj.user
+.Rproj.user
+data/GSE162694/GSE162694_raw_counts.csv.gz
+data/GSE168285/*.gz
+data/GSE168285/GSE168285_tpm.txt
+results/TransCompR_sparsePCA/spca_results.rds
+results/TransCompR_sparsePCA/all_models.rds
+results/TransCompR_PCA/spca_results.rds
+results/TransCompR_PCA/all_models.rds
+preprocessing/X_A.csv
+preprocessing/X_A_male.csv
+preprocessing/X_A_female.csv
+preprocessing/X_B.csv

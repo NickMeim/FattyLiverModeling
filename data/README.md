@@ -11,3 +11,4 @@ Most of the raw data are too big to be uploaded but they can be accessed in the 
 2. GSE162694: Pantano et al. patient data
 4. human_metadata_hoang.txt : Hoang et al patient meta data
 5. preprocessed_NAFLD.rds: combined modeling data for translation models using Hoang and MPS datasets.
+6. dorothea.tsv : The Dorothea regulon, containing known regulatory interactions together with confidence levels.
