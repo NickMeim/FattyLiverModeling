@@ -17,7 +17,7 @@ library(plotly)
 
 
 #### Load pre-processed data----------------------
-data <- readRDS("preprocessed_NAFLD.rds")
+data <- readRDS("../data/preprocessed_NAFLD.rds")
 data_A <- data$data_A
 data_B <- data$data_B
 Y_A <- data$Y_A
@@ -26,7 +26,7 @@ Y_A <- data$Y_A
 pheno <- data.frame(NAS=Y_A)
 rownames(pheno) <- colnames(data_A)
 pheno <- pheno %>% rownames_to_column('sample')
-patients_meta_data <- data.table::fread('human_metadata_hoang.txt')
+patients_meta_data <- data.table::fread('../data/human_metadata_hoang.txt')
 patients_meta_data <- patients_meta_data %>% 
   dplyr::select(c('sample'='GEO_Accession (exp)'),
                 c('fibrosis'='Fibrosis_stage'),
@@ -69,21 +69,21 @@ X_B <- t(X_B - rowMeans(X_B))
 # X_B <- rbind(X_B,data_lean)
 
 # save results to use in python
-chip_meta_data <- read.table('GSE168285/GSE168285_sample_meta_data.txt',header = TRUE, sep = "\t")
+chip_meta_data <- read.table('../data/GSE168285/GSE168285_sample_meta_data.txt',header = TRUE, sep = "\t")
 chip_meta_data <- chip_meta_data %>% filter(Number_of_cues==0) %>% filter(Background=='lean') %>% filter(NPC=='low') %>% 
   dplyr::select(sampleName,condition,treatment) %>% unique()
-# data.table::fwrite(chip_meta_data,'chip_lean_controls_indices.csv')
-chip_meta_data <- read.table('GSE168285/GSE168285_sample_meta_data.txt',header = TRUE, sep = "\t")
+# data.table::fwrite(chip_meta_data,'../preprocessing/chip_lean_controls_indices.csv')
+chip_meta_data <- read.table('../data/GSE168285/GSE168285_sample_meta_data.txt',header = TRUE, sep = "\t")
 chip_meta_data <- chip_meta_data %>% filter(Number_of_cues==0) %>% filter(Background!='lean') %>% filter(NPC=='low') %>% 
   dplyr::select(sampleName,condition,treatment) %>% unique()
-# data.table::fwrite(chip_meta_data,'chip_fatty_controls_indices.csv')
+# data.table::fwrite(chip_meta_data,'../preprocessing/chip_fatty_controls_indices.csv')
 df_X_A = as.data.frame(X_A)
 df_X_B = as.data.frame(X_B)
 df_Y_A = as.data.frame(Y_A)
 rownames(df_Y_A) <- rownames(X_A)
-# data.table::fwrite(df_X_A,'X_A.csv',row.names = T)
-# data.table::fwrite(df_X_B,'X_B.csv',row.names = T)
-# data.table::fwrite(df_Y_A,'Y_A.csv',row.names = T)
+# data.table::fwrite(df_X_A,'../preprocessing/X_A.csv',row.names = T)
+# data.table::fwrite(df_X_B,'../preprocessing/X_B.csv',row.names = T)
+# data.table::fwrite(df_Y_A,'../preprocessing/Y_A.csv',row.names = T)
 
 # ### Split in k fold cross-validation and save the data in folder----------------
 num_folds <- 10
@@ -101,7 +101,7 @@ num_folds <- 10
 #       val_Y <- apply(val_Y,2,function(x) {return(length(unique(c(x))))})
 #       min_outcomes <- min(val_Y)
 #       min_steat <- val_Y[3]
-#       saveRDS(ind,paste0('multiPheno/train_indices_',i,'.rds'))
+#       saveRDS(ind,paste0('../preprocessing/TrainingValidationData/10fold_lasso/train_indices_',i,'.rds'))
 #     }
 #     # print(paste0('Finished fold ',i))
 #     i <- i+1
@@ -128,7 +128,7 @@ trainTau <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 trainMAE <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 all_laso_models <- list()
 for (i in 1:num_folds){
-  train_inds <- readRDS(paste0('train_indices_',i,'.rds'))
+  train_inds <- readRDS(paste0('../preprocessing/TrainingValidationData/10fold_lasso/train_indices_',i,'.rds'))
   train_XA <- X_A[train_inds,]
   train_YA <- Y_A[train_inds,]
   val_XA <- X_A[-train_inds,]
@@ -179,7 +179,7 @@ for (i in 1:num_folds){
   valR2[i,] <- cbind(res$val_r^2)
   results_folds[[i]] <- res
   
-  saveRDS(results_folds,'multiPheno/all_laso_models.rds')
+  saveRDS(results_folds,'../results/TransCompR_PCA/all_laso_models.rds')
   
   print(paste0('Finished fold ',i))
 }
@@ -217,7 +217,7 @@ trainR2 <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 trainTau <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 trainMAE <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 for (i in 1:num_folds){
-  train_inds <- readRDS(paste0('train_indices_',i,'.rds'))
+  train_inds <- readRDS(paste0('../preprocessing/TrainingValidationData/10fold_lasso/train_indices_',i,'.rds'))
   train_XA <- X_A[train_inds,]
   train_XA <- train_XA[,sample(ncol(train_XA))]
   train_YA <- Y_A[train_inds,]
@@ -289,7 +289,7 @@ df <- rbind(as.data.frame(trainMAE) %>% mutate(fold = seq(1,num_folds)) %>% muta
               gather('output','value',-metric,-set,-fold))
 df <- df %>% mutate(model = 'shuffled human genes')
 df_all <- rbind(df_all,df)
-saveRDS(df_all,'multiPheno/df_all.rds')
+saveRDS(df_all,'../results/TransCompR_PCA/df_all.rds')
 
 ### Train lasso model using X_A-------------------------------------------
 valR2 <- matrix(nrow= num_folds,ncol=ncol(Y_A))
@@ -300,7 +300,7 @@ trainTau <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 trainMAE <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 lambda_grid <- 10^seq(-2, 1, length = 100)
 for (i in 1:num_folds){
-  train_inds <- readRDS(paste0('train_indices_',i,'.rds'))
+  train_inds <- readRDS(paste0('../preprocessing/TrainingValidationData/10fold_lasso/train_indices_',i,'.rds'))
   train_XA <- X_A[train_inds,]
   train_YA <- Y_A[train_inds,]
   val_XA <- X_A[-train_inds,]
@@ -390,9 +390,9 @@ df <- rbind(as.data.frame(trainMAE) %>% mutate(fold = seq(1,num_folds)) %>% muta
             as.data.frame(valR2)%>% mutate(fold = seq(1,num_folds)) %>% mutate(set='validation') %>% mutate(metric='R2') %>%
               gather('output','value',-metric,-set,-fold))
 df <- df %>% mutate(model = 'lasso on genes')
-saveRDS(df,'multiPheno/df_genes_human_lasso.rds')
+saveRDS(df,'../results/TransCompR_PCA/df_genes_human_lasso.rds')
 df_all <- rbind(df_all,df)
-saveRDS(df_all,'multiPheno/df_all_long.rds')
+saveRDS(df_all,'../results/TransCompR_PCA/df_all_long.rds')
 
 ### Train in human PCs-------------------------------------------
 valR2 <- matrix(nrow= num_folds,ncol=ncol(Y_A))
@@ -402,7 +402,7 @@ trainR2 <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 trainTau <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 trainMAE <- matrix(nrow= num_folds,ncol=ncol(Y_A))
 for (i in 1:num_folds){
-  train_inds <- readRDS(paste0('train_indices_',i,'.rds'))
+  train_inds <- readRDS(paste0('../preprocessing/TrainingValidationData/10fold_lasso/train_indices_',i,'.rds'))
   train_XA <- X_A[train_inds,]
   train_YA <- Y_A[train_inds,]
   val_XA <- X_A[-train_inds,]
@@ -472,11 +472,11 @@ df <- rbind(as.data.frame(trainMAE) %>% mutate(fold = seq(1,num_folds)) %>% muta
             as.data.frame(valR2)%>% mutate(fold = seq(1,num_folds)) %>% mutate(set='validation') %>% mutate(metric='R2') %>%
               gather('output','value',-metric,-set,-fold))
 df <- df %>% mutate(model = 'lasso on human PCs')
-saveRDS(df,'multiPheno/df_performance_humanPC.rds')
+saveRDS(df,'../results/TransCompR_PCA/df_performance_humanPC.rds')
 
 ### Final visualize-----------------------------------------------------------
-df_all <- readRDS('multiPheno/df_all_long.rds')
-df_performance_human <- readRDS('multiPheno/df_performance_humanPC.rds')
+df_all <- readRDS('../results/TransCompR_PCA/df_all_long.rds')
+df_performance_human <- readRDS('../results/TransCompR_PCA/df_performance_humanPC.rds')
 df_all <- rbind(df_all,df_performance_human)
 
 df_all$model <- factor(df_all$model,levels = c('lasso on genes','lasso on human PCs','model','shuffled human genes'))
@@ -514,13 +514,13 @@ print(p3)
 p <- p1 / p3
 p <- p +  plot_layout(guides = "collect") & theme(legend.position = 'top')
 print(p)
-ggsave('multiPheno/allgenes_vs_translated_performance.png',
+ggsave('../results/TransCompR_PCA/allgenes_vs_translated_performance.png',
        plot=p,
        width = 16,
        height = 8,
        units = 'in',
        dpi = 600)
-ggsave('multiPheno/allgenes_vs_translated_mae.png',
+ggsave('../results/TransCompR_PCA/allgenes_vs_translated_mae.png',
        plot=p1,
        width = 16,
        height = 8,
@@ -529,7 +529,7 @@ ggsave('multiPheno/allgenes_vs_translated_mae.png',
 
 ### PCs to predict NAS score--------------------
 num_folds <- 10
-results <- readRDS('multiPheno/all_laso_models.rds')
+results <- readRDS('../results/TransCompR_PCA/all_laso_models.rds')
 df_res <- data.frame()
 for (i in 1:length(results)){
   for (out in c("NAS","fibrosis","steatosis","cytological_ballooning")){
@@ -542,7 +542,7 @@ df_res <- df_res %>% group_by(output,PC) %>% mutate(counts = n())
 ## Check how many times can a PC appear by chance
 df_res_random <- data.frame()
 for (i in 1:num_folds){
-  train_inds <- readRDS(paste0('train_indices_',i,'.rds'))
+  train_inds <- readRDS(paste0('../preprocessing/TrainingValidationData/10fold_lasso/train_indices_',i,'.rds'))
   train_XA <- X_A[train_inds,]
   train_YA <- Y_A[train_inds,]
   val_XA <- X_A[-train_inds,]
@@ -555,8 +555,8 @@ for (i in 1:num_folds){
   }
 }
 df_res_random <- df_res_random %>% group_by(output,PC) %>% mutate(counts = n())
-# saveRDS(df_res_random,'multiPheno/counts_random_pcs.rds')
-df_res_random <- readRDS('multiPheno/counts_random_pcs.rds')
+# saveRDS(df_res_random,'../results/TransCompR_PCA/counts_random_pcs.rds')
+df_res_random <- readRDS('../results/TransCompR_PCA/counts_random_pcs.rds')
 
 ## Filter PCs
 df_thresh <- data.frame()
@@ -606,7 +606,7 @@ p2 <- ggbarplot(perc2,x='PC',y='perc2',fill='blue') + ylab('% variance explained
 p <- p1/p2
 print(p)
 
-ggsave('multiPheno/allgenes_vs_translated_perc_variance.png',
+ggsave('../results/TransCompR_PCA/allgenes_vs_translated_perc_variance.png',
        plot=p,
        width = 16,
        height = 8,
@@ -657,7 +657,7 @@ ggplot(cor_test_results_df, aes(variable1, variable2, fill = correlation))+
         axis.text.x = element_text(angle = 45, vjust = 1, 
                                    size = 12, hjust = 1)) + 
   ylab('') + xlab('')
-ggsave('multiPheno/selected_pcs_correlation.png',
+ggsave('../results/TransCompR_PCA/selected_pcs_correlation.png',
        width = 9,
        height = 9,
        units = 'in',
@@ -694,7 +694,7 @@ p2_nas <- ggboxplot(projected%>% filter(output=='NAS'),x='NAS',y='value',color='
   stat_compare_means(label.x = 2)
 p_nas <- p1_nas+p2_nas
 print(p_nas)
-ggsave('multiPheno/important_pcs_vs_nas.png',
+ggsave('../results/TransCompR_PCA/important_pcs_vs_nas.png',
        plot = p_nas,
        width = 14,
        height = 9,
@@ -711,7 +711,7 @@ p2_fibrosis <- ggboxplot(projected%>% filter(output=='fibrosis'),x='fibrosis',y=
   stat_compare_means(label.x = 1.3)
 p_fibrosis <- p1_fibrosis+p2_fibrosis
 print(p_fibrosis)
-ggsave('multiPheno/important_pcs_vs_fibrosis.png',
+ggsave('../results/TransCompR_PCA/important_pcs_vs_fibrosis.png',
        plot = p_fibrosis,
        width = 14,
        height = 9,
@@ -728,7 +728,7 @@ p2_steatosis <- ggboxplot(projected%>% filter(output=='steatosis'),x='steatosis'
   stat_compare_means(label.x = 2)
 p_steatosis <- p1_steatosis+p2_steatosis
 print(p_steatosis)
-ggsave('multiPheno/important_pcs_vs_steatosis.png',
+ggsave('../results/TransCompR_PCA/important_pcs_vs_steatosis.png',
        plot = p_steatosis,
        width = 14,
        height = 9,
@@ -745,7 +745,7 @@ p2_balooning <- ggboxplot(projected%>% filter(output=='cytological_ballooning'),
   stat_compare_means(label.x = 1)
 p_balooning <- p1_balooning+p2_balooning
 print(p_balooning)
-ggsave('multiPheno/important_pcs_vs_balooning.png',
+ggsave('../results/TransCompR_PCA/important_pcs_vs_balooning.png',
        plot = p_balooning,
        width = 14,
        height = 9,
@@ -758,8 +758,8 @@ keep_pcs <- c('PC8','PC11','PC12','PC13','PC35')
 Zb <- PCA_alldata$x
 # scores <- as.data.frame(Zb) %>% select(PC12) %>% rownames_to_column('sampleName')
 scores <- as.data.frame(Zb) %>% select(all_of(keep_pcs)) %>% rownames_to_column('sampleName')
-chip_meta_data <- read.table('GSE168285/GSE168285_sample_meta_data.txt',header = TRUE, sep = "\t") %>% select(-X)
-conditions <- data.table::fread('chipModel/sample_info_all.csv')
+chip_meta_data <- read.table('../data/GSE168285/GSE168285_sample_meta_data.txt',header = TRUE, sep = "\t") %>% select(-X)
+conditions <- data.table::fread('../data/GSE168285/sample_info_all.csv')
 colnames(conditions)[1] <- 'sampleName'
 colnames(conditions)[2] <- 'Background'
 # scores <- left_join(scores,chip_meta_data)
@@ -806,7 +806,7 @@ p_coeff <- ggplot(stats_results,aes(x=PC,y=Effect,fill=coefficient)) +
   ylab('') + xlab('')
 p <- p_F + p_coeff
 print(p)
-ggsave('multiPheno/anova_stimuli.png',
+ggsave('../results/TransCompR_PCA/anova_stimuli.png',
        plot=p,
        height = 6,
        width = 12,
@@ -816,7 +816,7 @@ ggsave('multiPheno/anova_stimuli.png',
 ### Print PC11-PC12-PC13--------------------------------------------------
 projected <- as.data.frame(Zh) %>% rownames_to_column('sample') %>% gather('PC','value',-sample)
 projection_11_12_13 <- projected %>% filter(PC %in% c('PC11','PC12','PC13'))
-patients_meta_data <- data.table::fread('human_metadata_hoang.txt')
+patients_meta_data <- data.table::fread('../data/human_metadata_hoang.txt')
 patients_meta_data <- patients_meta_data %>% 
   dplyr::select(c('sample'='GEO_Accession (exp)'),c('fibrosis'='Fibrosis_stage'),c('age'='age_at_biopsy'),sex) %>% unique()
 projection_11_12_13 <- left_join(projection_11_12_13,patients_meta_data)
@@ -867,7 +867,7 @@ p_12_13 <- ggplot(projection_11_12_13,aes(x=PC12,y=PC13,fill=age,shape=sex))+
 # p_all <- ((p_11_12 + p_11_14 + p_12_14)/(p_1_12+p_1_11+p_1_14))+ plot_layout(guides = 'collect')
 p_all <- p_11_12 + p_12_13 + p_11_13 + plot_layout(guides = 'collect')
 print(p_all)
-ggsave('multiPheno/pc_11_12_13_vs_covariates.png',
+ggsave('../results/TransCompR_PCA/pc_11_12_13_vs_covariates.png',
        plot=p_all,
        height = 8,
        width = 16,
@@ -875,7 +875,7 @@ ggsave('multiPheno/pc_11_12_13_vs_covariates.png',
        dpi = 600)
 
 projection_7_35_52 <- projected %>% filter(PC %in% c('PC7','PC52','PC35'))
-patients_meta_data <- data.table::fread('human_metadata_hoang.txt')
+patients_meta_data <- data.table::fread('../data/human_metadata_hoang.txt')
 patients_meta_data <- patients_meta_data %>%
   dplyr::select(c('sample'='GEO_Accession (exp)'),c('age'='age_at_biopsy'),sex) %>% unique()
 projection_7_35_52 <- left_join(projection_7_35_52,patients_meta_data)
@@ -904,7 +904,7 @@ p_35_52 <- ggplot(projection_7_35_52,aes(x=PC35,y=PC52,fill=age,shape=sex))+
         legend.position = 'right')
 p <- p_7_35 + p_7_52 + p_35_52 + plot_layout(guides = 'collect')
 print(p)
-ggsave('multiPheno/pc_7_35_52_vs_covariates.png',
+ggsave('../results/TransCompR_PCA/pc_7_35_52_vs_covariates.png',
        plot=p,
        height = 8,
        width = 16,
@@ -913,7 +913,7 @@ ggsave('multiPheno/pc_7_35_52_vs_covariates.png',
 
 #### Anova for hidden covariates
 keep_pcs <- c('PC8','PC11','PC12','PC13','PC35')
-patients_meta_data <- data.table::fread('human_metadata_hoang.txt')
+patients_meta_data <- data.table::fread('../data/human_metadata_hoang.txt')
 patients_meta_data <- patients_meta_data %>% 
   dplyr::select(c('sample'='GEO_Accession (exp)'),
                 c('fibrosis'='Fibrosis_stage'),
@@ -972,7 +972,7 @@ p_coeff <- ggplot(stats_results,aes(x=PC,y=Effect,fill=coefficient)) +
   ylab('') + xlab('')
 p <- p_F + p_coeff
 print(p)
-ggsave('multiPheno/anova_humas.png',
+ggsave('../results/TransCompR_PCA/anova_humas.png',
        plot=p,
        height = 6,
        width = 12,
@@ -983,7 +983,7 @@ ggboxplot(projected_for_anova,x='sex',y='PC12',add='jitter',color='sex') +
   theme(text=element_text(family = 'Arial',size=24),
         legend.position = 'none')+
   stat_compare_means(label.y = 7,size=8)
-ggsave('multiPheno/PC12_male_female.png',
+ggsave('../results/TransCompR_PCA/PC12_male_female.png',
        height = 9,
        width = 12,
        units = 'in',
@@ -1034,7 +1034,7 @@ p_coeff <- ggplot(stats_results,aes(x=PC,y=Effect,fill=coefficient)) +
   ylab('') + xlab('')
 p <- p_F + p_coeff
 print(p)
-ggsave('multiPheno/anova_humans_first_pcs.png',
+ggsave('../results/TransCompR_PCA/anova_humans_first_pcs.png',
        plot=p,
        height = 6,
        width = 12,
@@ -1045,7 +1045,7 @@ ggboxplot(projected_for_anova,x='sex',y='PC5',add='jitter',color='sex') +
   theme(text=element_text(family = 'Arial',size=24),
         legend.position = 'none')+
   stat_compare_means(label.y = 7,size=8)
-ggsave('multiPheno/PC5_male_female.png',
+ggsave('../results/TransCompR_PCA/PC5_male_female.png',
        height = 9,
        width = 12,
        units = 'in',

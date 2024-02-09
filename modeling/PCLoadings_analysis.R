@@ -22,7 +22,7 @@ library(topGO)
 library(GO.db)
 
 #### Load pre-processed data----------------------
-data <- readRDS("preprocessed_NAFLD.rds")
+data <- readRDS("../data/preprocessed_NAFLD.rds")
 data_A <- data$data_A
 data_B <- data$data_B
 Y_A <- data$Y_A
@@ -62,7 +62,7 @@ ggplot(loadings,aes(x=gene,y=PC12,color = significant)) + geom_point() +
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
         legend.position = 'none')
-ggsave('gene_pc12_loadings.png',
+ggsave('pc_loadings_scores_analysis/gene_pc12_loadings.png',
        width = 14,
        height = 8,
        units = 'in',
@@ -121,7 +121,7 @@ p2 <- ggplot(df_keggs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=pathway
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('kegg_on_pc12.png',
+ggsave('pc_loadings_scores_analysis/kegg_on_pc12.png',
        plot=p2,
        width=16,
        height=9,
@@ -191,7 +191,7 @@ p2 <- ggplot(df_gos %>% arrange(NES) %>% filter(padj<0.05 & abs(NES)>2),aes(x=NE
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('go_on_pc12.png',
+ggsave('pc_loadings_scores_analysis/go_on_pc12.png',
        plot=p2,
        width=16,
        height=9,
@@ -200,7 +200,7 @@ ggsave('go_on_pc12.png',
 
 
 ### Perform TF analysis (GSEA)------------
-dorothera_regulon <- read.delim('../Artificial-Signaling-Network/DrugsANNSignaling/data/dorothea.tsv')
+dorothera_regulon <- read.delim('../data/dorothea.tsv')
 dorothera_regulon <- dorothera_regulon %>% filter(confidence %in% c('A','B'))
 dorothera_regulon <- dorothera_regulon %>% dplyr::select(tf,target)
 dorothera_regulon <- distinct(dorothera_regulon)
@@ -246,7 +246,7 @@ p2 <- ggplot(df_tfs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=TF,fill=p
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('tfs_on_pc12.png',
+ggsave('pc_loadings_scores_analysis/tfs_on_pc12.png',
        plot=p2,
        width=16,
        height=10,

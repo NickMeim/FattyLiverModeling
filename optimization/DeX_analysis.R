@@ -20,19 +20,19 @@ library(hgu133a.db)
 # source('utils-omnipath.R')
 
 # Load new data----------------------------------------------------------
-data_lean <- data.table::fread('pertubed_control_lean.csv')
+data_lean <- data.table::fread('../results/optimized_mps/pertubed_control_lean.csv')
 data_lean <- data_lean %>% column_to_rownames('V1')
-data_fatty <- data.table::fread('pertubed_control_fatty.csv')
+data_fatty <- data.table::fread('../results/optimized_mps/pertubed_control_fatty.csv')
 data_fatty <- data_fatty %>% column_to_rownames('V1')
 conditions <- c(rep('control',12),rep('perturbed',12))
 design <- model.matrix(~0+conditions)
 colnames(design) <- c('control','perturbed')
 
 # # load dx
-# dx_lean <-  data.table::fread('dx_lean.csv')
+# dx_lean <-  data.table::fread('../results/optimized_mps/dx_lean.csv')
 # dx_lean$V1 <- 'lean'
 # colnames(dx_lean)[1] <- 'background' 
-# dx_fatty <-  data.table::fread('dx_fatty.csv')
+# dx_fatty <-  data.table::fread('../results/optimized_mps/dx_fatty.csv')
 # dx_fatty$V1 <- 'fatty'
 # colnames(dx_fatty)[1] <- 'background'
 
@@ -59,7 +59,7 @@ ggplot(top.table_lean,aes(x=logFC,y=-log10(adj.P.Val),color=significance)) + geo
   ggtitle('Proposed perturbations for lean-derived samples')+
   theme(text = element_text(size=18,family = 'Arial'),
         plot.title = element_text(hjust=0.5))
-ggsave('lean_volcano.png',
+ggsave('../results/optimized_mps/lean_volcano.png',
        width = 12,
        height = 9,
        units = 'in',
@@ -88,7 +88,7 @@ ggplot(top.table_fatty,aes(x=logFC,y=-log10(adj.P.Val),color=significance)) + ge
   ggtitle('Proposed perturbations for fatty-derived samples')+
   theme(text = element_text(size=18,family = 'Arial'),
         plot.title = element_text(hjust=0.5))
-ggsave('fatty_volcano.png',
+ggsave('../results/optimized_mps/fatty_volcano.png',
        width = 12,
        height = 9,
        units = 'in',
@@ -104,7 +104,7 @@ dex_data <- t(dex_data)
 hist(as.matrix(dex_data))
 
 ### get high-confidence dorothea regulon
-dorotheaData = read.table('../Artificial-Signaling-Network/DrugsANNSignaling/data/dorothea.tsv', sep = "\t", header=TRUE)
+dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
 dorotheaData = dorotheaData[confidenceFilter,]
 
@@ -214,7 +214,7 @@ print(p2)
 p <- p1/p2
 print(p)
 
-ggsave('tfs_enrichment_volcano.png',
+ggsave('../results/optimized_mps/tfs_enrichment_volcano.png',
        width = 16,
        height = 12,
        units = 'in',
@@ -280,7 +280,7 @@ print(p2)
 p <- p1/p2
 print(p)
 
-ggsave('kegg_enrichment_volcano.png',
+ggsave('../results/optimized_mps/kegg_enrichment_volcano.png',
        width = 16,
        height = 12,
        units = 'in',
@@ -344,7 +344,7 @@ print(p2)
 p <- p1/p2
 print(p)
 
-ggsave('gos_bp_enrichment_volcano.png',
+ggsave('../results/optimized_mps/gos_bp_enrichment_volcano.png',
        width = 16,
        height = 12,
        units = 'in',
@@ -407,7 +407,7 @@ print(p2)
 p <- p1/p2
 print(p)
 
-ggsave('gos_mf_enrichment_volcano.png',
+ggsave('../results/optimized_mps/gos_mf_enrichment_volcano.png',
        width = 16,
        height = 12,
        units = 'in',
@@ -470,7 +470,7 @@ print(p2)
 p <- p1/p2
 print(p)
 
-ggsave('gos_cc_enrichment_volcano.png',
+ggsave('../results/optimized_mps/gos_cc_enrichment_volcano.png',
        width = 16,
        height = 12,
        units = 'in',

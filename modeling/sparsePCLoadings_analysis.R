@@ -23,7 +23,7 @@ library(GO.db)
 library(EGSEAdata)
 
 #### Load pre-processed data----------------------
-data <- readRDS("preprocessed_NAFLD.rds")
+data <- readRDS("../data/preprocessed_NAFLD.rds")
 data_A <- data$data_A
 data_B <- data$data_B
 Y_A <- data$Y_A
@@ -46,8 +46,8 @@ X_B <- log2(1 + data_B[keep_gene,])
 X_B <- t(X_B - rowMeans(X_B))
 
 ### Perform PCA and get loadings----------------
-sPC_B <- readRDS('sparsePCAmodeling/optimal_sPC_B.rds')
-sPC_A <- readRDS('sparsePCAmodeling/optimal_sPC_A.rds')
+sPC_B <- readRDS('../results/TransCompR_sparsePCA/optimal_sPC_B.rds')
+sPC_A <- readRDS('../results/TransCompR_sparsePCA/optimal_sPC_A.rds')
 loadings <- sPC_B$loadings
 colnames(loadings) <- paste0('sPC',seq(1:ncol(loadings)))
 rownames(loadings) <- colnames(X_B)
@@ -66,7 +66,7 @@ ggplot(loadings,aes(x=gene,y=sPC12,color = significant)) + geom_point() +
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
         legend.position = 'none')
-ggsave('sparsePCAmodeling/gene_sPC12_loadings.png',
+ggsave('../results/TransCompR_sparsePCA/gene_sPC12_loadings.png',
        width = 14,
        height = 8,
        units = 'in',
@@ -155,7 +155,7 @@ p2 <- ggplot(df_keggs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=pathway
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('sparsePCAmodeling/kegg_on_sPC12.png',
+ggsave('../results/TransCompR_sparsePCA/kegg_on_sPC12.png',
        plot=p2,
        width=16,
        height=9,
@@ -227,7 +227,7 @@ p2 <- ggplot(df_gos %>% arrange(NES) %>% filter(padj<0.05 & abs(NES)>1.5),aes(x=
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('sparsePCAmodeling/go_on_sPC12.png',
+ggsave('../results/TransCompR_sparsePCA/go_on_sPC12.png',
        plot=p2,
        width=16,
        height=9,
@@ -236,7 +236,7 @@ ggsave('sparsePCAmodeling/go_on_sPC12.png',
 
 
 ### Perform TF analysis (GSEA)------------
-dorothera_regulon <- read.delim('../Artificial-Signaling-Network/DrugsANNSignaling/data/dorothea.tsv')
+dorothera_regulon <- read.delim('../data/dorothea.tsv')
 dorothera_regulon <- dorothera_regulon %>% filter(confidence %in% c('A','B'))
 dorothera_regulon <- dorothera_regulon %>% dplyr::select(tf,target)
 dorothera_regulon <- distinct(dorothera_regulon)
@@ -282,7 +282,7 @@ p2 <- ggplot(df_tfs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=TF,fill=p
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('sparsePCAmodeling/tfs_on_sPC12.png',
+ggsave('../results/TransCompR_sparsePCA/tfs_on_sPC12.png',
        plot=p2,
        width=16,
        height=10,

@@ -2,6 +2,7 @@ modeling/__pycache__/
 modeling/__pypackages__/
 optimization/__pycache__/
 optimization/__pypackages__/
+optimization/.ipynb_checkpoints
 optimization/.Rproj.user
 modeling/.Rproj.user
 .Rproj.user
@@ -11,7 +12,7 @@ data/GSE168285/GSE168285_tpm.txt
 results/TransCompR_sparsePCA/spca_results.rds
 results/TransCompR_sparsePCA/all_models.rds
 results/TransCompR_PCA/spca_results.rds
-results/TransCompR_PCA/all_models.rds
+results/TransCompR_PCA/all_laso_models.rds
 preprocessing/X_A.csv
 preprocessing/X_A_male.csv
 preprocessing/X_A_female.csv
