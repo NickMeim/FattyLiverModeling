@@ -2,7 +2,7 @@
 Most of the raw data are too big to be uploaded but they can be accessed in the corresponding publications:
 * [Kostrzewski et al 2021, Comms Bio : GSE168285](https://www.nature.com/articles/s42003-021-02616-x)
 * [Pantano et al 2021, Scientific Reports : GSE162694](https://www.nature.com/articles/s41598-021-96966-5)
-* [Hoang et al 2019, Scientific Reports : GSE130970]([https://clue.io/repurposing](https://www.nature.com/articles/s41598-019-48746-5))
+* [Hoang et al 2019, Scientific Reports : GSE130970](https://www.nature.com/articles/s41598-019-48746-5)
 * [OmniPath](https://omnipathdb.org/)
 * [Dorothea resource](https://saezlab.github.io/dorothea/)
 
