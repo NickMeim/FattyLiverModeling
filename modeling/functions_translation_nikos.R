@@ -233,6 +233,12 @@ translation_model_multi <- function(X_A, X_B, Y_A,valX,valY){
                          trControl = ctrl,
                          metric = "MAE",
                          tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-2, 1, length = 100)))
+    # lasso_model <- clm(form,
+    #                      data = data_modeling[,c(colnames(X_A_B),outVar)],
+    #                      method = 'glmnet',
+    #                      trControl = ctrl,
+    #                      metric = "MAE",
+    #                      tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-2, 1, length = 100)))
     if (k == 1){
       predicted <- predict(lasso_model,data_modeling[,c(colnames(X_A_B),outVar)])
       if (sd(predicted)==0){
