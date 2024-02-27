@@ -421,3 +421,75 @@ sparse_translation_model_multi <- function(sPC_A, sPC_B, X_A,Y_A,valX,valY){
               val_r= valr,
               val_tau = valtau))
 }
+
+
+#### Modeling function for multi phenotype with LOOCV
+translation_model_multi_loocv <- function(X_A, X_B, Y_A){
+  library(glmnet)
+  library(pls)
+  PC_A <- get_PC_dimensions(X_A,keep_variance=90)
+  PC_B <- get_PC_dimensions(X_B,keep_variance=90)
+  # Project dataset A onto the PCs of dataset B
+  X_A_B <- X_A %*% PC_B$rotation
+  # Keep only PCs that explain at least 1% of the MPS variance or 1% of the human variance
+  varAB <- apply(X_A_B,2,sd)^2
+  ## Select PCs that capture 90% of the variance of human that the MPS can capture
+  percAB <- 100*varAB/sum(varAB)
+  pc_inds_AB <- paste0('PC',seq(1:ncol(X_A_B)))
+  inds_AB <- which(cumsum(percAB)>=95)[1]
+  pc_inds_AB <- pc_inds_AB[1:inds_AB]
+  pcs_2_keep  <- unique(c(PC_B$keep_PCs,pc_inds_AB))
+  X_A_B <- X_A_B[,pcs_2_keep]
+  
+  ### Begin modeling
+  ctrl <- trainControl(method = "cv", number = 10)
+  data_modeling <- cbind(as.matrix(X_A_B),apply(as.matrix(Y_A),c(1,2),as.numeric))
+  lasso_pcs <- NULL
+  model <- NULL
+  k <- 1
+  for (outVar in colnames(Y_A)){
+    form <- as.formula(paste0(outVar,'~.'))
+    lasso_model <- train(form,
+                         data = data_modeling[,c(colnames(X_A_B),outVar)],
+                         method = 'glmnet',
+                         trControl = ctrl,
+                         metric = "MAE",
+                         tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-2, 1, length = 100)))
+    if (k == 1){
+      predicted <- predict(lasso_model,data_modeling[,c(colnames(X_A_B),outVar)])
+      if (sd(predicted)==0){
+        predicted <- predicted + 1e-8*rnorm(length(predicted))
+      }
+    }else{
+      if (sd(predict(lasso_model,data_modeling[,c(colnames(X_A_B),outVar)]))==0){
+        predicted <- cbind(predicted, predict(lasso_model,data_modeling[,c(colnames(X_A_B),outVar)])+ 1e-8*rnorm(nrow(data_modeling)))
+      }else{
+        predicted <- cbind(predicted, predict(lasso_model,data_modeling[,c(colnames(X_A_B),outVar)]))
+      }
+    }
+    pcs <- coef(lasso_model$finalModel,s=lasso_model$finalModel$lambdaOpt)
+    pcs <- pcs@Dimnames[[1]][pcs@i]
+    lasso_pcs[[outVar]] <- pcs[which(pcs!="(Intercept)")]
+    model[[outVar]] <- lasso_model 
+    message(paste0('Finished output ',outVar))
+    k <- k+1
+  }
+  colnames(predicted) <- colnames(Y_A)
+  # evaluate 
+  mae <- apply(abs(Y_A - predicted),2,mean)
+  tau <- cor(predicted,Y_A,method = 'kendall')
+  tau <- diag(tau)
+  r <- cor(predicted,Y_A,method = 'pearson')
+  r <- diag(r)
+  
+  # Return PC and translation models
+  return(list(PC_A = PC_A, 
+              PC_B = PC_B, 
+              X_A_B = X_A_B,
+              model_A_B = model,
+              lasso_pcs = lasso_pcs,
+              pcs_kept = pcs_2_keep,
+              tain_mae = mae,
+              train_r= r,
+              train_tau = tau))
+}

@@ -16,6 +16,10 @@ results/TransCompR_sparsePCA/spca_results.rds
 results/TransCompR_sparsePCA/all_models.rds
 results/TransCompR_PCA/spca_results.rds
 results/TransCompR_PCA/all_laso_models.rds
+results/TransCompR_PCA_Females/*
+results/TransCompR_PCA_Females
+results/TransCompR_PCA_Males/*
+results/TransCompR_PCA_Males
 preprocessing/X_A.csv
 preprocessing/X_A_male.csv
 preprocessing/X_A_female.csv
