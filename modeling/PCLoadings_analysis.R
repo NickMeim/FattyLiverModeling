@@ -62,9 +62,144 @@ ggplot(loadings,aes(x=gene,y=PC12,color = significant)) + geom_point() +
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
         legend.position = 'none')
-ggsave('pc_loadings_scores_analysis/gene_pc12_loadings.png',
+ggsave('../results/pc_loadings_scores_analysis/gene_pc12_loadings.png',
        width = 14,
        height = 8,
+       units = 'in',
+       dpi = 600)
+
+### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
+gene_loadings <- PCA_alldata$rotation
+# gene_loadings <- gene_loadings[,c('PC8','PC12')]
+minNrOfGenes  <-  5
+dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
+confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
+dorotheaData = dorotheaData[confidenceFilter,]
+
+settings = list(verbose = TRUE, minsize = minNrOfGenes)
+TF_activities = run_viper(gene_loadings, dorotheaData, options =  settings)
+genes <- rownames(gene_loadings)
+# Build distribution of TF activities across all PCs and
+# check what TF activities you can anyway observe in the data
+iters <- 10000
+# null_activity <- data.frame()
+# settings = list(verbose = FALSE, minsize = minNrOfGenes)
+# for (i in 1:iters){
+#   shuffled_genes <-  gene_loadings[sample(nrow(gene_loadings)),]
+#   rownames(shuffled_genes) <- genes
+#   tmp_tfs = run_viper(shuffled_genes, dorotheaData, options =  settings)
+#   tmp_tfs <- as.data.frame(tmp_tfs) %>% rownames_to_column('TF')
+#   null_activity <- rbind(null_activity,tmp_tfs)
+#   if (i %% 1000 ==0){
+#     # saveRDS(null_activity,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
+#     message(paste0('Finished iteration ',i))
+#   }
+# }
+# # saveRDS(null_activity,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
+# null_activity <- readRDS('../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
+
+#plot TF activities that explain a gene being expressed toward the direction of the loading
+TF_activities <- as.data.frame(TF_activities) %>% rownames_to_column('TF')
+# Build distribution of TF activities across all PCs and 
+# check what TF activities you can anyway observe in the data
+null_activity <- TF_activities %>% gather('PC','null_act',-TF) %>% select(-PC)
+TF_activities$significant <- ''
+# #### This only for shuffled
+# TF_activities_nulled <- left_join(TF_activities,null_activity,by='TF')
+# TF_activities_PC8 <- TF_activities_nulled %>% select(TF,c('PC8'='PC8.x'),significant,c('null_act'='PC8.y')) %>% 
+#   group_by(TF) %>% mutate(p.value = ifelse(PC8>=0,
+#                                            sum(null_act>=PC8)/iters,
+#                                            sum(null_act<=PC8)/iters)) %>%
+#   ungroup()
+# TF_activities_PC12 <- TF_activities_nulled %>% select(TF,c('PC12'='PC12.x'),significant,c('null_act'='PC12.y')) %>% 
+#   group_by(TF) %>% mutate(p.value = ifelse(PC12>=0,
+#                                            sum(null_act>=PC12)/iters,
+#                                            sum(null_act<=PC12)/iters)) %>%
+#   ungroup()
+# ####
+TF_activities_PC8 <- left_join(TF_activities %>% select(TF,PC8,significant),
+                               null_activity) %>%
+  group_by(TF) %>% mutate(p.value = ifelse(PC8>=0,
+                                           sum(null_act>=PC8)/(ncol(TF_activities)-2),
+                                           sum(null_act<=PC8)/(ncol(TF_activities)-2))) %>%
+  ungroup()
+adjustement_tmp <- TF_activities_PC8 %>% select(TF,p.value) %>% unique()
+adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
+adjustement_tmp <- adjustement_tmp %>% select(TF,p.adj)
+TF_activities_PC8 <- left_join(TF_activities_PC8,adjustement_tmp)%>% select(-null_act) %>% unique()
+TF_activities_PC12 <- left_join(TF_activities %>% select(TF,PC12,significant),
+                               null_activity) %>%
+  group_by(TF) %>% mutate(p.value = ifelse(PC12>=0,
+                                           sum(null_act>=PC12)/(ncol(TF_activities)-2),
+                                           sum(null_act<=PC12)/(ncol(TF_activities)-2))) %>%
+  ungroup()
+adjustement_tmp <- TF_activities_PC12 %>% select(TF,p.value) %>% unique()
+adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
+adjustement_tmp <- adjustement_tmp %>% select(TF,p.adj)
+TF_activities_PC12 <- left_join(TF_activities_PC12,adjustement_tmp) %>% select(-null_act) %>% unique()
+TF_activities_PC8$significant[order(-abs(TF_activities_PC8$PC8))[1:20]] <- TF_activities_PC8$TF[order(-abs(TF_activities_PC8$PC8))[1:20]]
+TF_activities_PC8 <- TF_activities_PC8[order(TF_activities_PC8$PC8),]
+TF_activities_PC8$TF <- factor(TF_activities_PC8$TF,levels = TF_activities_PC8$TF)
+TF_activities_PC12$significant[order(-abs(TF_activities_PC12$PC12))[1:20]] <- TF_activities_PC12$TF[order(-abs(TF_activities_PC12$PC12))[1:20]]
+TF_activities_PC12 <- TF_activities_PC12[order(TF_activities_PC12$PC12),]
+TF_activities_PC12$TF <- factor(TF_activities_PC12$TF,levels = TF_activities_PC12$TF)
+# change significant
+TF_activities_PC12 <- TF_activities_PC12 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
+                                                                       ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
+TF_activities_PC8 <- TF_activities_PC8 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
+                                                                     ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
+
+# Combine into one data frame
+TF_activities_plot_frame <- rbind(TF_activities_PC8 %>% dplyr::rename(value = PC8) %>% mutate(PC='PC8'),
+                                  TF_activities_PC12 %>% dplyr::rename(value = PC12) %>% mutate(PC='PC12'))
+TF_activities_plot_frame <- TF_activities_plot_frame %>% mutate(PC=paste0('used ',PC,' gene loadings'))
+### Make barplot to look at top TFs
+# p <- (ggplot(TF_activities_PC8,aes(x=TF,y=PC8,color = statistical)) + geom_point() +
+#   # scale_color_gradient(high = 'red',low='white')+
+#     scale_color_manual(values = c('#fa8e8e','black'))+
+#   geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+#   xlab('TFs') + ylab('activity from PC8 loadings')+
+#   scale_x_discrete(expand = c(0.1, 0.1))+
+#   theme_pubr(base_family = 'Arial',base_size = 20)+
+#   theme(text = element_text(family = 'Arial',size=20),
+#         axis.ticks.x = element_blank(),
+#         axis.text.x = element_blank(),
+#         legend.position = 'none')) +
+#   (ggplot(TF_activities_PC12,aes(x=TF,y=PC12,color = statistical)) + geom_point() +
+#      scale_color_manual(values =c('red','#fa8e8e','black'))+
+#      # scale_color_gradient(high = 'red',low='white')+
+#      geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+#      xlab('TFs') + ylab('activity from PC12 loadings')+
+#      scale_x_discrete(expand = c(0.1, 0.1))+
+#      theme_pubr(base_family = 'Arial',base_size = 20)+
+#      theme(text = element_text(family = 'Arial',size=20),
+#            axis.ticks.x = element_blank(),
+#            axis.text.x = element_blank(),
+#            legend.position = 'none'))
+p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=statistical),
+            aes(x=value,y=-log10(p.adj),color = `statistical threshold`)) + geom_point() +
+  scale_color_manual(values = c('red','#fa8e8e','black'))+
+  geom_text_repel(aes(label=significant),size=6,max.overlaps=40,point.padding = 0.5)+
+  xlab('activity') + ylab(expression(-log[10]('adjusted p-value'))) +
+  # ylab('adjusted p-value') +
+  # scale_x_discrete(expand = c(0.1, 0.1))+
+  geom_hline(yintercept=-log10(0.1), linetype="dashed",color = "#525252", size=1) +
+  # annotate("text",x=-2,y=1.5,label="adjusted p-value=0.05",size=6)+
+  theme_pubr(base_family = 'Arial',base_size = 24)+
+  theme(text = element_text(family = 'Arial',size=24),
+        legend.position = 'top')+
+  facet_wrap(~PC,scales = 'free_x')+
+  guides(color = guide_legend(
+    override.aes = list(
+      linetype = NA,
+      size = 3
+    )
+  ))
+print(p)
+ggsave('../results/pc_loadings_scores_analysis/TFs_from_loadings_volcano.png',
+       plot = p,
+       width = 16,
+       height = 12,
        units = 'in',
        dpi = 600)
 
@@ -121,7 +256,7 @@ p2 <- ggplot(df_keggs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=pathway
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('pc_loadings_scores_analysis/kegg_on_pc12.png',
+ggsave('../results/pc_loadings_scores_analysis/kegg_on_pc12.png',
        plot=p2,
        width=16,
        height=9,
@@ -191,7 +326,7 @@ p2 <- ggplot(df_gos %>% arrange(NES) %>% filter(padj<0.05 & abs(NES)>2),aes(x=NE
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('pc_loadings_scores_analysis/go_on_pc12.png',
+ggsave('../results/pc_loadings_scores_analysis/go_on_pc12.png',
        plot=p2,
        width=16,
        height=9,
@@ -246,7 +381,7 @@ p2 <- ggplot(df_tfs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=TF,fill=p
         legend.position = 'right',
         legend.justification = "center")
 print(p2)
-ggsave('pc_loadings_scores_analysis/tfs_on_pc12.png',
+ggsave('../results/pc_loadings_scores_analysis/tfs_on_pc12.png',
        plot=p2,
        width=16,
        height=10,

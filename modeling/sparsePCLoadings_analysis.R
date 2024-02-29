@@ -72,6 +72,56 @@ ggsave('../results/TransCompR_sparsePCA/gene_sPC12_loadings.png',
        units = 'in',
        dpi = 600)
 
+
+### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
+gene_loadings <- sPC_B$loadings
+colnames(gene_loadings) <- paste0('sPC',seq(1:ncol(gene_loadings)))
+rownames(gene_loadings) <- colnames(X_B)
+gene_loadings <- gene_loadings[,c('sPC8','sPC12')]
+minNrOfGenes  <-  5
+dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
+confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
+dorotheaData = dorotheaData[confidenceFilter,]
+
+settings = list(verbose = TRUE, minsize = minNrOfGenes)
+TF_activities = run_viper(gene_loadings, dorotheaData, options =  settings)
+
+#plot TF activities that explain a gene being expressed toward the direction of the loading
+TF_activities <- as.data.frame(TF_activities) %>% rownames_to_column('TF')
+TF_activities$significant <- ''
+TF_activities_sPC8 <- TF_activities %>% select(TF,sPC8,significant)
+TF_activities_sPC12 <- TF_activities%>% select(TF,sPC12,significant)
+TF_activities_sPC8$significant[order(-abs(TF_activities_sPC8$sPC8))[1:10]] <- TF_activities_sPC8$TF[order(-abs(TF_activities_sPC8$sPC8))[1:10]]
+TF_activities_sPC8 <- TF_activities_sPC8[order(TF_activities_sPC8$sPC8),]
+TF_activities_sPC8$TF <- factor(TF_activities_sPC8$TF,levels = TF_activities_sPC8$TF)
+TF_activities_sPC12$significant[order(-abs(TF_activities_sPC12$sPC12))[1:10]] <- TF_activities_sPC12$TF[order(-abs(TF_activities_sPC12$sPC12))[1:10]]
+TF_activities_sPC12 <- TF_activities_sPC12[order(TF_activities_sPC12$sPC12),]
+TF_activities_sPC12$TF <- factor(TF_activities_sPC12$TF,levels = TF_activities_sPC12$TF)
+### Make barplot to look at top TFs
+(ggplot(TF_activities_sPC8,aes(x=TF,y=sPC8,color = significant)) + geom_point() +
+    geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+    xlab('TFs') + ylab('activity from sPC8 loadings')+
+    scale_x_discrete(expand = c(0.1, 0.1))+
+    theme_pubr(base_family = 'Arial',base_size = 20)+
+    theme(text = element_text(family = 'Arial',size=20),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank(),
+          legend.position = 'none')) +
+  (ggplot(TF_activities_sPC12,aes(x=TF,y=sPC12,color = significant)) + geom_point() +
+     geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+     xlab('TFs') + ylab('activity from sPC12 loadings')+
+     scale_x_discrete(expand = c(0.1, 0.1))+
+     theme_pubr(base_family = 'Arial',base_size = 20)+
+     theme(text = element_text(family = 'Arial',size=20),
+           axis.ticks.x = element_blank(),
+           axis.text.x = element_blank(),
+           legend.position = 'none'))
+ggsave('../results/pc_loadings_scores_analysis/TFs_from_sparse_loadings.png',
+       width = 14,
+       height = 8,
+       units = 'in',
+       dpi = 600)
+
 ### Fisher exact test
 fisherExactTest <- function(geneSet,Top,measGenes){
   not_in_geneset = sum(!(measGenes %in% geneSet ))
