@@ -20,6 +20,8 @@ library(rstatix)
 library(fgsea)
 library(topGO)
 library(GO.db)
+library(progeny)
+library(OmnipathR)
 
 #### Load pre-processed data----------------------
 data <- readRDS("../data/preprocessed_NAFLD.rds")
@@ -68,6 +70,18 @@ ggsave('../results/pc_loadings_scores_analysis/gene_pc12_loadings.png',
        units = 'in',
        dpi = 600)
 
+
+### Infer Pathway activity with progeny----------------------------------------------------------------------------
+gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,3,8,12))]
+pathways_progeny <- progeny(gene_loadings,
+                            perm = 10000,
+                            z_scores = T,
+                            top = 500)
+pheatmap(pathways_progeny)
+png('../results/pc_loadings_scores_analysis/significant_progenies_from_loadings_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
+pheatmap(TF_activities[which(rownames(TF_activities) %in% significant_tfs),paste0('PC',c(1,2,3,8,12))])
+dev.off()
+
 ### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
 gene_loadings <- PCA_alldata$rotation
 # gene_loadings <- gene_loadings[,c('PC8','PC12')]
@@ -78,6 +92,7 @@ dorotheaData = dorotheaData[confidenceFilter,]
 
 settings = list(verbose = TRUE, minsize = minNrOfGenes)
 TF_activities = run_viper(gene_loadings, dorotheaData, options =  settings)
+pheatmap(TF_activities[,paste0('PC',c(1,2,3,4,5,8,11,12,13,35))])
 genes <- rownames(gene_loadings)
 # Build distribution of TF activities across all PCs and
 # check what TF activities you can anyway observe in the data
@@ -116,7 +131,6 @@ TF_activities$significant <- ''
 #                                            sum(null_act>=PC12)/iters,
 #                                            sum(null_act<=PC12)/iters)) %>%
 #   ungroup()
-# ####
 TF_activities_PC8 <- left_join(TF_activities %>% select(TF,PC8,significant),
                                null_activity) %>%
   group_by(TF) %>% mutate(p.value = ifelse(PC8>=0,
@@ -197,6 +211,134 @@ p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=s
   ))
 print(p)
 ggsave('../results/pc_loadings_scores_analysis/TFs_from_loadings_volcano.png',
+       plot = p,
+       width = 16,
+       height = 12,
+       units = 'in',
+       dpi = 600)
+significant_tfs <- TF_activities_plot_frame %>% filter(p.adj<0.1)
+significant_tfs <- unique(as.character(significant_tfs$TF))
+TF_activities = run_viper(gene_loadings, dorotheaData, options =  settings)
+
+png('../results/pc_loadings_scores_analysis/significant_TFs_from_loadings_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
+pheatmap(TF_activities[which(rownames(TF_activities) %in% significant_tfs),paste0('PC',c(1,2,3,8,12))])
+dev.off()
+
+### Infer protein activity-----------------------------------------
+interactions <- import_omnipath_interactions()
+interactions <- interactions %>% mutate(kegg=grepl(pattern="KEGG",x=sources)) %>%
+  mutate(signoir=grepl(pattern="SIGNOR",x=sources)) %>% filter(kegg==T | signoir==T)
+interactions <- interactions  %>% filter(n_resources>1)  %>% #filter(n_references>=2)%>% 
+  dplyr::select(c('source'='source_genesymbol'),
+                c('target'='target_genesymbol'),
+                is_inhibition,is_stimulation) %>% unique()
+interactions <- interactions %>% mutate(interaction=ifelse(is_stimulation==1,
+                                                           ifelse(is_inhibition!=1,1,0),
+                                                           ifelse(is_inhibition!=0,-1,0))) %>%
+  dplyr::select(source,interaction,target) %>% unique()
+# interactions <- interactions %>% filter(interaction!=0)
+minNrOfGenes  <-  5
+settings = list(verbose = TRUE, minsize = minNrOfGenes)
+# protein_activity = run_viper(PCA_alldata$rotation, 
+#                              rbind(interactions %>% mutate(confidence = 'A') %>% 
+#                                      select(c('tf'='source'),confidence,target,c('mor'='interaction')) %>%
+#                                      filter(!(paste0(tf,' , ',target) %in% paste0(dorotheaData$tf,' , ',dorotheaData$target))),
+#                                    dorotheaData) %>% unique(), 
+#                              options =  settings)
+protein_activity = run_viper(PCA_alldata$rotation, 
+                             interactions %>% mutate(confidence = 'A') %>% 
+                                     select(c('tf'='source'),confidence,target,c('mor'='interaction')), 
+                             options =  settings)
+pheatmap(protein_activity[,paste0('PC',c(8,11,12,13,35))])
+protein_activity <- as.data.frame(protein_activity) %>% rownames_to_column('prot')
+# Build distribution of prot activities across all PCs and 
+# check what prot activities you can anyway observe in the data
+null_activity <- protein_activity %>% gather('PC','null_act',-prot) %>% select(-PC)
+protein_activity$significant <- ''
+protein_activity_PC8 <- left_join(protein_activity %>% select(prot,PC8,significant),
+                               null_activity) %>%
+  group_by(prot) %>% mutate(p.value = ifelse(PC8>=0,
+                                           sum(null_act>=PC8)/(ncol(protein_activity)-2),
+                                           sum(null_act<=PC8)/(ncol(protein_activity)-2))) %>%
+  ungroup()
+adjustement_tmp <- protein_activity_PC8 %>% select(prot,p.value) %>% unique()
+adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
+adjustement_tmp <- adjustement_tmp %>% select(prot,p.adj)
+protein_activity_PC8 <- left_join(protein_activity_PC8,adjustement_tmp)%>% select(-null_act) %>% unique()
+protein_activity_PC12 <- left_join(protein_activity %>% select(prot,PC12,significant),
+                                null_activity) %>%
+  group_by(prot) %>% mutate(p.value = ifelse(PC12>=0,
+                                           sum(null_act>=PC12)/(ncol(protein_activity)-2),
+                                           sum(null_act<=PC12)/(ncol(protein_activity)-2))) %>%
+  ungroup()
+adjustement_tmp <- protein_activity_PC12 %>% select(prot,p.value) %>% unique()
+adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
+adjustement_tmp <- adjustement_tmp %>% select(prot,p.adj)
+protein_activity_PC12 <- left_join(protein_activity_PC12,adjustement_tmp) %>% select(-null_act) %>% unique()
+protein_activity_PC8$significant[order(-abs(protein_activity_PC8$PC8))[1:20]] <- protein_activity_PC8$prot[order(-abs(protein_activity_PC8$PC8))[1:20]]
+protein_activity_PC8 <- protein_activity_PC8[order(protein_activity_PC8$PC8),]
+protein_activity_PC8$prot <- factor(protein_activity_PC8$prot,levels = protein_activity_PC8$prot)
+protein_activity_PC12$significant[order(-abs(protein_activity_PC12$PC12))[1:20]] <- protein_activity_PC12$prot[order(-abs(protein_activity_PC12$PC12))[1:20]]
+protein_activity_PC12 <- protein_activity_PC12[order(protein_activity_PC12$PC12),]
+protein_activity_PC12$prot <- factor(protein_activity_PC12$prot,levels = protein_activity_PC12$prot)
+# change significant
+protein_activity_PC12 <- protein_activity_PC12 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
+                                                                       ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
+protein_activity_PC8 <- protein_activity_PC8 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
+                                                                     ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
+
+# protein_activity_PC12 <- protein_activity_PC12 %>% mutate(statistical=ifelse(p.adj<=0.01,'p.adj<=0.01',
+#                                                                              ifelse(p.adj<=0.05,'p.adj<=0.05',
+#                                                                                     ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1'))))
+# protein_activity_PC8 <- protein_activity_PC8 %>% mutate(statistical=ifelse(p.adj<=0.01,'p.adj<=0.01',
+#                                                                            ifelse(p.adj<=0.05,'p.adj<=0.05',
+#                                                                                   ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1'))))
+
+# Combine into one data frame
+protein_activity_plot_frame <- rbind(protein_activity_PC8 %>% dplyr::rename(value = PC8) %>% mutate(PC='PC8'),
+                                  protein_activity_PC12 %>% dplyr::rename(value = PC12) %>% mutate(PC='PC12'))
+protein_activity_plot_frame <- protein_activity_plot_frame %>% mutate(PC=paste0('used ',PC,' gene loadings'))
+### Make barplot to look at top prots
+# p <- (ggplot(protein_activity_PC8,aes(x=prot,y=PC8,color = statistical)) + geom_point() +
+#   # scale_color_gradient(high = 'red',low='white')+
+#     scale_color_manual(values = c('#fa8e8e','black'))+
+#   geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+#   xlab('prots') + ylab('activity from PC8 loadings')+
+#   scale_x_discrete(expand = c(0.1, 0.1))+
+#   theme_pubr(base_family = 'Arial',base_size = 20)+
+#   theme(text = element_text(family = 'Arial',size=20),
+#         axis.ticks.x = element_blank(),
+#         axis.text.x = element_blank(),
+#         legend.position = 'none')) +
+#   (ggplot(protein_activity_PC12,aes(x=prot,y=PC12,color = statistical)) + geom_point() +
+#      scale_color_manual(values =c('red','#fa8e8e','black'))+
+#      # scale_color_gradient(high = 'red',low='white')+
+#      geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+#      xlab('prots') + ylab('activity from PC12 loadings')+
+#      scale_x_discrete(expand = c(0.1, 0.1))+
+#      theme_pubr(base_family = 'Arial',base_size = 20)+
+#      theme(text = element_text(family = 'Arial',size=20),
+#            axis.ticks.x = element_blank(),
+#            axis.text.x = element_blank(),
+#            legend.position = 'none'))
+p <- ggplot(protein_activity_plot_frame %>% dplyr::rename(`statistical threshold`=statistical),
+            aes(x=value,y=-log10(p.adj),color = `statistical threshold`)) + geom_point() +
+  scale_color_manual(values = c('black'))+
+  geom_text_repel(aes(label=significant),size=6,max.overlaps=40,point.padding = 0.5)+
+  xlab('activity') + ylab(expression(-log[10]('adjusted p-value'))) +
+  geom_hline(yintercept=-log10(0.1), linetype="dashed",color = "#525252", size=1) +
+  theme_pubr(base_family = 'Arial',base_size = 24)+
+  theme(text = element_text(family = 'Arial',size=24),
+        legend.position = 'top')+
+  facet_wrap(~PC,scales = 'free_x')+
+  guides(color = guide_legend(
+    override.aes = list(
+      linetype = NA,
+      size = 3
+    )
+  ))
+print(p)
+ggsave('../results/pc_loadings_scores_analysis/protein_activity_from_loadings_volcano.png',
        plot = p,
        width = 16,
        height = 12,

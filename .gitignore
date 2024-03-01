@@ -5,6 +5,7 @@ optimization/__pypackages__/
 optimization/.ipynb_checkpoints
 optimization/.Rproj.user
 modeling/.Rproj.user
+modeling/omnipathr-log
 .Rproj.user
 data/GSE162694/GSE162694_raw_counts.csv.gz
 data/GSE168285/*.gz
