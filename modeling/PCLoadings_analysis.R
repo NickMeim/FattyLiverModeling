@@ -54,7 +54,7 @@ loadings$significant <- ''
 loadings$significant[order(-abs(loadings$PC12))[1:10]] <- loadings$gene[order(-abs(loadings$PC12))[1:10]]
 loadings <- loadings[order(loadings$PC12),]
 loadings$gene <- factor(loadings$gene,levels = loadings$gene)
-### Make barplot to look at top genes-----------
+### Make barplot to look at top genes----------------
 ggplot(loadings,aes(x=gene,y=PC12,color = significant)) + geom_point() +
   geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
   xlab('genes') + ylab('PC12 loadings')+
@@ -70,7 +70,104 @@ ggsave('../results/pc_loadings_scores_analysis/gene_pc12_loadings.png',
        units = 'in',
        dpi = 600)
 
+### Infer statistical significance for gene loadings of PC12 and PC8----------------------------------
+gene_loadings <- PCA_alldata$rotation
+gene_loadings <- as.data.frame(gene_loadings) %>% rownames_to_column('gene')
+null_loadings <- gene_loadings %>% gather('PC','null_act',-gene) %>% select(-PC)
+gene_loadings$significant <- ''
+gene_loadings_PC8 <- left_join(gene_loadings %>% select(gene,PC8,significant),
+                               null_loadings) %>%
+  group_by(gene) %>% mutate(p.value = ifelse(PC8>=0,
+                                           sum(null_act>=PC8)/(ncol(gene_loadings)-2),
+                                           sum(null_act<=PC8)/(ncol(gene_loadings)-2))) %>%
+  ungroup()
+adjustement_tmp <- gene_loadings_PC8 %>% select(gene,p.value) %>% unique()
+adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'fdr')
+adjustement_tmp <- adjustement_tmp %>% select(gene,p.adj)
+gene_loadings_PC8 <- left_join(gene_loadings_PC8,adjustement_tmp)%>% select(-null_act) %>% unique()
+gene_loadings_PC12 <- left_join(gene_loadings %>% select(gene,PC12,significant),
+                                null_loadings) %>%
+  group_by(gene) %>% mutate(p.value = ifelse(PC12>=0,
+                                           sum(null_act>=PC12)/(ncol(gene_loadings)-2),
+                                           sum(null_act<=PC12)/(ncol(gene_loadings)-2))) %>%
+  ungroup()
+adjustement_tmp <- gene_loadings_PC12 %>% select(gene,p.value) %>% unique()
+adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'fdr')
+adjustement_tmp <- adjustement_tmp %>% select(gene,p.adj)
+gene_loadings_PC12 <- left_join(gene_loadings_PC12,adjustement_tmp) %>% select(-null_act) %>% unique()
+gene_loadings_PC8$significant[order(-abs(gene_loadings_PC8$PC8))[1:10]] <- gene_loadings_PC8$gene[order(-abs(gene_loadings_PC8$PC8))[1:10]]
+gene_loadings_PC8 <- gene_loadings_PC8[order(gene_loadings_PC8$PC8),]
+gene_loadings_PC8$gene <- factor(gene_loadings_PC8$gene,levels = gene_loadings_PC8$gene)
+gene_loadings_PC12$significant[order(-abs(gene_loadings_PC12$PC12))[1:10]] <- gene_loadings_PC12$gene[order(-abs(gene_loadings_PC12$PC12))[1:10]]
+gene_loadings_PC12 <- gene_loadings_PC12[order(gene_loadings_PC12$PC12),]
+gene_loadings_PC12$gene <- factor(gene_loadings_PC12$gene,levels = gene_loadings_PC12$gene)
+# change significant
+# gene_loadings_PC12 <- gene_loadings_PC12 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
+#                                                                        ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
+# gene_loadings_PC8 <- gene_loadings_PC8 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
+#                                                                      ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
+gene_loadings_PC12 <- gene_loadings_PC12 %>% mutate(statistical=ifelse(p.value<=0.01,'p-value<=0.01',
+                                                                              ifelse(p.value<=0.05,'p-value<=0.05','p-value>0.05')))
+gene_loadings_PC8 <- gene_loadings_PC8 %>% mutate(statistical=ifelse(p.value<=0.01,'p-value<=0.01',
+                                                                              ifelse(p.value<=0.05,'p-value<=0.05','p-value>0.05')))
 
+# Combine into one data frame
+gene_loadings_plot_frame <- rbind(gene_loadings_PC8 %>% dplyr::rename(value = PC8) %>% mutate(PC='PC8'),
+                                  gene_loadings_PC12 %>% dplyr::rename(value = PC12) %>% mutate(PC='PC12'))
+gene_loadings_plot_frame <- gene_loadings_plot_frame %>% mutate(PC=paste0('used ',PC,' gene loadings'))
+
+p <- ggplot(gene_loadings_plot_frame %>% dplyr::rename(`statistical threshold`=statistical),
+            aes(x=value,y=-log10(p.value),color = `statistical threshold`)) + geom_point() +
+  scale_color_manual(values = c('red','#fa8e8e','black'))+
+  geom_text_repel(aes(label=significant),size=6,max.overlaps=40,point.padding = 0.5)+
+  xlab('gene loading') + ylab(expression(-log[10]('p-value'))) +
+  geom_hline(yintercept=-log10(0.01), linetype="dashed",color = "#525252", size=1) +
+  theme_pubr(base_family = 'Arial',base_size = 24)+
+  theme(text = element_text(family = 'Arial',size=24),
+        legend.position = 'top')+
+  facet_wrap(~PC,scales = 'free_x')+
+  guides(color = guide_legend(
+    override.aes = list(
+      linetype = NA,
+      size = 3
+    )
+  ))
+print(p)
+ggsave('../results/pc_loadings_scores_analysis/gene_loadings_volcano.png',
+       plot = p,
+       width = 16,
+       height = 12,
+       units = 'in',
+       dpi = 600)
+
+p2 <- (ggplot(gene_loadings_PC8,aes(x=gene,y=PC8,color = statistical)) + geom_point() +
+  # scale_color_gradient(high = 'red',low='white')+
+    scale_color_manual(values = c('red','#fa8e8e','black'))+
+  geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+  xlab('TFs') + ylab('PC8 loadings')+
+  scale_x_discrete(expand = c(0.1, 0.1))+
+  theme_pubr(base_family = 'Arial',base_size = 20)+
+  theme(text = element_text(family = 'Arial',size=20),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = 'none')) +
+  (ggplot(gene_loadings_PC12,aes(x=gene,y=PC12,color = statistical)) + geom_point() +
+     scale_color_manual(values =c('red','#fa8e8e','black'))+
+     geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+     xlab('TFs') + ylab('PC12 loadings')+
+     scale_x_discrete(expand = c(0.1, 0.1))+
+     theme_pubr(base_family = 'Arial',base_size = 20)+
+     theme(text = element_text(family = 'Arial',size=20),
+           axis.ticks.x = element_blank(),
+           axis.text.x = element_blank(),
+           legend.position = 'none'))
+print(p2)
+ggsave('../results/pc_loadings_scores_analysis/gene_loadings_points_withstats.png',
+       plot = p2,
+       width = 16,
+       height = 12,
+       units = 'in',
+       dpi = 600)
 ### Infer Pathway activity with progeny----------------------------------------------------------------------------
 gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,3,8,12))]
 pathways_progeny <- progeny(gene_loadings,
@@ -79,8 +176,90 @@ pathways_progeny <- progeny(gene_loadings,
                             top = 500)
 pheatmap(pathways_progeny)
 png('../results/pc_loadings_scores_analysis/significant_progenies_from_loadings_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
-pheatmap(TF_activities[which(rownames(TF_activities) %in% significant_tfs),paste0('PC',c(1,2,3,8,12))])
+pheatmap(pathways_progeny)
 dev.off()
+
+#### Run CARNIVAL--------------------------
+library(CARNIVAL)
+gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,3,8,12))]
+minNrOfGenes  <-  5
+dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
+confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
+dorotheaData = dorotheaData[confidenceFilter,]
+settings = list(verbose = TRUE, minsize = minNrOfGenes)
+TF_activities = run_viper(gene_loadings, dorotheaData, options =  settings)
+tfs <- rownames(TF_activities)
+## load omnipath network
+interactions <- import_omnipath_interactions()
+interactions <- interactions  %>% mutate(kegg=grepl(pattern="KEGG",x=sources))%>% 
+  filter(n_resources>=3 | kegg==T)  %>% 
+  filter(n_references>=3 | kegg==T)  %>% 
+  dplyr::select(-kegg) %>%
+  dplyr::select(c('source'='source_genesymbol'),
+                c('target'='target_genesymbol'),
+                is_inhibition,is_stimulation) %>% unique()
+
+interactions <- interactions %>% filter(!(is_inhibition==0 & is_stimulation==0)) %>% unique()
+interactions <- interactions %>% mutate(interaction=ifelse(is_stimulation!=0,1,-1)) %>%
+  dplyr::select(source,interaction,target) %>% unique()
+### Run carnival
+log_con <- file("../results/pc_loadings_scores_analysis/log_cavinval.txt", open="a")
+for (j in 1:ncol(TF_activities)){
+  
+  cat(paste0('Iteration ',j,'/',ncol(TF_activities)), file = log_con, sep="\n")
+  tf_activities <- TF_activities[which(rownames(TF_activities) %in% c(interactions$source,
+                                                                      interactions$target)),
+                                 colnames(TF_activities)[j]]
+  # Run carnival
+  # YOU MUST FIND WHERE CPLEX OR CUROBI IS INSTALLED IN YOUR OWN COMPUTER
+  # GurPath <- 'C:/gurobi1100/win64/bin/gurobi_cl.exe'
+  # CplexPath <- 'C:/Program Files/IBM/ILOG/CPLEX_Studio201/cplex/bin/x64_win64/cplex.exe'
+  CbcPath <- 'C:/Users/nmeim/Documents/CBC/bin/cbc.exe'
+  carnivalOptions <- list("solver"="cbc",
+                          "betaWeight"=0.2,
+                          "solverPath"=CbcPath,
+                          "timelimit"=1200,
+                          "poolrelGap"=1e-4,
+                          "lpFilename"="",
+                          "outputFolder"="",
+                          "cleanTmpFiles"=TRUE,
+                          "keepLPFiles"=TRUE)
+  # Output dir
+  Result_dir <- paste0("../results/pc_loadings_scores_analysis/",colnames(TF_activities)[j])
+  dir.create(Result_dir, showWarnings = FALSE)
+  carnivalOptions$outputFolder <- Result_dir
+  
+  inverseCarnivalResults <- runInverseCarnival( measurements = tf_activities, 
+                                                priorKnowledgeNetwork = interactions, 
+                                                carnivalOptions = carnivalOptions)
+  
+  # Save interaction networks
+  nets <- inverseCarnivalResults$sifAll
+  nodes <- inverseCarnivalResults$attributesAll
+  for (i in 1:length(nets)){
+    t <- nets[[i]]
+    t <- as.data.frame(t)
+    t$Node1 <- as.character(t$Node1)
+    t$Node2 <- as.character(t$Node2)
+    t$Sign <- as.character(t$Sign)
+    write_tsv(t,paste0(Result_dir,'/','interactions_1_model',i,'.tsv'))
+    t <- nodes[[i]]
+    t <- as.data.frame(t)
+    t$Nodes <- as.character(t$Nodes)
+    t$Activity <- as.numeric(t$Activity)
+    write_delim(t,paste0(Result_dir,'/','nodesActivity_1_model',i,'.txt'),delim = '\t')
+  }
+  t <- as.data.frame(inverseCarnivalResults$weightedSIF)
+  t$Node1 <- as.character(t$Node1)
+  t$Node2 <- as.character(t$Node2)
+  t$Sign <- as.character(t$Sign)
+  t$Weight <- as.numeric(t$Weight)
+  write_delim(t,paste0(Result_dir,'/','weightedModel_1.txt'),delim = '\t')
+  t <- as.data.frame(inverseCarnivalResults[["nodesAttributes"]])
+  write_delim(t,paste0(Result_dir,'/','nodesAttributes_1.txt'),delim = '\t')
+  message(paste0('Finished ',colnames(TF_activities)[j]))
+}
+close(log_con)
 
 ### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
 gene_loadings <- PCA_alldata$rotation
