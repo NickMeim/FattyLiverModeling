@@ -22,6 +22,7 @@ library(topGO)
 library(GO.db)
 library(progeny)
 library(OmnipathR)
+library(EGSEAdata)
 
 #### Load pre-processed data----------------------
 data <- readRDS("../data/preprocessed_NAFLD.rds")
@@ -213,17 +214,21 @@ for (j in 1:ncol(TF_activities)){
   # Run carnival
   # YOU MUST FIND WHERE CPLEX OR CUROBI IS INSTALLED IN YOUR OWN COMPUTER
   # GurPath <- 'C:/gurobi1100/win64/bin/gurobi_cl.exe'
-  # CplexPath <- 'C:/Program Files/IBM/ILOG/CPLEX_Studio201/cplex/bin/x64_win64/cplex.exe'
+  # CplexPath <- 'C:/Program Files/IBM/ILOG/CPLEX_Studio_Community2211/cplex/bin/x64_win64/cplex.exe'
   CbcPath <- 'C:/Users/nmeim/Documents/CBC/bin/cbc.exe'
   carnivalOptions <- list("solver"="cbc",
                           "betaWeight"=0.2,
                           "solverPath"=CbcPath,
-                          "timelimit"=1200,
+                          "timelimit"=1800,
                           "poolrelGap"=1e-4,
                           "lpFilename"="",
                           "outputFolder"="",
                           "cleanTmpFiles"=TRUE,
-                          "keepLPFiles"=TRUE)
+                          "keepLPFiles"=TRUE,
+                          "poolCap"=100)
+  # carnivalOptions <- defaultCplexCarnivalOptions()
+  # carnivalOptions$timelimit <- 1200
+  # carnivalOptions$solverPath <- CplexPath
   # Output dir
   Result_dir <- paste0("../results/pc_loadings_scores_analysis/",colnames(TF_activities)[j])
   dir.create(Result_dir, showWarnings = FALSE)
@@ -260,6 +265,51 @@ for (j in 1:ncol(TF_activities)){
   message(paste0('Finished ',colnames(TF_activities)[j]))
 }
 close(log_con)
+
+### Perform Fisher test between KEGG pathways and nodes in the net
+nodes <- read.delim(paste0(Result_dir,'/','nodesAttributes_1.txt'))
+nodes <- nodes %>% filter(AvgAct!=0)
+net <- read.delim(paste0(Result_dir,'/','weightedModel_1.txt'))
+net <- net %>% filter(Node1 %in% nodes$Node) %>% filter(Node2 %in% nodes$Node) %>% unique()
+egsea.data(species = "human",returnInfo = TRUE)
+pathways <- kegg.pathways$human
+pathways <- pathways$kg.sets
+entrez_ids <- mapIds(org.Hs.eg.db, keys = nodes$Node, column = "ENTREZID", keytype = "SYMBOL")
+entrez_ids <- unname(entrez_ids)
+inds <- which(!is.na(entrez_ids))
+entrez_ids <- entrez_ids[inds]
+all_nodes <- unique(interactions$source,interactions$target)
+all_entrez_ids <- mapIds(org.Hs.eg.db, keys = all_nodes, column = "ENTREZID", keytype = "SYMBOL")
+all_entrez_ids <- unname(all_entrez_ids)
+inds <- which(!is.na(all_entrez_ids))
+all_entrez_ids <- all_entrez_ids[inds]
+
+## Perform Fisher Exact Test for each KEGG pathway
+fisherExactTest <- function(Set,selected_nodes,all_possible_nodes){
+  a  <- sum(selected_nodes %in% Set)
+  b <- length(selected_nodes) - a
+  c <- length(Set) - a
+  d <- length(all_possible_nodes) - a -b-c
+  contigencyMat <- data.frame('selected'=c(a,b),
+                              'not_selected'= c(c,d))
+  rownames(contigencyMat) <- c('in_set','not_in_set')
+  return(fisher.test(contigencyMat)$p.value)
+}
+# universe_nodes <- unique(c(unique(unname(unlist(pathways))),all_entrez_ids))
+fisher_results <- lapply(pathways,fisherExactTest,entrez_ids,all_entrez_ids)
+fisher_results <- as.data.frame(unlist(fisher_results))
+colnames(fisher_results) <- 'p.value'
+fisher_results <- fisher_results %>% rstatix::adjust_pvalue(method = 'bonferroni')
+fisher_results <- fisher_results %>% rownames_to_column('pathway')
+my_data_frame <- bind_rows(lapply(names(pathways), function(name) {
+  data.frame(names = name, values = list(pathways[[name]]), stringsAsFactors = FALSE)
+})) %>% gather('key','node',-names) %>% filter(!is.na(key))
+my_data_frame <- distinct(my_data_frame %>% select(c('pathway'='names'),node))
+fisher_results <- left_join(fisher_results,my_data_frame)
+fisher_results <- fisher_results %>% filter(p.value.adj<0.05)
+fisher_results <- fisher_results %>% filter(!is.na(node))
+fisher_results <- fisher_results %>% filter(node %in% nodes$Node)
+print(unique(fisher_results$pathway))
 
 ### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
 gene_loadings <- PCA_alldata$rotation
