@@ -308,8 +308,20 @@ my_data_frame <- distinct(my_data_frame %>% select(c('pathway'='names'),node))
 fisher_results <- left_join(fisher_results,my_data_frame)
 fisher_results <- fisher_results %>% filter(p.value.adj<0.05)
 fisher_results <- fisher_results %>% filter(!is.na(node))
+fishered_nodes <- mapIds(org.Hs.eg.db, keys = fisher_results$node, column = "SYMBOL", keytype = "ENTREZID")
+fisher_results$node <- fishered_nodes
 fisher_results <- fisher_results %>% filter(node %in% nodes$Node)
 print(unique(fisher_results$pathway))
+fisher_results <- fisher_results %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
+fisher_results <- fisher_results %>% group_by(pathway) %>% mutate(num_nodes = n_distinct(node)) %>% ungroup()
+fisher_results <- fisher_results %>% filter(!grepl('cancer',pathway))
+fisher_results <- fisher_results %>% filter(!grepl('infection',pathway))
+fisher_results <- fisher_results %>% filter(grepl('signaling',pathway) | grepl('pathway',pathway))
+fisher_results <- fisher_results %>% filter(num_nodes>=10) %>% select(pathway,node) %>% unique()
+colnames(fisher_results) <- c('pathway','Node')
+nodes <- left_join(nodes,fisher_results)
+write_delim(nodes,paste0(Result_dir,'/','edited_node_attributes.txt'),delim = '\t')
+
 
 ### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
 gene_loadings <- PCA_alldata$rotation
