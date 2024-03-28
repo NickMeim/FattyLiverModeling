@@ -211,6 +211,7 @@ for (j in 1:ncol(TF_activities)){
   tf_activities <- TF_activities[which(rownames(TF_activities) %in% c(interactions$source,
                                                                       interactions$target)),
                                  colnames(TF_activities)[j]]
+  tf_activities <- tf_activities[order(-abs(tf_activities))[1:20]]
   # Run carnival
   # YOU MUST FIND WHERE CPLEX OR CUROBI IS INSTALLED IN YOUR OWN COMPUTER
   # GurPath <- 'C:/gurobi1100/win64/bin/gurobi_cl.exe'

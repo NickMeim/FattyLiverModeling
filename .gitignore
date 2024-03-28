@@ -27,3 +27,10 @@ preprocessing/X_A_female.csv
 preprocessing/X_B.csv
 preprocessing/ARCHS4_processed
 preprocessing/ARCHS4_processed/*
+data/GSE166256_RNAseqread_counts_raw.csv
+data/GSE166256_kallisto_counts.tsv
+data/mart_export_GRCh38.txt
+results/pc_loadings_scores_analysis/PC1/
+results/pc_loadings_scores_analysis/CARNIVAL/
+results/pc_loadings_scores_analysis/log_cavinval.txt
+results/two_MPS_model.RData
