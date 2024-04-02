@@ -21,6 +21,9 @@ data_mps <- data$data_B
 data_human <- data$data_A
 NAFLD_score <- data$Y_A
 data_wang <- read.delim2('../data/GSE166256_kallisto_counts.tsv') %>% column_to_rownames('Gene')
+# data_wang <-  aggregate(data_wang[,2:ncol(data_wang)],by=list(data_wang$X),FUN=median)
+# data_wang <- data_wang %>% column_to_rownames('Group.1')
+# data_wang <- round(data_wang)
 data_wang <- as.matrix(data_wang)
 data_wang <- apply(data_wang,MARGIN = c(1,2),as.numeric)
 genes_common <- reduce(list(rownames(data_mps), rownames(data_human),rownames(data_wang)),intersect)
@@ -42,6 +45,11 @@ data_mps <- t(data_mps - rowMeans(data_mps))
 # data_wang <- log2(1 + data_wang[keep_gene,])
 data_wang <- log10(1 + data_wang)
 data_wang <- t(data_wang - rowMeans(data_wang))
+# colsum_wang <- apply(data_wang,2,sum)
+# colsum_human <- apply(data_human,2,sum)
+# ind <- which((colsum_wang!=0) & (colsum_human!=0))
+# data_human <- data_human[,ind]
+# data_wang <- data_wang[,ind]
 
 varA <-  sum(apply(data_human,2,sd)^2)
 # perform PCA in each dataset

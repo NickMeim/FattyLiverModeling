@@ -34,3 +34,9 @@ results/pc_loadings_scores_analysis/PC1/
 results/pc_loadings_scores_analysis/CARNIVAL/
 results/pc_loadings_scores_analysis/log_cavinval.txt
 results/two_MPS_model.RData
+data/GSE89063_expression_matrix.tsv
+modeling/GSE156072/
+preprocessing/XA4Feaver.csv
+preprocessing/XA4Wang.csv
+preprocessing/X_feaver.csv
+preprocessing/X_wang.csv
