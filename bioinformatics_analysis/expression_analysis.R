@@ -43,14 +43,22 @@ perc_var <- 100*pca_transformed$sdev^2/sum(pca_transformed$sdev^2)
 inds <- which(perc_var>=1)
 df_pcs <- pca_transformed$x[,inds]
 df_pcs <- as.data.frame(df_pcs) %>% rownames_to_column('sample')
-df_pcs <- left_join(df_pcs,meta_data %>% select(sample,all_of(new_cols)))
-df_pcs <- df_pcs %>% select(-tissue)
+df_pcs <- left_join(df_pcs,meta_data %>% dplyr::select(sample,all_of(new_cols)))
+df_pcs <- df_pcs %>% dplyr::select(-tissue)
 colnames(df_pcs)[(inds[length(inds)]+2):ncol(df_pcs)] <- c('age','ballooning','fibrosis','lobular_inflammation','nas','sex','steatosis')
 anova_results <- df_pcs  %>% mutate(sex = ifelse(sex=='M',1,0)) %>% select(-sample,-ballooning,-lobular_inflammation,-steatosis) %>%
   gather('PC','value',-age,-fibrosis,-sex,-nas) %>% group_by(PC) %>%
-  rstatix::anova_test(value~age+sex+nas+fibrosis) %>% 
+  rstatix::anova_test(value~age+sex+nas+fibrosis) %>%
   rstatix::adjust_pvalue(method = 'BH') %>%
   ungroup()
+# anova_results <- df_pcs  %>% mutate(gender = ifelse(gender=='Male',1,0)) %>% 
+#   mutate(disease = ifelse(disease=='healthy',0,
+#                           ifelse(disease=='NAFLD',1,2))) %>% 
+#   dplyr::select(-sample) %>%
+#   gather('PC','value',-gender,-disease) %>% group_by(PC) %>%
+#   rstatix::anova_test(value~gender+disease) %>% 
+#   rstatix::adjust_pvalue(method = 'BH') %>%
+#   ungroup()
 anova_results <- as.data.frame(anova_results)
 anova_results <- anova_results %>%
   mutate(significance = ifelse(p.adj<0.001,'***',
@@ -94,10 +102,11 @@ meta_data_normed$age <- (meta_data_normed$age-mean(meta_data_normed$age))/sd(met
 ### Or I can just fit a model only between each pair
 meta_data_filt <- meta_data_normed %>% mutate(nas=ifelse(nas==0,'healthy',paste0('NAFL',nas)))
 meta_data_filt$fibrosis <- as.factor(meta_data_filt$fibrosis)
-dds <- DESeqDataSetFromMatrix(countData = expression_matrix[,meta_data_filt$sample], colData = meta_data_filt, design = ~ nas+fibrosis+age+sex)
+dds <- DESeqDataSetFromMatrix(countData = expression_matrix[,meta_data_filt$sample], colData = meta_data_filt, design = ~ disease+gender)
 dds <- DESeq(dds,betaPrior = FALSE)
 comparisons <- list(c("nas","NAFL1","healthy"),c("nas","NAFL2","healthy"),c("nas","NAFL3","healthy"),
                   c("nas","NAFL4","healthy"),c("nas","NAFL5","healthy"),c("nas","NAFL6","healthy"))
+# comparisons <- list(c("disease","NAFLD","healthy"),c("disease","NASH","healthy"))
 all_results <- NULL
 all_plots <- NULL
 for (contrast in comparisons){
@@ -183,10 +192,11 @@ df_keggs <- df_keggs%>% mutate(label = ifelse(sig=='yes',`KEGG pathway`,NA))
 df_keggs <- df_keggs %>% group_by(`KEGG pathway`) %>% mutate(mean_nes=mean(NES)) %>% mutate(sig_counts=sum(sig=='yes')) %>% ungroup()
 df_keggs <- df_keggs[order(-df_keggs$mean_nes),]
 
-ggplot(df_keggs_filt,aes(x=background,y=`KEGG pathway`)) + 
+ggplot(df_keggs %>% filter(sig=='yes'),aes(x=background,y=`KEGG pathway`)) + 
   geom_point( aes(fill = NES, size = size), shape=21) + xlab('Comparison') + 
   scale_fill_gradient2(low = "blue",high = "red",mid = "white",midpoint = 0) +
   theme_minimal(base_size = 20,base_family = 'Arial')
+df_keggs <- df_keggs %>% mutate(significance = ifelse(p.adj<0.01,ifelse(NES>=2.5,'upregulated',ifelse(NES<(-2),'downregulated',NA)),NA))
 show_paths <- c(' Non-alcoholic fatty liver disease (NAFLD)','Alcoholism',' Fructose and mannose metabolism',' Toll-like receptor signaling pathway',
                 ' TNF signaling pathway',' TGF-beta signaling pathway','Apoptosis',
                 ' Insulin signaling pathway',' Insulin secretion')
