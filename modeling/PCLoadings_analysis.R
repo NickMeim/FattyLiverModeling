@@ -268,6 +268,7 @@ for (j in 1:ncol(TF_activities)){
 close(log_con)
 
 ### Perform Fisher test between KEGG pathways and nodes in the net
+Result_dir <- paste0("../results/pc_loadings_scores_analysis/CARNIVAL/PC12")
 nodes <- read.delim(paste0(Result_dir,'/','nodesAttributes_1.txt'))
 nodes <- nodes %>% filter(AvgAct!=0)
 net <- read.delim(paste0(Result_dir,'/','weightedModel_1.txt'))
@@ -318,7 +319,7 @@ fisher_results <- fisher_results %>% group_by(pathway) %>% mutate(num_nodes = n_
 fisher_results <- fisher_results %>% filter(!grepl('cancer',pathway))
 fisher_results <- fisher_results %>% filter(!grepl('infection',pathway))
 fisher_results <- fisher_results %>% filter(grepl('signaling',pathway) | grepl('pathway',pathway))
-fisher_results <- fisher_results %>% filter(num_nodes>=10) %>% select(pathway,node) %>% unique()
+fisher_results <- fisher_results %>% filter(num_nodes>3) %>% select(pathway,node) %>% unique()
 colnames(fisher_results) <- c('pathway','Node')
 nodes <- left_join(nodes,fisher_results)
 write_delim(nodes,paste0(Result_dir,'/','edited_node_attributes.txt'),delim = '\t')

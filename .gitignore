@@ -13,6 +13,9 @@ data/GSE168285/GSE168285_tpm.txt
 data/human_gene_v2.2.h5
 data/ARCHS4
 data/ARCHS4/*
+data/ChemPert/*
+data/ChemPert
+preprocessing/all_invitro_data.rds
 results/TransCompR_sparsePCA/spca_results.rds
 results/TransCompR_sparsePCA/all_models.rds
 results/TransCompR_PCA/spca_results.rds
