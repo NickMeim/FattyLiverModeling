@@ -574,8 +574,9 @@ iters <- 10000
 # gc()
 TF_activities_plot_frame <- readRDS('../results/pc_loadings_scores_analysis/TF_activities_plot_frame.rds')
 TF_activities_plot_frame <-  TF_activities_plot_frame %>%
-  mutate(statistical=ifelse(p.adj<=0.01,'p-value<=0.01',
-                            ifelse(p.adj<=0.05,'p-value<=0.05','p-value>0.05')))
+  mutate(statistical=ifelse(p.adj<=0.01,'p.adj<=0.01',
+                            ifelse(p.adj<=0.05,'p.adj<=0.05',
+                                   ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1'))))
 TF_activities_PC8 <- TF_activities_plot_frame %>% filter(condition=='PC8')
 TF_activities_PC8$significant <- ''
 TF_activities_PC8$significant[order(-abs(TF_activities_PC8$score))[1:20]] <- TF_activities_PC8$source[order(-abs(TF_activities_PC8$score))[1:20]]
@@ -599,7 +600,7 @@ TF_activities_opt$source <-  factor(TF_activities_opt$source,levels = TF_activit
 ### Make barplot to look at top TFs
 p <- (ggplot(TF_activities_PC8,aes(x=source,y=score,color = statistical)) + geom_point() +
   # scale_color_gradient(high = 'red',low='white')+
-    scale_color_manual(values = c('red','#fa8e8e','black'))+
+    scale_color_manual(values = c('red','#fa4c4c','#fa8e8e','black'))+
   geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
   xlab('TFs') + ylab('activity from PC8 loadings')+
   scale_x_discrete(expand = c(0.1, 0.1))+
@@ -609,21 +610,27 @@ p <- (ggplot(TF_activities_PC8,aes(x=source,y=score,color = statistical)) + geom
         axis.text.x = element_blank(),
         legend.position = 'none')) +
   (ggplot(TF_activities_PC12,aes(x=source,y=score,color = statistical)) + geom_point() +
-     scale_color_manual(values =c('red','#fa8e8e','black'))+
+     scale_color_manual(values =c('red','#fa4c4c','#fa8e8e','black'))+
      # scale_color_gradient(high = 'red',low='white')+
-     geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+     geom_text_repel(aes(label=significant),size=6,max.overlaps=40,show.legend = FALSE)+
      xlab('TFs') + ylab('activity from PC12 loadings')+
      scale_x_discrete(expand = c(0.1, 0.1))+
      theme_pubr(base_family = 'Arial',base_size = 20)+
      theme(text = element_text(family = 'Arial',size=20),
            axis.ticks.x = element_blank(),
            axis.text.x = element_blank(),
-           legend.position = 'none'))
-p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=statistical) %>%
-              mutate(p.adj = ifelse(p.adj<1e-16,1e-16,p.adj)),
-            aes(x=value,y=-log10(p.adj),color = `statistical threshold`)) + geom_point() +
-  scale_color_manual(values = c('red','#fa8e8e','black'))+
-  ggbreak::scale_y_break(breaks = c(2,15),space = 0.5,ticklabels = c(15,16))+
+           legend.position = 'right'))
+print(p)
+ggsave('../results/pc_loadings_scores_analysis/TFs_from_loadings_PCs_ordered.png',
+       plot = p,
+       width = 16,
+       height = 12,
+       units = 'in',
+       dpi = 600)
+p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=statistical),
+            aes(x=score,y=-log10(p.adj),color = `statistical threshold`)) + geom_point() +
+  scale_color_manual(values = c('red','#fa4c4c','#fa8e8e','black'))+
+  # ggbreak::scale_y_break(breaks = c(2,15),space = 0.5,ticklabels = c(15,16))+
   geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
   xlab('activity') + ylab(expression(-log[10]('adjusted p-value'))) +
   # ylab('adjusted p-value') +
@@ -633,7 +640,7 @@ p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=s
   theme_pubr(base_family = 'Arial',base_size = 24)+
   theme(text = element_text(family = 'Arial',size=24),
         legend.position = 'top')+
-  facet_wrap(~PC,scales = 'free_x')+
+  facet_wrap(~condition,scales = 'free_x')+
   guides(color = guide_legend(
     override.aes = list(
       linetype = NA,
@@ -641,19 +648,28 @@ p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=s
     )
   ))
 print(p)
-ggsave('../results/pc_loadings_scores_analysis/TFs_from_loadings_optimal_volcano.png',
+p <- ggplot(TF_activities_opt,aes(x=source,y=score,color = statistical)) + geom_point() +
+  scale_color_manual(values =c('red','#fa4c4c','#fa8e8e','black'))+
+  # scale_color_gradient(high = 'red',low='white')+
+  geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7,show.legend = FALSE)+
+  xlab('TFs') + ylab('activity from optimal loadings')+
+  scale_x_discrete(expand = c(0.1, 0.1))+
+  theme_pubr(base_family = 'Arial',base_size = 20)+
+  theme(text = element_text(family = 'Arial',size=20),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = 'right')
+print(p)
+ggsave('../results/pc_loadings_scores_analysis/optimal_direction_TF_activity.png',
        plot = p,
-       width = 16,
-       height = 12,
+       width = 12,
+       height = 9,
        units = 'in',
        dpi = 600)
 significant_tfs <- TF_activities_plot_frame %>% filter(p.adj<0.1)
-significant_tfs <- unique(as.character(significant_tfs$TF))
-TF_activities_loadings = run_viper(gene_loadings, dorotheaData, options =  settings)
-TF_activities = run_viper(cbind(Woptim,Woptim), dorotheaData, options =  settings)
-TF_activities <- as.matrix(TF_activities[rownames(TF_activities_loadings),1])
-colnames(TF_activities) <- 'optimal direction'
-TF_activities <- cbind(TF_activities,TF_activities_loadings)
+significant_tfs <- unique(as.character(significant_tfs$source))
+TF_activities <- rbind(TF_activities,TF_activities_loadings) %>% select(source,condition,score) %>% spread(condition,score) %>% column_to_rownames('source')
+TF_activities <- TF_activities[which(rownames(TF_activities) %in% TF_activities_loadings$source),]
 png('../results/pc_loadings_scores_analysis/significant_TFs_from_loadings_optinal_heatmap.png',width = 9,height = 9,units = 'in',res = 600)
 pheatmap(TF_activities[which(rownames(TF_activities) %in% significant_tfs),
                        c('optimal direction',paste0('PC',c(1,2,8,12)))])
