@@ -24,7 +24,7 @@ library(GO.db)
 # library(progeny)
 library(OmnipathR)
 library(EGSEAdata)
-library(nichenetr)
+# library(nichenetr)
 
 #### Load pre-processed data----------------------
 data <- readRDS("../data/preprocessed_NAFLD.rds")
@@ -494,146 +494,131 @@ minNrOfGenes  <-  5
 dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
 dorotheaData = dorotheaData[confidenceFilter,]
+colnames(dorotheaData)[1] <- 'source' 
 
-settings = list(verbose = TRUE, minsize = minNrOfGenes)
-TF_activities_loadings = run_viper(gene_loadings, dorotheaData, options =  settings)
+TF_activities_loadings = decoupleR::run_viper(gene_loadings, dorotheaData,minsize = minNrOfGenes,verbose = TRUE) %>% select(-statistic)
 Woptim <- readRDS('../results/Wm_opt.rds')
-TF_activities = run_viper(cbind(Woptim,Woptim), dorotheaData, options =  settings)
-TF_activities <- as.matrix(TF_activities[rownames(TF_activities_loadings),1])
-colnames(TF_activities) <- 'optimal direction'
-TF_activities <- cbind(TF_activities,TF_activities_loadings)
-# pheatmap(TF_activities[,paste0('PC',c(1,2,3,4,5,8,11,12,13,35))])
-pheatmap(TF_activities)
+TF_activities = decoupleR::run_viper(Woptim, dorotheaData,minsize = minNrOfGenes,verbose = TRUE) %>% select(-statistic)
+TF_activities$condition <- 'optimal direction'
+# pheatmap(TF_activities)
 genes <- rownames(gene_loadings)
 # Build distribution of TF activities across all PCs and
 # check what TF activities you can anyway observe in the data
+# For now do permutations
+# library(doFuture)
+# # parallel: set number of workers
+# cores <- 16
+# registerDoFuture()
+# plan(multisession,workers = cores)
 iters <- 10000
-# null_activity <- data.frame()
-# settings = list(verbose = FALSE, minsize = minNrOfGenes)
-# for (i in 1:iters){
+# null_activity <- foreach(i = seq(iters)) %dopar% {
 #   shuffled_genes <-  gene_loadings[sample(nrow(gene_loadings)),]
 #   rownames(shuffled_genes) <- genes
-#   tmp_tfs = run_viper(shuffled_genes, dorotheaData, options =  settings)
-#   tmp_tfs <- as.data.frame(tmp_tfs) %>% rownames_to_column('TF')
-#   null_activity <- rbind(null_activity,tmp_tfs)
-#   if (i %% 1000 ==0){
-#     # saveRDS(null_activity,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
-#     message(paste0('Finished iteration ',i))
-#   }
+#   tmp_tfs = decoupleR::run_viper(shuffled_genes, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
+#   tmp_tfs
 # }
-# # saveRDS(null_activity,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
-# null_activity <- readRDS('../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
+# # null_activity <- data.frame()
+# #for (i in 1:iters){
+# #  shuffled_genes <-  gene_loadings[sample(nrow(gene_loadings)),]
+# #  rownames(shuffled_genes) <- genes
+# #  tmp_tfs = decoupleR::run_viper(shuffled_genes, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
+# #  null_activity <- rbind(null_activity,tmp_tfs)
+# #  if (i %% 1000 ==0){
+# #    message(paste0('Finished iteration ',i))
+# #  }
+# #}
+# null_activity <- do.call(rbind,null_activity)
+# gc()
+# #saveRDS(null_activity,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
 
 ### Null activity for Woptim
-null_activity_optimal <- data.frame()
-settings = list(verbose = FALSE, minsize = minNrOfGenes)
-shuffled_genes <- matrix(nrow=nrow(Woptim),ncol=iters)
-for (i in 1:iters){
-  shuffled_genes[,i] <- Woptim[sample(nrow(Woptim)),]
-}
-rownames(shuffled_genes) <- rownames(Woptim)
-random_tfs = run_viper(shuffled_genes, dorotheaData, options =  settings)
-random_tfs <- as.data.frame(random_tfs) %>% rownames_to_column('TF')
-null_activity_optimal <- random_tfs %>% gather('trial','null_activity',-TF)
-# saveRDS(null_activity_optimal,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads_optimal.rds')
-null_activity_optimal <- readRDS('../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads_optimal.rds')
+# iters <- 10000
+# genes <- rownames(Woptim)
+# null_activity_optimal <- foreach(i = seq(iters)) %dopar% {
+#   shuffled_genes <-  as.matrix(Woptim[sample(nrow(Woptim)),])
+#   rownames(shuffled_genes) <- genes
+#   tmp_tfs = decoupleR::run_viper(shuffled_genes, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
+#   tmp_tfs
+# }
+# null_activity_optimal <- do.call(rbind,null_activity_optimal)
+# #saveRDS(null_activity_optimal,'../results/dorothea_shuffled_gene_loads_optimal.rds')
+# null_activity_all <- rbind(null_activity_optimal,null_activity)
+# saveRDS(null_activity_all,'../results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds')
+# null_activity_all <- readRDS('../results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds')
+# gc()
+# #null_activity_optimal <- data.frame()
+# #settings = list(verbose = FALSE, minsize = minNrOfGenes)
+# #shuffled_genes <- matrix(nrow=nrow(Woptim),ncol=iters)
+# #for (i in 1:iters){
+# #  shuffled_genes[,i] <- Woptim[sample(nrow(Woptim)),]
+# #}
+# #rownames(shuffled_genes) <- rownames(Woptim)
+# #random_tfs = run_viper(shuffled_genes, dorotheaData, options =  settings)
+# #random_tfs <- as.data.frame(random_tfs) %>% rownames_to_column('TF')
+# #null_activity_optimal <- random_tfs %>% gather('trial','null_activity',-TF)
+# # saveRDS(null_activity_optimal,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads_optimal.rds')
+# null_activity_optimal <- readRDS('../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads_optimal.rds')
 
-#plot TF activities that explain a gene being expressed toward the direction of the loading
-TF_activities <- as.data.frame(TF_activities) %>% rownames_to_column('TF')
-# Build distribution of TF activities across all PCs and 
-# check what TF activities you can anyway observe in the data
-null_activity <- TF_activities %>% gather('PC','null_act',-TF) %>% select(-PC)
-TF_activities$significant <- ''
-
-### Get p.values for Woptimal with shuffling
-TF_activities_nulled <- left_join(TF_activities,null_activity_optimal,by='TF')
-TF_activities_optim <- TF_activities_nulled %>% select(TF,`optimal direction`,significant,c('null_act'='null_activity')) %>%
-  group_by(TF) %>% mutate(p.value = ifelse(`optimal direction`>=0,
-                                           sum(null_act>=`optimal direction`)/iters,
-                                           sum(null_act<=`optimal direction`)/iters)) %>%
-  ungroup()
-adjustement_tmp <- TF_activities_optim %>% select(TF,p.value) %>% unique()
-adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
-adjustement_tmp <- adjustement_tmp %>% select(TF,p.adj)
-TF_activities_optim <- left_join(TF_activities_optim,adjustement_tmp)%>% select(-null_act) %>% unique()
-TF_activities_optim$significant[order(-abs(TF_activities_optim$`optimal direction`))[1:20]] <- TF_activities_optim$TF[order(-abs(TF_activities_optim$`optimal direction`))[1:20]]
-TF_activities_optim <- TF_activities_optim[order(TF_activities_optim$`optimal direction`),]
-TF_activities_optim$TF <- factor(TF_activities_optim$TF,levels = TF_activities_optim$TF)
-# #### This only for shuffled
-# TF_activities_nulled <- left_join(TF_activities,null_activity,by='TF')
-# TF_activities_PC8 <- TF_activities_nulled %>% select(TF,c('PC8'='PC8.x'),significant,c('null_act'='PC8.y')) %>% 
-#   group_by(TF) %>% mutate(p.value = ifelse(PC8>=0,
-#                                            sum(null_act>=PC8)/iters,
-#                                            sum(null_act<=PC8)/iters)) %>%
-#   ungroup()
-# TF_activities_PC12 <- TF_activities_nulled %>% select(TF,c('PC12'='PC12.x'),significant,c('null_act'='PC12.y')) %>% 
-#   group_by(TF) %>% mutate(p.value = ifelse(PC12>=0,
-#                                            sum(null_act>=PC12)/iters,
-#                                            sum(null_act<=PC12)/iters)) %>%
-#   ungroup()
-TF_activities_PC8 <- left_join(TF_activities %>% select(TF,PC8,significant),
-                               null_activity) %>%
-  group_by(TF) %>% mutate(p.value = ifelse(PC8>=0,
-                                           sum(null_act>=PC8)/(ncol(TF_activities)-2),
-                                           sum(null_act<=PC8)/(ncol(TF_activities)-2))) %>%
-  ungroup()
-adjustement_tmp <- TF_activities_PC8 %>% select(TF,p.value) %>% unique()
-adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
-adjustement_tmp <- adjustement_tmp %>% select(TF,p.adj)
-TF_activities_PC8 <- left_join(TF_activities_PC8,adjustement_tmp)%>% select(-null_act) %>% unique()
-TF_activities_PC12 <- left_join(TF_activities %>% select(TF,PC12,significant),
-                                null_activity) %>%
-  group_by(TF) %>% mutate(p.value = ifelse(PC12>=0,
-                                           sum(null_act>=PC12)/(ncol(TF_activities)-2),
-                                           sum(null_act<=PC12)/(ncol(TF_activities)-2))) %>%
-  ungroup()
-adjustement_tmp <- TF_activities_PC12 %>% select(TF,p.value) %>% unique()
-adjustement_tmp$p.adj <- p.adjust(adjustement_tmp$p.value,method = 'BH')
-adjustement_tmp <- adjustement_tmp %>% select(TF,p.adj)
-TF_activities_PC12 <- left_join(TF_activities_PC12,adjustement_tmp) %>% select(-null_act) %>% unique()
-TF_activities_PC8$significant[order(-abs(TF_activities_PC8$PC8))[1:20]] <- TF_activities_PC8$TF[order(-abs(TF_activities_PC8$PC8))[1:20]]
-TF_activities_PC8 <- TF_activities_PC8[order(TF_activities_PC8$PC8),]
-TF_activities_PC8$TF <- factor(TF_activities_PC8$TF,levels = TF_activities_PC8$TF)
-TF_activities_PC12$significant[order(-abs(TF_activities_PC12$PC12))[1:20]] <- TF_activities_PC12$TF[order(-abs(TF_activities_PC12$PC12))[1:20]]
-TF_activities_PC12 <- TF_activities_PC12[order(TF_activities_PC12$PC12),]
-TF_activities_PC12$TF <- factor(TF_activities_PC12$TF,levels = TF_activities_PC12$TF)
-
-# change significant
-TF_activities_PC12 <- TF_activities_PC12 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
-                                                                       ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
-TF_activities_PC8 <- TF_activities_PC8 %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
-                                                                     ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
-TF_activities_optim <- TF_activities_optim %>% mutate(statistical=ifelse(p.adj<=0.05,'p.adj<=0.05',
-                                                                     ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1')))
-
+# TF_activities_plot_frame <-  rbind(TF_activities,TF_activities_loadings)
+# TF_activities_plot_frame <- left_join(TF_activities_plot_frame,
+#                                       null_activity_all %>% select(-statistic,-p_value) %>% 
+#                                         mutate(condition = ifelse(condition=='V1','optimal direction',condition)),
+#                                       by = c('condition','source'))
+# TF_activities_plot_frame <- TF_activities_plot_frame %>% group_by(source,score.x) %>%
+#   mutate(p = sum(abs(score.y)>=abs(score.x))/iters) %>%
+#   ungroup() %>% group_by(condition) %>% mutate(num_tfs = n_distinct(source)) %>%
+#   ungroup() %>% mutate(p.adj = p*num_tfs) %>% select(source,condition,c('score'='score.x'),p_value,p,p.adj) %>%
+#   mutate(p.adj = ifelse(p.adj>1,1,p.adj))
+# TF_activities_plot_frame <- distinct(TF_activities_plot_frame)
+# saveRDS(TF_activities_plot_frame,'../results/pc_loadings_scores_analysis/TF_activities_plot_frame.rds')
+# gc()
+TF_activities_plot_frame <- readRDS('../results/pc_loadings_scores_analysis/TF_activities_plot_frame.rds')
+TF_activities_plot_frame <-  TF_activities_plot_frame %>%
+  mutate(statistical=ifelse(p.adj<=0.01,'p-value<=0.01',
+                            ifelse(p.adj<=0.05,'p-value<=0.05','p-value>0.05')))
+TF_activities_PC8 <- TF_activities_plot_frame %>% filter(condition=='PC8')
+TF_activities_PC8$significant <- ''
+TF_activities_PC8$significant[order(-abs(TF_activities_PC8$score))[1:20]] <- TF_activities_PC8$source[order(-abs(TF_activities_PC8$score))[1:20]]
+TF_activities_PC12 <- TF_activities_plot_frame %>% filter(condition=='PC12')
+TF_activities_PC12$significant <- ''
+TF_activities_PC12$significant[order(-abs(TF_activities_PC12$score))[1:20]] <- TF_activities_PC12$source[order(-abs(TF_activities_PC12$score))[1:20]]
+TF_activities_opt <- TF_activities_plot_frame %>% filter(condition=='optimal direction')
+TF_activities_opt$significant <- ''
+TF_activities_opt$significant[order(-abs(TF_activities_opt$score))[1:20]] <- TF_activities_opt$source[order(-abs(TF_activities_opt$score))[1:20]]
+TF_activities_plot_frame <- rbind(TF_activities_opt,
+                                  TF_activities_PC12,
+                                  TF_activities_PC8)
+TF_activities_PC8$source <- factor(TF_activities_PC8$source,levels = TF_activities_PC8$source[order(TF_activities_PC8$score)])
+TF_activities_PC12$source <- factor(TF_activities_PC12$source,levels = TF_activities_PC12$source[order(TF_activities_PC12$score)])
+TF_activities_opt$source <-  factor(TF_activities_opt$source,levels = TF_activities_opt$source[order(TF_activities_opt$score)])
 # Combine into one data frame
-TF_activities_plot_frame <- rbind(TF_activities_PC8 %>% dplyr::rename(value = PC8) %>% mutate(PC='PC8'),
-                                  TF_activities_PC12 %>% dplyr::rename(value = PC12) %>% mutate(PC='PC12'),
-                                  TF_activities_optim %>% dplyr::rename(value = `optimal direction`) %>% mutate(PC='optimal direction'))
-TF_activities_plot_frame <- TF_activities_plot_frame %>% mutate(PC=ifelse(PC=='optimal direction','used optimal gene loadings',paste0('used ',PC,' gene loadings')))
+# TF_activities_plot_frame <- rbind(TF_activities_PC8 %>% dplyr::rename(value = PC8) %>% mutate(PC='PC8'),
+#                                   TF_activities_PC12 %>% dplyr::rename(value = PC12) %>% mutate(PC='PC12'),
+#                                   TF_activities_optim %>% dplyr::rename(value = `optimal direction`) %>% mutate(PC='optimal direction'))
+# TF_activities_plot_frame <- TF_activities_plot_frame %>% mutate(PC=ifelse(PC=='optimal direction','used optimal gene loadings',paste0('used ',PC,' gene loadings')))
 ### Make barplot to look at top TFs
-# p <- (ggplot(TF_activities_PC8,aes(x=TF,y=PC8,color = statistical)) + geom_point() +
-#   # scale_color_gradient(high = 'red',low='white')+
-#     scale_color_manual(values = c('#fa8e8e','black'))+
-#   geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
-#   xlab('TFs') + ylab('activity from PC8 loadings')+
-#   scale_x_discrete(expand = c(0.1, 0.1))+
-#   theme_pubr(base_family = 'Arial',base_size = 20)+
-#   theme(text = element_text(family = 'Arial',size=20),
-#         axis.ticks.x = element_blank(),
-#         axis.text.x = element_blank(),
-#         legend.position = 'none')) +
-#   (ggplot(TF_activities_PC12,aes(x=TF,y=PC12,color = statistical)) + geom_point() +
-#      scale_color_manual(values =c('red','#fa8e8e','black'))+
-#      # scale_color_gradient(high = 'red',low='white')+
-#      geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
-#      xlab('TFs') + ylab('activity from PC12 loadings')+
-#      scale_x_discrete(expand = c(0.1, 0.1))+
-#      theme_pubr(base_family = 'Arial',base_size = 20)+
-#      theme(text = element_text(family = 'Arial',size=20),
-#            axis.ticks.x = element_blank(),
-#            axis.text.x = element_blank(),
-#            legend.position = 'none'))
+p <- (ggplot(TF_activities_PC8,aes(x=source,y=score,color = statistical)) + geom_point() +
+  # scale_color_gradient(high = 'red',low='white')+
+    scale_color_manual(values = c('red','#fa8e8e','black'))+
+  geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+  xlab('TFs') + ylab('activity from PC8 loadings')+
+  scale_x_discrete(expand = c(0.1, 0.1))+
+  theme_pubr(base_family = 'Arial',base_size = 20)+
+  theme(text = element_text(family = 'Arial',size=20),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        legend.position = 'none')) +
+  (ggplot(TF_activities_PC12,aes(x=source,y=score,color = statistical)) + geom_point() +
+     scale_color_manual(values =c('red','#fa8e8e','black'))+
+     # scale_color_gradient(high = 'red',low='white')+
+     geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
+     xlab('TFs') + ylab('activity from PC12 loadings')+
+     scale_x_discrete(expand = c(0.1, 0.1))+
+     theme_pubr(base_family = 'Arial',base_size = 20)+
+     theme(text = element_text(family = 'Arial',size=20),
+           axis.ticks.x = element_blank(),
+           axis.text.x = element_blank(),
+           legend.position = 'none'))
 p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=statistical) %>%
               mutate(p.adj = ifelse(p.adj<1e-16,1e-16,p.adj)),
             aes(x=value,y=-log10(p.adj),color = `statistical threshold`)) + geom_point() +
