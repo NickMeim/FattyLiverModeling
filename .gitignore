@@ -16,6 +16,7 @@ data/ARCHS4/*
 data/ChemPert/*
 data/ChemPert
 preprocessing/all_invitro_data.rds
+results/pc_loadings_scores_analysis/random_progeny_loadings.rds
 results/TransCompR_sparsePCA/spca_results.rds
 results/TransCompR_sparsePCA/all_models.rds
 results/TransCompR_PCA/spca_results.rds

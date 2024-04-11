@@ -1,5 +1,5 @@
 library(tidyverse)
-library(dorothea)
+# library(dorothea)
 library(ggrepel)
 library(ggpubr)
 
@@ -56,43 +56,64 @@ gene_loadings <- PCA_alldata$rotation[,c('PC1','PC2','PC8','PC12')]
 
 ### Load optimal gene loading and infer TF activities-----------------------------------
 Woptim <- readRDS('../results/Wm_opt.rds')
-# regulon <- get_dorothea(levels = c('A','B'))
+# regulon <- decoupleR::get_dorothea(levels = c("A","B"))
 dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
 dorotheaData = dorotheaData[confidenceFilter,]
+colnames(dorotheaData)[1] <- 'source' 
 minNrOfGenes  <-  5
-settings = list(verbose = TRUE, minsize = minNrOfGenes)
-TF_activities = run_viper(cbind(Woptim,Woptim), dorotheaData, options =  settings)
-TF_activities <- as.matrix(TF_activities[,1])
-colnames(TF_activities) <- 'optimal direction'
+TF_activities = decoupleR::run_viper(Woptim, dorotheaData,minsize = minNrOfGenes,verbose = TRUE)
+# TF_activities <- as.matrix(TF_activities[,1])
+# colnames(TF_activities) <- 'optimal direction'
 # TF_activities = run_viper(gene_loadings, dorotheaData, options =  settings)
 
 ### Get perturbation activity-------------------------
-pert_activity <- run_viper(cbind(TF_activities,TF_activities), 
-                           resp_net %>% mutate(tf=source), 
-                           options =  list(verbose = TRUE, minsize = 1))
-pert_activity <- as.matrix(pert_activity[,1])
-colnames(pert_activity) <- 'optimal direction'
-pert_activity <- as.data.frame(pert_activity) %>% rownames_to_column('Response_ID')
+pert_activity <- decoupleR::run_viper(TF_activities %>% select(-statistic,-condition,-p_value) %>% column_to_rownames('source'), 
+                                      resp_net %>% unique(),
+                                      minsize = 1,
+                                      verbose = TRUE)
+# pert_activity <- as.matrix(pert_activity[,1])
+# colnames(pert_activity) <- 'optimal direction'
+# pert_activity <- as.data.frame(pert_activity) %>% rownames_to_column('Response_ID')
+colnames(pert_activity)[2] <- 'Response_ID'
 pert_activity <- left_join(pert_activity,metadata_human)
-pert_activity <- pert_activity %>% select(Chemical_Compound,c('activity'='optimal direction'),Duration,Concentration)
+pert_activity <- pert_activity %>% select(Chemical_Compound,c('activity'='score'),Duration,Concentration,c('p-value'='p_value'))
 pert_activity <- pert_activity %>% mutate(perturbation = ifelse(!is.na(Concentration),
                                                                 paste0(toupper(Chemical_Compound),':',Duration,':',Concentration),
                                                                 paste0(toupper(Chemical_Compound),':',Duration)))
-pert_activity <- pert_activity %>% group_by(perturbation) %>% mutate(activity=mean(activity)) %>% ungroup() %>% unique()
+pert_activity <- pert_activity %>% group_by(perturbation) %>% mutate(min_pvalue=min(`p-value`)) %>%
+  ungroup() %>% filter(`p-value`==min_pvalue) %>% select(-min_pvalue) %>% unique()
 pert_activity$significant <- ''
-pert_activity$significant[order(-abs(pert_activity$activity))[1:20]] <- pert_activity$perturbation[order(-abs(pert_activity$activity))[1:20]]
+pert_activity <- pert_activity %>% mutate(significant = ifelse(`p-value`<=0.05,
+                                                               perturbation,
+                                                               significant))
+if (nrow(pert_activity %>% filter(`p-value`<=0.05))<20){
+  top_20s <- pert_activity$perturbation[order(-abs(pert_activity$activity))[1:20]]
+  pert_activity <- pert_activity %>% mutate(significant = ifelse((perturbation %in% top_20s) | (`p-value`<=0.05),
+                                                                 perturbation,
+                                                                 significant))
+}
+# top_20s <- pert_activity$perturbation[order(-abs(pert_activity$activity))[1:20]]
+# pert_activity <- pert_activity %>% mutate(significant = ifelse((perturbation %in% top_20s) & (`p-value`<=0.05),
+#                                                                perturbation,
+#                                                                significant))
+# pert_activity$significant[order(-abs(pert_activity$activity))[1:20]] <- pert_activity$perturbation[order(-abs(pert_activity$activity))[1:20]]
 pert_activity <- pert_activity[order(pert_activity$activity),]
 pert_activity$perturbation <- factor(pert_activity$perturbation,levels = unique(pert_activity$perturbation))
-ggplot(pert_activity,aes(x=perturbation,y=activity,color = significant)) + geom_point() +
-  geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
+ggplot(pert_activity,aes(x=perturbation,y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
+  geom_text_repel(aes(label=significant,color=`p-value`),size=5,max.overlaps=60,box.padding = 0.7)+
   xlab('perturbations') + ylab('inferred activity')+
-  scale_x_discrete(expand = c(0.1, 0.1))+
+  scale_fill_gradient(trans='log10',low = "red",high = "white",
+                       limits = c(min(pert_activity$`p-value`),1),
+                      breaks = c(0.01,0.05,0.1,0.5,1)) +
+  scale_color_gradient(trans='log10',low = "red",high = "#f96464",
+                      limits = c(min(pert_activity$`p-value`),0.05)) +
+  guides(color = "none")+
   theme_pubr(base_family = 'Arial',base_size = 20)+
   theme(text = element_text(family = 'Arial',size=20),
         axis.ticks.x = element_blank(),
         axis.text.x = element_blank(),
-        legend.position = 'none')
+        legend.position = 'right')
 ggsave('../results/pc_loadings_scores_analysis/optimal_direction_perturbation_activity.png',
        width = 12,
        height = 9,

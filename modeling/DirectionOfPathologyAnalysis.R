@@ -13,7 +13,7 @@ library(pheatmap)
 library(patchwork)
 library(limma)
 library(edgeR)
-library(dorothea)
+# library(dorothea)
 library(AnnotationDbi)
 library(org.Hs.eg.db) 
 library(hgu133a.db)
@@ -21,7 +21,7 @@ library(rstatix)
 library(fgsea)
 library(topGO)
 library(GO.db)
-library(progeny)
+# library(progeny)
 library(OmnipathR)
 library(EGSEAdata)
 library(nichenetr)
@@ -32,12 +32,17 @@ data_A <- data$data_A
 data_B <- data$data_B
 Y_A <- data$Y_A
 
+### read optimal direction
+Woptim <- readRDS('../results/Wm_opt.rds')
+colnames(Woptim) <- 'w_optimal'
+
 ## normalize
+## I do not think I need any more common genes to interogate
 # Intersect datasets - keep common genes
 genes_common <- intersect(rownames(data_A), rownames(data_B))
 # Transform to log2(cpm + 1) and keep features that are present in at least 10% of each dataset
-data_A <- apply(data_A[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6) 
-data_B <- apply(data_B[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6) 
+data_A <- apply(data_A[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6)
+data_B <- apply(data_B[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6)
 # Remove features absent from at least 10% in each samples
 keep_gene <- (rowSums(data_A >= 1) >= 0.1*ncol(data_A)) &
   (rowSums(data_B >= 1) >= 0.1*ncol(data_B))
@@ -48,10 +53,16 @@ X_A <- t(X_A - rowMeans(X_A))
 # Log and center dataset B and run PCA
 X_B <- log2(1 + data_B[keep_gene,])
 X_B <- t(X_B - rowMeans(X_B))
+# Transform to log2(cpm + 1) and keep features that are present in at least 10% of each dataset
+# data_B <- apply(data_B, MARGIN = 2, FUN = function(x) x/sum(x)*1e6) 
+# Remove features absent from at least 10% in each samples
+# keep_gene <- rowSums(data_B >= 1) >= 0.1*ncol(data_B)
+# Run PCA on each dataset. Not scaling PCA
+# Log and center dataset B and run PCA
+# keep_gene <- rownames(Woptim)[which(rownames(Woptim) %in% rownames(data_B))]
+# X_B <- log2(1 + data_B[keep_gene,])
+# X_B <- t(X_B - rowMeans(X_B))
 
-### read optimal direction
-Woptim <- readRDS('../results/Wm_opt.rds')
-colnames(Woptim) <- 'w_optimal'
 Woptim <- as.data.frame(Woptim) %>% rownames_to_column('gene')
 Woptim$significant <- ''
 Woptim$significant[order(-abs(Woptim$w_optimal))[1:20]] <- Woptim$gene[order(-abs(Woptim$w_optimal))[1:20]]
@@ -182,36 +193,48 @@ ggsave('../results/pc_loadings_scores_analysis/gene_loadings_points_withstats.pn
        dpi = 600)
 ### Infer Pathway activity with progeny----------------------------------------------------------------------------
 gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,8,12))]
-pathways_progeny_pcs <- progeny(gene_loadings,
-                                perm = 10000,
-                                z_scores = T,
-                                top = 500)
+net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
+pathways_progeny_pcs <- decoupleR::run_mlm(mat=gene_loadings, net=net_prog, .source='source', .target='target',
+                                           .mor='weight', minsize = 1)
+# pathways_progeny_pcs <- progeny(gene_loadings,
+#                                 perm = 10000,
+#                                 z_scores = T,
+#                                 top = 500)
 # tt <- pathways_progeny_pcs[c('PC12','PC8'),]
 Woptim <- readRDS('../results/Wm_opt.rds')
-pathways_progeny <- progeny(Woptim,
-                            perm = 10000,
-                            z_scores = T,
-                            top = 500)
-rownames(pathways_progeny) <- 'optimal direction'
-ggplot(as.data.frame(t(pathways_progeny)) %>% select(c('activity'='optimal direction')) %>% 
-         rownames_to_column('Pathway') %>% 
-         mutate(Pathway=factor(Pathway,levels=names(pathways_progeny[,order(pathways_progeny)]))),
+pathways_progeny <- decoupleR::run_mlm(mat=Woptim, net=net_prog, .source='source', .target='target',
+                                           .mor='weight', minsize = 1)
+# pathways_progeny <- progeny(Woptim,
+#                             perm = 10000,
+#                             z_scores = T,
+#                             top = 500)
+# rownames(pathways_progeny) <- 'optimal direction'
+ggplot(pathways_progeny %>% select(c('activity'='score'),c('Pathway'='source'),p_value) %>% 
+         mutate(Pathway=factor(Pathway,levels=pathways_progeny$source[order(pathways_progeny$score)])),
        aes(x=activity,y=Pathway,fill=activity)) + geom_bar(stat = 'identity',color='black') +
   scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
+  geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
+                               ifelse(p_value <= 0.001,"***",
+                                      ifelse(p_value<=0.01,"**",
+                                             ifelse(p_value<=0.05,'*',
+                                                    ifelse(p_value<=0.1,'\u2219',
+                                                           'ns'))))),
+                x = ifelse(activity < 0, activity - 0.2, activity + 0.2)),
+            size = 6,
+            color = 'black',
+            angle=90) +                                   
   theme_pubr(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size = 20,family = 'Arial'))
-ggsave('../results/pc_loadings_scores_analysis/progenies_only_optimal_loadings_heatmap.png',
+ggsave('../results/pc_loadings_scores_analysis/progenies_only_optimal_loadings_barplot.png',
        width = 12,
        height = 9,
        dpi = 600)
 pathways_progeny_all <- rbind(pathways_progeny,pathways_progeny_pcs)
-pheatmap(pathways_progeny_all)
-png('../results/pc_loadings_scores_analysis/significant_progenies_from_optimal_loadings_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
-pheatmap(pathways_progeny_all)
-dev.off()
 
 ### use progeny weights
-progeny_weights <- progeny::getModel()
+# progeny_weights <- progeny::getModel()
+progeny_weights <- net_prog %>% select(-p_value) %>% spread(target,weight) %>% replace(is.na(.), 0) %>% column_to_rownames('source')
+progeny_weights <- t(progeny_weights)
 common_genes_wopt_prog <- Reduce(intersect,list(rownames(progeny_weights), rownames(Woptim)))
 progeny_weights_subset <- progeny_weights[common_genes_wopt_prog,]
 Woptim_subset <- as.matrix(Woptim[common_genes_wopt_prog,])
@@ -219,15 +242,102 @@ woptim_pathways <- t(progeny_weights_subset) %*% Woptim_subset
 colnames(woptim_pathways) <- 'optimal direction'
 common_genes_pc_prog <- Reduce(intersect,list(rownames(progeny_weights), rownames(gene_loadings)))
 progeny_weights_subset2 <- progeny_weights[common_genes_pc_prog,]
-gene_loadings_subset <- as.matrix(gene_loadings[common_genes_pc_prog,])
+# gene_loadings_subset <- as.matrix(gene_loadings[common_genes_pc_prog,])
+gene_loadings_subset <- as.matrix(PCA_alldata$rotation[common_genes_pc_prog,])
 gene_loadings_pathways <- t(progeny_weights_subset2) %*% gene_loadings_subset
 pathways_progeny_weights_all <- cbind(woptim_pathways,gene_loadings_pathways)
 # colnames(pathways_progeny_all) <- rownames(pathways_progeny_weights_all)
 # pheatmap(pathways_progeny_all)
-pheatmap(t(pathways_progeny_weights_all))
-png('../results/pc_loadings_scores_analysis/significant_pathWeights_from_optimal_loadings_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
-pheatmap(t(pathways_progeny_weights_all))
+df_pathways_progeny_weights_all <- as.data.frame(pathways_progeny_weights_all) %>% rownames_to_column('Pathway') %>%
+  gather('direction','loading',-Pathway)
+weight_distribution <- df_pathways_progeny_weights_all$loading
+df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(direction,Pathway) %>%
+  mutate(p_value_naive = sum(abs(weight_distribution)>=abs(loading))/length(weight_distribution)) %>% ungroup()
+
+### Create Null distribution for Woptim and PCs by shuffling genes when performing the matrix multiplication
+iters <- 10000
+df_shuffled_optim <- data.frame()
+df_shuffled_pcs <- data.frame()
+for (i in 1:iters){
+  ### For optimal vector
+  shuffled <- as.matrix(Woptim_subset[sample.int(nrow(Woptim_subset)),])
+  rownames(shuffled) <- rownames(Woptim_subset)
+  woptim_pathways_shuffled <- t(progeny_weights_subset) %*% shuffled
+  colnames(woptim_pathways_shuffled) <- 'score'
+  df_shuffled_optim <- rbind(df_shuffled_optim,
+                             as.data.frame(woptim_pathways_shuffled) %>% rownames_to_column('Pathway') %>% mutate(trial=i) %>%
+                               mutate(direction = 'optimal direction') %>% select(Pathway,direction,score,trial))
+  ### For PC loadings
+  shuffled <- as.matrix(gene_loadings_subset[sample.int(nrow(gene_loadings_subset)),])
+  rownames(shuffled) <- rownames(gene_loadings_subset)
+  pc_pathways_shuffled <- t(progeny_weights_subset2) %*% shuffled
+  df_shuffled_pcs <- rbind(df_shuffled_pcs,
+                           as.data.frame(pc_pathways_shuffled)  %>% 
+                             rownames_to_column('Pathway') %>% mutate(trial=i) %>% 
+                             gather('direction','score',-Pathway,-trial) %>% select(Pathway,direction,score,trial))
+  if (i %% 1000 == 0){
+    print(paste0('Finished permutation ',i))
+  }
+}
+df_all_nulls <- rbind(df_shuffled_optim,df_shuffled_pcs)
+# saveRDS(df_all_nulls,'../results/pc_loadings_scores_analysis/random_progeny_loadings.rds')
+df_all_nulls <- readRDS('../results/pc_loadings_scores_analysis/random_progeny_loadings.rds')
+
+df_pathways_progeny_weights_all <- left_join(df_pathways_progeny_weights_all,df_all_nulls)
+df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(direction,Pathway) %>%
+  mutate(bool=abs(score)>=abs(loading)) %>% mutate(p_value_null = sum(bool)) %>%
+  ungroup() %>% select(-bool) %>% mutate(p_value_null=p_value_null/iters)
+df_pathways_progeny_weights_all  <- df_pathways_progeny_weights_all %>% 
+  mutate(p.adj = p_value_null*length(unique(df_pathways_progeny_weights_all$Pathway)))
+df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(Pathway) %>%
+  mutate(sig1 = sum(p.adj<=0.05)) %>% ungroup() %>%
+  group_by(direction) %>% mutate(sig2 = sum(p.adj<=0.05)) %>% ungroup()
+keep_paths <- unique(df_pathways_progeny_weights_all$Pathway[which(df_pathways_progeny_weights_all$sig1!=0)])
+keep_pcs <- unique(df_pathways_progeny_weights_all$direction[which(df_pathways_progeny_weights_all$sig2!=0)])
+# pheatmap(t(pathways_progeny_weights_all[,c('optimal direction','PC12','PC8')]))
+significant_pathways_progeny_weights_all <- pathways_progeny_weights_all[keep_paths,keep_pcs]
+selected_row_names <- c("PC1", "PC8","PC12","optimal direction")
+custom_labels <- rownames(t(pathways_progeny_weights_all)[c('PC1','PC11','PC12','PC13','PC35','PC8','optimal direction'),])
+custom_labels[!custom_labels %in% selected_row_names] <- "" 
+l <- distinct(df_pathways_progeny_weights_all %>% select(Pathway,direction,p.adj) %>%
+  filter(Pathway %in% keep_paths) %>% filter(direction %in% keep_pcs)) %>% 
+  mutate(p.adj = ifelse(p.adj<=0.0001,'****',
+                        ifelse(p.adj<=0.001,'***',
+                               ifelse(p.adj<=0.01,'**',
+                               ifelse(p.adj<=0.05,'*',
+                               ''))))) %>% spread(direction,p.adj) %>% column_to_rownames('Pathway')
+png('../results/pc_loadings_scores_analysis/significant_pathWeights_subset_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
+pheatmap(t(significant_pathways_progeny_weights_all)[c('PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC11','PC12','PC13','PC35','PC8','optimal direction'),],
+         display_numbers = t(l)[c('PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC11','PC12','PC13','PC35','PC8','optimal direction'),]) #,
+         # labels_row = custom_labels)
 dev.off()
+
+### barplot weights
+df_pathways_progeny_weights_all_visualize <- distinct(df_pathways_progeny_weights_all %>% select(Pathway,direction,loading,p.adj))
+ggplot(df_pathways_progeny_weights_all_visualize %>% filter(direction=='optimal direction') %>%
+         mutate(Pathway=factor(Pathway,
+                               levels=df_pathways_progeny_weights_all_visualize[
+                                 df_pathways_progeny_weights_all_visualize$direction=='optimal direction',]$Pathway[
+                                 order(df_pathways_progeny_weights_all_visualize[
+                                   df_pathways_progeny_weights_all_visualize$direction=='optimal direction',]$loading)])),
+       aes(x=loading,y=Pathway,fill=loading)) + geom_bar(stat = 'identity',color='black') +
+  scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
+  geom_text(aes(label = ifelse(p.adj <= 0.0001, "****",
+                               ifelse(p.adj <= 0.001,"***",
+                                      ifelse(p.adj<=0.01,"**",
+                                             ifelse(p.adj<=0.05,'*',
+                                                    ifelse(p.adj<=0.1,'\u2219',
+                                                           'ns'))))),
+                x = ifelse(loading < 0, loading - 0.2, loading + 0.2)),
+            size = 6,
+            color = 'black',
+            angle=90) +                                   
+  theme_pubr(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size = 20,family = 'Arial'))
+ggsave('../results/pc_loadings_scores_analysis/progeniesLoadings_optimal_barplot.png',
+       width = 12,
+       height = 9,
+       dpi = 600)
 
 #### Run CARNIVAL--------------------------
 library(CARNIVAL)
@@ -943,7 +1053,10 @@ lr_network = readRDS(url("https://zenodo.org/record/7074291/files/lr_network_hum
 sig_network = readRDS(url("https://zenodo.org/record/7074291/files/signaling_network_human_21122021.rds"))
 gr_network = readRDS(url("https://zenodo.org/record/7074291/files/gr_network_human_21122021.rds"))
 ligands_all = lr_network %>% pull(from) %>% unique()
-targets_all = names(Woptim[,1][order(-abs(Woptim[,1]))[1:60]])
+print(paste0('Is IFNa in available ligands? : ',any(grepl('IFNA',ligands_all))))
+print(paste0('Is IFNg in available ligands? : ',any(grepl('IFNG',ligands_all))))
+selected_ligands <- ligands_all[grepl('IFNA',ligands_all) | grepl('IFNG',ligands_all)]
+targets_all = names(Woptim[,1][order(-abs(Woptim[,1]))[1:40]])
 targets_all <- targets_all[which(targets_all %in% gr_network$to)]
 
 active_signaling_network = get_ligand_signaling_path(ligand_tf_matrix = ligand_tf_matrix, ligands_all = ligands_all, targets_all = targets_all, weighted_networks = weighted_networks)
