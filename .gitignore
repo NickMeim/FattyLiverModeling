@@ -17,3 +17,5 @@ preprocessing/X_A.csv
 preprocessing/X_A_male.csv
 preprocessing/X_A_female.csv
 preprocessing/X_B.csv
+*.nb.html
+omnipathr-log/
