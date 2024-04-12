@@ -40,7 +40,7 @@ Doing a more stringent threshold to keep variable genes in all datasets. COuld r
 genes in at least one datasets, but this allows for faster execution for testing
 
 ```{r}
-dataset_names <- c("Hoang", "Kostrzewski", "Wang")
+dataset_names <- c("Hoang", "Kostrzewski") #, "Wang", "Govaere")
 ref_dataset <- "Hoang"
 target_dataset <- "Kostrzewski"
 # Load
@@ -72,13 +72,17 @@ load(paste0(dir_data,"idx_train_CV_NAFLD.RData"))
 #save(plsr_mod, file = paste0(dir_data,"temp_PLSR_mod.RData"))
 # Model coefficients (including intercept) - TO DO: get rid of intercept by centering Y
 #Wh <- plsr_mod$Wf
+#load(file = paste0(dir_data,"temp_PLSR_mod.RData"))
+# Model coefficients (including intercept) - TO DO: get rid of intercept by centering Y
+#Wh <- plsr_mod$Wf
 
 #### Skipping for now to move quickly
 plsr_mod <- opls(x = Xh, 
                  y = Yh,
-                 predI = 3,
-                 crossvalI = 5,
-                 fig.pdfC = "none",
+               predI = 3,
+                crossvalI = 5,
+               scaleC = "center",
+                fig.pdfC = "none",
                  info.txtC = "none")
 
 Wh <- matrix(data = 0, ncol = ncol(plsr_mod@weightMN), nrow = ncol(Xh))
@@ -150,8 +154,8 @@ aov(y ~., data = data.frame(y = as.numeric(Xm %*% Wm_new[,1]),
                             data_list$Kostrzewski$metadata[, exp_factors])) %>% summary()
 
 # Project MPS data on this space
-plt_new_basis_project <- data.frame(y = as.numeric(Xm %*% Wm_new[,2]),
-                                    data_list$Kostrzewski$metadata) %>%
+plt_new_basis_project <- data.frame(y = as.numeric(Xm %*% Wm_new[,1]),
+                                    data_list[[target_dataset]]$metadata) %>%
                           ggplot(aes(x = y, y = reorder(Combination_name, y), fill = TGF)) +
                             geom_boxplot(size = size_col) +
                             facet_grid(rows = vars(NPC), cols = vars(Background)) +
@@ -201,7 +205,7 @@ plt_aug <- plot_scatter(x = df$x,
 
 ```{r}
 Thm <- Xh %*% Wm_tot
-plt_NAS_LV <- plot_scatter(x = Thm[,1], y = Thm[,3], xlab = "MPS LV 1", ylab = "MPS LV extra 1",
+plt_NAS_LV <- plot_scatter(x = Thm[,1], y = Thm[,2], xlab = "MPS LV 1", ylab = "MPS LV extra 1",
                            args_extra = data.frame(NAS = Yh), aes_extra = aes(color = NAS)) +
               scale_color_viridis_c()
 ```
@@ -212,7 +216,7 @@ plt_NAS_LV <- plot_scatter(x = Thm[,1], y = Thm[,3], xlab = "MPS LV 1", ylab = "
 TO DO: Use PCGSEA for further interpretation
 
 ```{r}
-pwy_acts_LV <- get_pwy_activities(Wm_tot)
+pwy_acts_LV <- get_pwy_activities(Wm_tot, method = "ulm")
 tf_acts_LV <- get_TF_activities(Wm_tot)
 
 
@@ -227,8 +231,8 @@ ggplot(pwy_acts_LV$TABLE, aes(y = reorder(source, score), x = score)) +
 # Plot pathway scores in PC loadings in Hoang data
 
 # nice red #67001F
-corrplot::corrplot(pwy_acts_extra$MAT %>% scale(),
-                   p.mat = pwy_acts_extra$MAT_pval,
+corrplot::corrplot(pwy_acts_LV$MAT %>% scale(),
+                   p.mat = pwy_acts_LV$MAT_pval,
                    sig.level = c(0.001, 0.01, 0.05), pch.cex = 0.9,
                    insig = 'label_sig', is.corr = F, method = "color", 
                    col=colorRampPalette(c("#053061","white","indianred"))(100), 
@@ -236,7 +240,7 @@ corrplot::corrplot(pwy_acts_extra$MAT %>% scale(),
                    cl.align.text = "l", cl.length = 3, cl.ratio = 0.2, cl.pos = "b")
 
 
-
+# For CHEMPERT - TO DO
 loading_perturb_viper <- run_viper(tf_acts_extra$MAT, resp_net, minsize = 5)
 
 
