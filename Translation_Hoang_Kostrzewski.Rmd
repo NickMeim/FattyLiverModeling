@@ -36,13 +36,13 @@ dir_data <- paste0(dir_root,"data/")
 Focusing on Hoang et al and Kostrzewski et al. Pre-processing is intersecting features, log CPM normalization
 centering, and PCA for visualization although PCA is not crucial
 
-Doing a more stringent threshold to keep variable genes in all datasets. COuld relax to keep variable
+Doing a more stringent threshold to keep variable genes in all datasets. Could relax to keep variable
 genes in at least one datasets, but this allows for faster execution for testing
 
 ```{r}
-dataset_names <- c("Hoang", "Kostrzewski") #, "Wang", "Govaere")
+dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver") #, "Feaver", "Wang", "Nilsson", "Govaere") #, "Wang", "Govaere")
 ref_dataset <- "Hoang"
-target_dataset <- "Kostrzewski"
+target_dataset <- "Feaver"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = dir_data)
 # Run PCA
@@ -53,7 +53,8 @@ plt_list <- tmp$plt_list
 Yh <- data_list$Hoang$metadata$nafld_activity_score #data_list$Hoang$metadata$Fibrosis_stage# 
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
-exp_factors <- exp_factors <- c("NPC", "Background", "TGF", "LPS",  "Cholesterol", "Fructose") # TO DO: Add to dataset itself for MPS
+# Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
+Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 ```
 
 # Build PLSR model
@@ -123,9 +124,6 @@ plt_PLSR_score <- plot_scatter(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2],
 See how model prediction worsens when we use the MPS space
 
 ```{r}
-# Project human data onto key components of MPS and back project
-L <-  1:ncol(data_list[[target_dataset]]$pca$rotation)
-Wm <- data_list[[target_dataset]]$pca$rotation[,L]
 # Get plots - TO DO: Extend statistics with CV
 plt_info_loss <- get_info_loss(Xh, Yh, Wh, Wm, Bh)
 ```
@@ -138,6 +136,7 @@ that are the most translatable
 ```{r}
 Wm_new <- get_translatable_LV(Xh, Yh, Wh, Wm, Bh, find_extra = F)
 Wm_new <- Wm_new$Wm_new
+colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
 
 # Plot Yh predicted with this reduced space vs the larger MPS space
 Ypred1 <- cbind(1, Xh %*% Wm %*% t(Wm) %*% Wh) %*% Bh
@@ -150,8 +149,10 @@ plt_new_basis <- plot_scatter(x = Ypred1, y = Ypred2,
 
 # Find experimental factors that contribute to the new latent variable (to do: Wrap in functions)
 
+df_exp <- data.frame(data_list[[target_dataset]]$metadata[,data_list[[target_dataset]]$exp_factors])
+colnames(df_exp) <- data_list[[target_dataset]]$exp_factors
 aov(y ~., data = data.frame(y = as.numeric(Xm %*% Wm_new[,1]), 
-                            data_list$Kostrzewski$metadata[, exp_factors])) %>% summary()
+                            df_exp)) %>% summary()
 
 # Project MPS data on this space
 plt_new_basis_project <- data.frame(y = as.numeric(Xm %*% Wm_new[,1]),
@@ -175,6 +176,7 @@ Number of additional vectors could be obtained with cross validation
 ```{r}
 Wm_opt <- get_translatable_LV(Xh, Yh, Wh, Wm, Bh, find_extra = T)
 Wm_opt <- Wm_opt$Wm_new
+colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
 
 # Extend latent variables
 Wm_tot <- cbind(Wm_new, Wm_opt)
@@ -216,9 +218,7 @@ plt_NAS_LV <- plot_scatter(x = Thm[,1], y = Thm[,2], xlab = "MPS LV 1", ylab = "
 TO DO: Use PCGSEA for further interpretation
 
 ```{r}
-pwy_acts_LV <- get_pwy_activities(Wm_tot, method = "ulm")
-tf_acts_LV <- get_TF_activities(Wm_tot)
-
+pwy_acts_LV <- get_pwy_activities(Wm_tot, method = "mlm")
 
 # Plot
 ggplot(pwy_acts_LV$TABLE, aes(y = reorder(source, score), x = score)) + 
@@ -226,7 +226,7 @@ ggplot(pwy_acts_LV$TABLE, aes(y = reorder(source, score), x = score)) +
     scale_fill_gradient2(low = "darkblue", high = "indianred", 
         mid = "whitesmoke", midpoint = 0) +
     labs(x = "Pathway score", y = NULL) +
-    facet_wrap(facets = vars(condition), nrow = 1, scales = "free")
+    facet_wrap(facets = vars(condition), ncol = 2, scales = "free")
 
 # Plot pathway scores in PC loadings in Hoang data
 
@@ -243,8 +243,70 @@ corrplot::corrplot(pwy_acts_LV$MAT %>% scale(),
 # For CHEMPERT - TO DO
 loading_perturb_viper <- run_viper(tf_acts_extra$MAT, resp_net, minsize = 5)
 
+# Transcription factor activities
+tf_acts_LV <- get_TF_activities(Wm_tot)
+
+tf_acts_LV <- tf_acts_LV$MAT %>% as.data.frame() %>% 
+              mutate(score1 = abs(LV_data1 - mean(LV_data1)) - 2*sd(LV_data1) > 0,
+                     score2 = abs(LV_extra1 - mean(LV_extra1)) - 2*sd(LV_extra1) > 0,
+                     interesting = (score1 & !score2) | (score2 & !score1),
+                     TF = rownames(.))
+
+plt_tf_LV <- plot_scatter(x = tf_acts_LV$LV_data1, y = tf_acts_LV$LV_extra1,
+                          xlab = "MPS LV 1", ylab = "MPS LV extra 1",
+                          args_extra = tf_acts_LV[,c("TF", "interesting")],
+                          aes_extra = aes(color = interesting, label = TF)) +
+              geom_text_repel(data = . %>% filter(interesting), color = "black") +
+                  scale_color_brewer(palette = color_palette)
+                          
+
 
 ```
+
+
+
+
+
+## Plot gene loadings across LVs based for each pathway
+
+Do this to find which genes are driving differences in scores across LVs
+
+```{r}
+pwy_genes_LV <- pwy_net[,c("source", "target")] %>% 
+                filter(target %in% rownames(Wm_tot) &
+                       source %in% c("JAK-STAT", "PI3K", "MAPK"))
+
+pwy_genes_LV <- cbind(pwy_genes_LV, Wm_tot[pwy_genes_LV$target,]) 
+
+pwy_genes_LV <- pwy_genes_LV %>% 
+                group_by(source) %>%
+                mutate(score1 = abs(LV_data1 - mean(LV_data1)) - 2*sd(LV_data1) > 0,
+                       score2 = abs(LV_extra1 - mean(LV_extra1)) - 2*sd(LV_extra1) > 0,
+                       interesting = (score1 & !score2) | (score2 & !score1))
+
+
+plt_pwy_genes <- plot_scatter(x = pwy_genes_LV$LV_data1, y = pwy_genes_LV$LV_extra1, 
+                              args_extra = pwy_genes_LV[,c("target", "source", "interesting")],
+                              aes_extra = aes(color = interesting, label = target, group = source),
+                              xlab = "MPS LV 1", ylab = "MPS LV extra 1") +
+                  facet_wrap(facets = vars(source)) +
+                  stat_ellipse(linetype = 2, size = size_line, color = "indianred") +
+                  geom_text_repel(data = . %>% filter(interesting), color = "black") +
+                  scale_color_brewer(palette = color_palette)
+
+# Calculate the correlation of gene expression and phenotype in human data for interesting genes
+pwy_genes_cor <- pwy_genes_LV %>% ungroup() %>% 
+                  filter(interesting) %>% select(target) %>% 
+                  unique() %>% mutate(cor_Yh = 0)
+
+for (ii in 1:nrow(pwy_genes_cor)){
+  pwy_genes_cor$cor_Yh[ii] <- cor(Yh, Xh[, pwy_genes_cor$target[ii]])
+}
+
+
+
+```
+
 
 # Analyze pathway activity at sample level
 
