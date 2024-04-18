@@ -17,6 +17,9 @@ load_datasets <- function(dataset_names, dir_data){
         data_list[[name]]$counts <- data
         data_list[[name]]$metadata <- metadata
         data_list[[name]]$genes <- rownames(data)
+        if (exists("exp_factors")){
+          data_list[[name]]$exp_factors <- exp_factors
+        }
       }
     }
     # Remove redundant first element
@@ -88,9 +91,27 @@ process_datasets <- function(data_list, plt_list = NULL, filter_variance = F){
                                        y = data_list[[ff]]$pca$x[,2], 
                                        xlab = paste0("PC1 (", round(data_list[[ff]]$pca$var_per[1],2),"%)"), 
                                        ylab = paste0("PC2 (", round(data_list[[ff]]$pca$var_per[2],2),"%)"))
-      
+    
+    # If the dataset contains an argument called exp_factor that is not "NA", it corresponds to an in vitro model
+    # and we find a reduced PC space by averaging the tech reps
+    if (!is.null(data_list[[ff]]$exp_factors)){
+      exp_factors <- data_list[[ff]]$exp_factors
+      groups <- apply(data_list[[ff]]$metadata, MARGIN = 1, FUN = function(x){paste(x[exp_factors], collapse = "_")})
+      groups_unique <- unique(groups)
+      data_grouped <- matrix(0, nrow = nrow(data_list[[ff]]$data_center), ncol = length(groups_unique))
+      rownames(data_grouped) <- rownames(data_list[[ff]]$data_center)
+      colnames(data_grouped) <- groups_unique
+      for (ii in 1:length(groups_unique)){
+        data_grouped[,ii] <- rowMeans(data_list[[ff]]$data_center[, groups == groups_unique[ii]])
+      }
+      # Re-center and PCA (no log transform)
+      pca_group <- pca_center(data_grouped, log_cpm = F, center = T)
+      # We only need to return the rotation matrix (minus the final PC that has variance zero)
+      data_list[[ff]]$Wm_group <- pca_group$pca$rotation[,-length(groups_unique)]
+    }
+    
   }
-  
+
   return(list(data_list = data_list,
          plt_list = plt_list))
 }
@@ -205,11 +226,15 @@ get_model_CV <- function(X, Y, idx_train_list = NULL){
 
 
 # Aux function to get log2 + 1 CPM, center dataset and PCA
-pca_center <- function(data){
+pca_center <- function(data, log_cpm = T, center = T){
   # log2 + 1 cpm
-  data <- apply(data, MARGIN = 2, FUN = function(x){log2(1 + x/sum(x)*1e6)})
+  if (log_cpm){
+    data <- apply(data, MARGIN = 2, FUN = function(x){log2(1 + x/sum(x)*1e6)})
+  }
   # Center
-  data <- data - rowMeans(data)
+  if (center){
+    data <- data - rowMeans(data)
+  }
   #print(dim(data))
   # PCA - no features removed 
   pca <- prcomp(t(data), scale. = F)
@@ -555,7 +580,7 @@ optim_function_evolutionary <- function(Xh, Wh, Wm = NULL, theta, mod_coefs, num
   alpha0 <- apply(alpha0, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
   
   # Initialize best objective function
-  best_obj <- rep(0,100)
+  best_obj <- rep(0,num_it)
   var_obj <- best_obj
   median_obj <- var_obj
   # Calculate matrices
@@ -920,17 +945,21 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
 # the PCs of the data
 # TO DO: can be extended to use CV to determine optimal number of translatable LVs
 get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = F){
+  # If there is a single candidate vector, then we simply return it
+  if (ncol(Wm) == 1){
+    return(list(Wm_new = Wm))
+  }
   # Define a vector basis depending on whether we want an extra LV or a spanned LV
   if (find_extra){
     print("Finding extra LVs outside of MPS data")
     theta <- find_extra_basis(Wh, Wm, Xh, ncomp = ncol(Wh))
     theta <- theta$theta
-    LV_lab <- "LV extra"
+    LV_lab <- "LV_extra"
   } else {
     print("Finding translatable LVs in data")
     # Set the PCs of the MPS (Wm) as a set of basis vectors
     theta <- Wm
-    LV_lab <- "LV data"
+    LV_lab <- "LV_data"
   }
   # Initialize a NULL matrix to store LVs
   Wm_new <- NULL
@@ -946,14 +975,8 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = F){
     print(paste0("Finding LV #",ii,"..."))
     res_opt <- optim_function_evolutionary(X = Xh, Wh = Wh, Wm = Wm_new, 
                                            theta = theta, mod_coefs = Bh, pop_size = 5)
-    
-    
-
-    
     print("Done!")
-    print(res_opt$best_obj[90:100])
-    
-    
+   
     # Extract new latent variable
     Wopt <- res_opt$Wopt
     colnames(Wopt) <- paste0("LV_opt",ii)
