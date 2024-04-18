@@ -54,6 +54,10 @@ data <- read.table(paste0(dir_data, "/Liver/Datasets_ARCH4S/GSE13090_expression_
 data <- process_duplicated_rows(data, "X")
 # Load metadata
 metadata <- read.table(paste0(dir_data, "/Liver/GSE130970_Hoang_etal/METADATA.txt"), header = T, sep = ",")
+# Remove outliers based on PCA plots
+keep <- !grepl("36311|36349|36347",metadata$Run)
+data <- data[,keep]
+metadata <- metadata[keep,]
 save(data, metadata, file = paste0(dir_data_save,"GSE13090_Hoang_dataset.RData"))
 
 ## Govaere et al (clinical) - Human data
@@ -64,6 +68,11 @@ data <- read.table(paste0(dir_data, "/Liver/Datasets_ARCH4S/GSE135251_expression
 data <- process_duplicated_rows(data, "X")
 # Load metadata
 metadata <- read.table(paste0(dir_data, "/Liver/GSE135251_Govaere_etal/METADATA.txt"), header = T, sep = ",")
+# The dataset from ARCH4S has fewer samples so we'll exclude them from the metadata for now
+metadata <- metadata %>% filter(GEO_Accession..exp. %in% colnames(data))
+rownames(metadata) <- metadata$GEO_Accession..exp.
+metadata <- metadata[colnames(data),]
+rownames(metadata) <- NULL
 save(data, metadata, file = paste0(dir_data_save,"GSE135251_Govaere_dataset.RData"))
 
 ## Nilsson et al (macrophage perturbation as a dummy ctrl ) 
@@ -72,7 +81,8 @@ rownames(data) <- data$X
 data <- data[,-1]
 # Load metadata
 metadata <- read.table(paste0(dir_data, "/Misc/GSE202515_Nilsson_etal/GSE202515_metadata.tsv"), header = T, sep = "\t")
-save(data, metadata, file = paste0(dir_data_save,"GSE202515_Nilsson_dataset.RData"))
+exp_factors <- c("ligand", "concentration", "lps.stimulation", "lps.concentration", "donor", "time")
+save(data, metadata, exp_factors, file = paste0(dir_data_save,"GSE202515_Nilsson_dataset.RData"))
 
 ## Wang et al liver chip
 # Load realigned data with Kallisto (ARCH4S pipeline) to conserve more features that might have been filtered
@@ -82,7 +92,8 @@ rownames(data) <- data$Gene
 data <- data[,-1]
 # Extract metadata
 metadata <- read.table("Y:/users/jcadavid/Datasets/Liver/GSE166256_Wang_etal_liverchip/METADATA_Wangetal2020.txt", header = T, sep = "\t")
-save(data, metadata, file = paste0(dir_data_save,"GSE166256_Wang_dataset.RData"))
+exp_factors <- c("scaffold", "media", "condition")
+save(data, metadata, exp_factors, file = paste0(dir_data_save,"GSE166256_Wang_dataset.RData"))
 
 ## Kostrewski et al liver chip
 # Data from GEO as raw data is not available in ARCH4S
@@ -98,12 +109,13 @@ exp_factors <- c("NPC", "Background", "TGF", "LPS",  "Cholesterol", "Fructose")
 # Load design matrix to parse combination of cues
 exp_matrix <- read.table(paste0(dir_data, "/Liver/GSE168285_Kostrzewski_etal/design_matrix_MPS.txt"), header = T, sep = "\t")
 metadata <- cbind(metadata, exp_matrix)
-save(data, metadata, file = paste0(dir_data_save,"GSE168285_Kostrzewski_dataset.RData"))
+save(data, metadata, exp_factors, file = paste0(dir_data_save,"GSE168285_Kostrzewski_dataset.RData"))
 
 ## Feaver et al Hemoshear device
 data <- read.table(paste0(dir_data,"/Liver/Datasets_ARCH4S/GSE89063_expression_matrix.tsv"), header = T, sep = "\t")
 data <- process_duplicated_rows(data, "X")
 # Load metadata
 metadata <- read.table(paste0(dir_data,"/Liver/Datasets_ARCH4S/sample_data_Feaver.txt"), header = T, sep = "\t")
-save(data, metadata, file = paste0(dir_data_save,"GSE89063_Feaver_dataset.RData"))
+exp_factors <- "media"
+save(data, metadata, exp_factors, file = paste0(dir_data_save,"GSE89063_Feaver_dataset.RData"))
 
