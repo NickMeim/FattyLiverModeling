@@ -11,12 +11,15 @@ load_datasets <- function(dataset_names, dir_data){
   data_list <- list(NULL)
   if (length(files) > 0){ # Loop if any match was found
     for (name in dataset_names){
-      if (any(grepl(name, files, ignore.case = T))){ # Avoid loading bad matches
-        load(file = paste0(dir_data, files[grep(name, files, ignore.case = T)]))
-        print(paste0("Loading file: ", paste0(dir_data, files[grep(name, files, ignore.case = T)])))
+      if (any(grepl(name, files, ignore.case = TRUE))){ # Avoid loading bad matches
+        load(file = paste0(dir_data, files[grep(name, files, ignore.case = TRUE)]))
+        print(paste0("Loading file: ", paste0(dir_data, files[grep(name, files, ignore.case = TRUE)])))
         data_list[[name]]$counts <- data
         data_list[[name]]$metadata <- metadata
         data_list[[name]]$genes <- rownames(data)
+        if (exists("exp_factors")){
+          data_list[[name]]$exp_factors <- exp_factors
+        }
       }
     }
     # Remove redundant first element
@@ -29,7 +32,7 @@ load_datasets <- function(dataset_names, dir_data){
 
 # Function for processing datasets - intercept gene lists, CPM normalize, and log2 + 1
 # Save some plots along the way
-process_datasets <- function(data_list, plt_list = NULL, filter_variance = F){
+process_datasets <- function(data_list, plt_list = NULL, filter_variance = FALSE){
   
   # Find common features
   genes_common <- NULL
@@ -88,9 +91,27 @@ process_datasets <- function(data_list, plt_list = NULL, filter_variance = F){
                                        y = data_list[[ff]]$pca$x[,2], 
                                        xlab = paste0("PC1 (", round(data_list[[ff]]$pca$var_per[1],2),"%)"), 
                                        ylab = paste0("PC2 (", round(data_list[[ff]]$pca$var_per[2],2),"%)"))
-      
+    
+    # If the dataset contains an argument called exp_factor that is not "NA", it corresponds to an in vitro model
+    # and we find a reduced PC space by averaging the tech reps
+    if (!is.null(data_list[[ff]]$exp_factors)){
+      exp_factors <- data_list[[ff]]$exp_factors
+      groups <- apply(data_list[[ff]]$metadata, MARGIN = 1, FUN = function(x){paste(x[exp_factors], collapse = "_")})
+      groups_unique <- unique(groups)
+      data_grouped <- matrix(0, nrow = nrow(data_list[[ff]]$data_center), ncol = length(groups_unique))
+      rownames(data_grouped) <- rownames(data_list[[ff]]$data_center)
+      colnames(data_grouped) <- groups_unique
+      for (ii in 1:length(groups_unique)){
+        data_grouped[,ii] <- rowMeans(data_list[[ff]]$data_center[, groups == groups_unique[ii]])
+      }
+      # Re-center and PCA (no log transform)
+      pca_group <- pca_center(data_grouped, log_cpm = FALSE, center = TRUE)
+      # We only need to return the rotation matrix (minus the final PC that has variance zero)
+      data_list[[ff]]$Wm_group <- pca_group$pca$rotation[,-length(groups_unique)]
+    }
+    
   }
-  
+
   return(list(data_list = data_list,
          plt_list = plt_list))
 }
@@ -102,7 +123,7 @@ get_lasso_model <- function(X, Y, idx_train_list = NULL){
   
   # If no training indices are given (should be a list), create 10 folds
   if (is.null(idx_train_list)){
-    idx_train_list <- createFolds(Y, k = 10, returnTrain = T)
+    idx_train_list <- createFolds(Y, k = 10, returnTrain = TRUE)
   }
   
   # For each fold, run lasso
@@ -161,7 +182,7 @@ get_model_CV <- function(X, Y, idx_train_list = NULL){
   
   # If no training indices are given (should be a list), create 10 folds
   if (is.null(idx_train_list)){
-    idx_train_list <- createFolds(Y, k = 10, returnTrain = T)
+    idx_train_list <- createFolds(Y, k = 10, returnTrain = TRUE)
   }
   
   
@@ -205,14 +226,18 @@ get_model_CV <- function(X, Y, idx_train_list = NULL){
 
 
 # Aux function to get log2 + 1 CPM, center dataset and PCA
-pca_center <- function(data){
+pca_center <- function(data, log_cpm = TRUE, center = TRUE){
   # log2 + 1 cpm
-  data <- apply(data, MARGIN = 2, FUN = function(x){log2(1 + x/sum(x)*1e6)})
+  if (log_cpm){
+    data <- apply(data, MARGIN = 2, FUN = function(x){log2(1 + x/sum(x)*1e6)})
+  }
   # Center
-  data <- data - rowMeans(data)
+  if (center){
+    data <- data - rowMeans(data)
+  }
   #print(dim(data))
   # PCA - no features removed 
-  pca <- prcomp(t(data), scale. = F)
+  pca <- prcomp(t(data), scale. = FALSE)
   # Calculate percentage variance and cap PCs to 95% total variance or 1% in PC (tunable)
   per_var <- 100*pca$sdev^2/sum(pca$sdev^2)
   # Get number of PCs as Meelim did: more strict of either number of PCs with at least 1% variance
@@ -233,7 +258,7 @@ pca_center <- function(data){
 
 get_PC_dimensions <- function(data){
   # Do PCA - do nos scale, but center
-  PCA <- prcomp(data, scale. = F, center = T)
+  PCA <- prcomp(data, scale. = FALSE, center = TRUE)
   # Calculate % variance
   per_var <- 100*PCA$sdev^2/sum(PCA$sdev^2)
   # Get number of PCs as Meelim did: more strict of either number of PCs with at least 1% variance
@@ -458,7 +483,7 @@ get_model_translation <- function(data_A, data_B, Y_A){
   # Plot tvalues of the coefficients in the models - clean later and make prettier
   dummy <- summary(mod_A[["mod"]])[["coefficients"]] %>% as.data.frame()
   colnames(dummy) <- c("Estimate", "Std_error", "tval", "pval")
-  dummy$PC <- gsub("X[, PC_opts]","",rownames(dummy), fixed = T)
+  dummy$PC <- gsub("X[, PC_opts]","",rownames(dummy), fixed = TRUE)
   dummy <- dummy[-1,] %>% arrange(desc(abs(tval))) %>% mutate(PC = factor(PC, levels = PC))
   plt_tval_mod_A <- dummy %>% 
                     ggplot(aes(y = tval, x = PC, fill = pval < 0.05)) +
@@ -552,10 +577,16 @@ optim_function_evolutionary <- function(Xh, Wh, Wm = NULL, theta, mod_coefs, num
   nTop <- round(0.1*nP)
   # Initial population - random unit norm vectors
   alpha0 <- matrix(rnorm(ncol(theta)*nP), ncol = nP)
-  alpha0 <- apply(alpha0, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
-  
+  if (nrow(alpha0)>1){
+    alpha0 <- apply(alpha0, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
+  }else{
+    alpha0 <- alpha0/sqrt(sum(alpha0^2))
+  }
+  if (is.null(nrow(alpha0))){
+    alpha0 <- t(alpha0)
+  }
   # Initialize best objective function
-  best_obj <- rep(0,100)
+  best_obj <- rep(0,num_it)
   var_obj <- best_obj
   median_obj <- var_obj
   # Calculate matrices
@@ -577,7 +608,7 @@ optim_function_evolutionary <- function(Xh, Wh, Wm = NULL, theta, mod_coefs, num
     # Evaluate function
     obj <- rep(0, nP)
     for (ii in 1:nP){
-      obj[ii] <- eval_f(alpha0[,ii], T, X_hat, W_hat, mod_coefs = mod_coefs[-1])
+      obj[ii] <- eval_f(alpha0[,ii], T, X_hat, W_hat, mod_coefs = mod_coefs[2:nrow(mod_coefs),])
     }
     # Choose best performers and store
     best_obj[kk] <- min(obj)
@@ -595,7 +626,11 @@ optim_function_evolutionary <- function(Xh, Wh, Wm = NULL, theta, mod_coefs, num
     # Mutate slightly - reduce mutation range as we go
     alpha_mut <- matrix(rnorm(ncol(theta)*nP), ncol = nP)*exp(-kk/10)
     alpha0 <- alpha0 + alpha_mut
-    alpha0 <- apply(alpha0, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
+    if (nrow(alpha0)>1){
+      alpha0 <- apply(alpha0, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
+    }else{
+      alpha0 <- alpha0/sqrt(sum(alpha0^2))
+    }
     
   }
   
@@ -647,7 +682,7 @@ get_plsr_mod <- function(X, Y, nCV = 10, idx_train_CV = NULL, ncomp_PLSR = NA){
   var_plsr <- colVars(S)
   
   # Plot predicted Y vs measured Y for full model
-  plt <- plot_scatter(x = Y, y = Y_pred, xlab = "Measured", ylab = "Predicted", xjitter = T) +
+  plt <- plot_scatter(x = Y, y = Y_pred, xlab = "Measured", ylab = "Predicted", xjitter = TRUE) +
           geom_abline(slope = 1, intercept = 0, color = "indianred",
                       linetype="dotted", size = 1)
   
@@ -670,7 +705,7 @@ train_plsr <- function(X, Y, idx_train_CV, nFolds_internal = 10, nLV_max = 10){
   
   # 10-fold CV by default
   nFolds <- nFolds_internal
-  idx_train_list <- createFolds(Y, k = nFolds, returnTrain = T)
+  idx_train_list <- createFolds(Y, k = nFolds, returnTrain = TRUE)
   # Initialize metrics
   nLV <- nLV_max
   Q2Y <- matrix(0, ncol = nLV, nrow = nFolds)
@@ -821,7 +856,7 @@ train_plsr <- function(X, Y, idx_train_CV, nFolds_internal = 10, nLV_max = 10){
 
 # It seems that a single pass is enough since contribution is additive, but check carefully
 # Talk to Nikos in case we need to do this with CV
-rank_LV_MPS <- function(Xh, Yh, Wh, Bm, Wm, retrain = F){
+rank_LV_MPS <- function(Xh, Yh, Wh, Bm, Wm, retrain = FALSE){
   # Get error without removing LVs as a reference
   
   # If retrain, we not only remove the component but also retrain the model
@@ -876,40 +911,68 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
   # variable for original space and filtered (backprojected) space
   # TO DO: Extend to multiblock Y
   if (is.null(Bh)){
-    mod <- lm(Yh ~. ,data = data.frame(Yh, Th))
-    Ypred <- predict(mod)
-    Ypred_loss <- predict(mod, newdata = data.frame(Thm))
+    Ypred <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
+    Ypred_loss <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
+    for (i in 1:ncol(Yh)){
+      train_data <- cbind(Yh[,i], Th)
+      mod <- lm(V1 ~. ,data = as.data.frame(train_data))
+      Ypred[,i] <- predict(mod)
+      Ypred_loss[,i] <- predict(mod, newdata = data.frame(Thm))
+    }
   } else {
     Ypred <- cbind(1, Th) %*% Bh
     Ypred_loss <- cbind(1, Thm) %*% Bh
   }
 
   # Retrain model to overfit projected data
-  mod_retrain <- lm(Yh ~., data = data.frame(Yh, Thm))
-  Ypred_refit <- predict(mod_retrain)
+  Ypred_refit <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
+  for (i in 1:ncol(Yh)){
+    train_data <- cbind(Yh[,i], Thm)
+    mod_retrain <- lm(V1 ~., data = as.data.frame(train_data))
+    Ypred_refit[,i] <- predict(mod_retrain)
+  }
   
   # Generate plot
-  plt_mod_project <- rbind(data.frame(x = Yh, 
-                                      y = Ypred, 
+  plt_mod_project <- rbind(data.frame(x1 = Yh[,1], 
+                                      y1 = Ypred[,1], 
                                       source = "Original"),
-                           data.frame(x = Yh, 
-                                      y = Ypred_loss, 
+                           data.frame(x1 = Yh[,1], 
+                                      y1 = Ypred_loss[,1], 
                                       source = "Filtered"),
-                           data.frame(x = Yh, 
-                                      y = Ypred_refit, 
+                           data.frame(x1 = Yh[,1], 
+                                      y1 = Ypred_refit[,1], 
                                       source = "Filtered retrain")) %>%
     mutate(source = factor(source, levels = c("Original", "Filtered", "Filtered retrain"))) %>%
-    ggplot(aes(x = x, y = y, color = factor(source))) +
+    ggplot(aes(x = x1, y = y1, color = factor(source))) +
     geom_point(show.legend = F, size = size_dot) +
     geom_abline(slope = 1, intercept = 0, linetype = 2, color = "indianred", linewidth = size_line) +
     facet_wrap(facets = vars(source), nrow = 1) +
     labs(x = "Y measured", y = "Y predicted", color = "Reference space") +
-    stat_cor(aes(label = after_stat(r.label)), show.legend = F, color = "black", label.y = max(Yh), size = size_annotation)
+    stat_cor(aes(label = after_stat(r.label)), show.legend = FALSE, color = "black", label.y = max(Yh[,1]), size = size_annotation)
   
   plt_mod_project <- add_theme(plt_mod_project) + scale_color_brewer(palette = color_palette)
   
+  plt_mod_project_fibrosis <- rbind(data.frame(x2 = Yh[,2], 
+                                      y2 = Ypred[,2], 
+                                      source = "Original"),
+                           data.frame(x2 = Yh[,2], 
+                                      y2 = Ypred_loss[,2], 
+                                      source = "Filtered"),
+                           data.frame(x2 = Yh[,2], 
+                                      y2 = Ypred_refit[,2], 
+                                      source = "Filtered retrain")) %>%
+    mutate(source = factor(source, levels = c("Original", "Filtered", "Filtered retrain"))) %>%
+    ggplot(aes(x = x2, y = y2, color = factor(source))) +
+    geom_point(show.legend = FALSE, size = size_dot) +
+    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "indianred", linewidth = size_line) +
+    facet_wrap(facets = vars(source), nrow = 1) +
+    labs(x = "Y measured", y = "Y predicted", color = "Reference space") +
+    stat_cor(aes(label = after_stat(r.label)), show.legend = FALSE, color = "black", label.y = max(Yh[,2]), size = size_annotation)
+  
+  plt_mod_project_fibrosis <- add_theme(plt_mod_project_fibrosis) + scale_color_brewer(palette = color_palette)
+  
   # TO DO: Add CV and some more statistics beyond the plot
-  return(plt_mod_project)
+  return(list(plt_mod_project,plt_mod_project_fibrosis))
 }
 
 
@@ -919,18 +982,22 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
 # Function to get representative latent variables that are translatable linear combinations of 
 # the PCs of the data
 # TO DO: can be extended to use CV to determine optimal number of translatable LVs
-get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = F){
+get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
+  # If there is a single candidate vector, then we simply return it
+  if (ncol(Wm) == 1){
+    return(list(Wm_new = Wm))
+  }
   # Define a vector basis depending on whether we want an extra LV or a spanned LV
   if (find_extra){
     print("Finding extra LVs outside of MPS data")
     theta <- find_extra_basis(Wh, Wm, Xh, ncomp = ncol(Wh))
     theta <- theta$theta
-    LV_lab <- "LV extra"
+    LV_lab <- "LV_extra"
   } else {
     print("Finding translatable LVs in data")
     # Set the PCs of the MPS (Wm) as a set of basis vectors
     theta <- Wm
-    LV_lab <- "LV data"
+    LV_lab <- "LV_data"
   }
   # Initialize a NULL matrix to store LVs
   Wm_new <- NULL
@@ -944,16 +1011,10 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = F){
     ii <- ii + 1
     # Find optimal weights to combine basis vectors - reduce population size multiplier
     print(paste0("Finding LV #",ii,"..."))
-    res_opt <- optim_function_evolutionary(X = Xh, Wh = Wh, Wm = Wm_new, 
+    res_opt <- optim_function_evolutionary(Xh = Xh, Wh = Wh, Wm = Wm_new, 
                                            theta = theta, mod_coefs = Bh, pop_size = 5)
-    
-    
-
-    
     print("Done!")
-    print(res_opt$best_obj[90:100])
-    
-    
+   
     # Extract new latent variable
     Wopt <- res_opt$Wopt
     colnames(Wopt) <- paste0("LV_opt",ii)

@@ -33,7 +33,7 @@ data_B <- data$data_B
 Y_A <- data$Y_A
 
 ### read optimal direction
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 colnames(Woptim) <- 'w_optimal'
 
 ## normalize
@@ -201,7 +201,7 @@ pathways_progeny_pcs <- decoupleR::run_mlm(mat=gene_loadings, net=net_prog, .sou
 #                                 z_scores = T,
 #                                 top = 500)
 # tt <- pathways_progeny_pcs[c('PC12','PC8'),]
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 pathways_progeny <- decoupleR::run_mlm(mat=Woptim, net=net_prog, .source='source', .target='target',
                                            .mor='weight', minsize = 1)
 # pathways_progeny <- progeny(Woptim,
@@ -348,7 +348,7 @@ confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
 dorotheaData = dorotheaData[confidenceFilter,]
 settings = list(verbose = TRUE, minsize = minNrOfGenes)
 ## read optimal W
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 TF_activities = run_viper(cbind(Woptim,Woptim), dorotheaData, options =  settings)
 TF_activities <- as.matrix(TF_activities[,1])
 tfs <- rownames(TF_activities)
@@ -497,7 +497,7 @@ dorotheaData = dorotheaData[confidenceFilter,]
 colnames(dorotheaData)[1] <- 'source' 
 
 TF_activities_loadings = decoupleR::run_viper(gene_loadings, dorotheaData,minsize = minNrOfGenes,verbose = TRUE) %>% select(-statistic)
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 TF_activities = decoupleR::run_viper(Woptim, dorotheaData,minsize = minNrOfGenes,verbose = TRUE) %>% select(-statistic)
 TF_activities$condition <- 'optimal direction'
 # pheatmap(TF_activities)
@@ -800,7 +800,7 @@ ggsave('../results/pc_loadings_scores_analysis/protein_activity_from_loadings_vo
 # rownames(loadings) <- NULL
 PCA_alldata <- prcomp(X_B, scale. = F, center = T)
 loadings <- PCA_alldata$rotation
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,PC12,PC8) %>% column_to_rownames('gene')
 entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(loadings), column = "ENTREZID", keytype = "SYMBOL")
 entrez_ids <- unname(entrez_ids)
@@ -836,40 +836,41 @@ df_keggs <- df_keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
 
 df_keggs <- df_keggs %>% mutate(sig=ifelse(abs(NES)>1.5 & padj<0.05,'yes','no'))
 df_keggs <- df_keggs%>% mutate(label = ifelse(sig=='yes',pathway,NA))
-p1 <- ggplot(df_keggs %>% filter(PC=='PC12') %>% arrange(NES),aes(x=NES,y=-log10(padj),color=sig))+ 
-  geom_point()+
-  ylab(expression(-log[10]('p.adj')))+
-  geom_label_repel(aes(label=label),
-                   size=4,
-                   box.padding = 0.1, 
-                   point.padding = 0.1,
-                   max.overlaps = 40)+
-  scale_x_continuous(n.breaks = 10)+
-  ggtitle('Pathways enriched in PC12 loadings')+
-  theme(text=element_text(family = 'Arial',size=18),
-        legend.position = 'none',
-        plot.title = element_text(hjust = 0.5),
-        panel.grid.major.y = element_blank())
-print(p1)
-# df_keggs <- df_keggs[order(df_keggs$NES),]
-# df_keggs$pathway <- factor(df_keggs$pathway,levels = df_keggs$pathway)
-# p2 <- ggplot(df_keggs %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=pathway,fill=padj))+ 
-#   geom_bar(stat = 'identity',color='black',size=1.5) +
-#   scale_fill_gradient(low = "red",high = "white",limits = c(min(df_keggs$padj),0.05)) +
-#   xlab('Normalized Enrichment Score') +
+# p1 <- ggplot(df_keggs %>% filter(PC=='PC12') %>% arrange(NES),aes(x=NES,y=-log10(padj),color=sig))+ 
+#   geom_point()+
+#   ylab(expression(-log[10]('p.adj')))+
+#   geom_label_repel(aes(label=label),
+#                    size=4,
+#                    box.padding = 0.1, 
+#                    point.padding = 0.1,
+#                    max.overlaps = 40)+
+#   scale_x_continuous(n.breaks = 10)+
 #   ggtitle('Pathways enriched in PC12 loadings')+
-#   theme_pubr(base_family = 'Arial',base_size = 20)+
-#   theme(plot.title = element_text(hjust = 0.5),
-#         legend.key.size = unit(1.5, "lines"),
-#         legend.position = 'right',
-#         legend.justification = "center")
-# print(p2)
-# ggsave('../results/pc_loadings_scores_analysis/kegg_on_pc12.png',
-#        plot=p2,
-#        width=16,
-#        height=9,
-#        units = 'in',
-#        dpi = 600)
+#   theme(text=element_text(family = 'Arial',size=18),
+#         legend.position = 'none',
+#         plot.title = element_text(hjust = 0.5),
+#         panel.grid.major.y = element_blank())
+# print(p1)
+df_keggs_tmp <- df_keggs %>% filter(PC=='PC8')
+df_keggs_tmp <- df_keggs_tmp[order(df_keggs_tmp$NES),]
+df_keggs_tmp$pathway <- factor(df_keggs_tmp$pathway,levels = df_keggs_tmp$pathway)
+p2 <- ggplot(df_keggs_tmp %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=pathway,fill=padj))+
+  geom_bar(stat = 'identity',color='black',size=1.5) +
+  scale_fill_gradient(low = "red",high = "white",limits = c(min(df_keggs_tmp$padj),0.05)) +
+  xlab('Normalized Enrichment Score') +
+  ggtitle('Pathways enriched in PC8 loadings')+
+  theme_pubr(base_family = 'Arial',base_size = 20)+
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.key.size = unit(1.5, "lines"),
+        legend.position = 'right',
+        legend.justification = "center")
+print(p2)
+ggsave('../results/pc_loadings_scores_analysis/kegg_bar_on_pc8.png',
+       plot=p2,
+       width=16,
+       height=9,
+       units = 'in',
+       dpi = 600)
 
 ### Repeat for Wopt
 entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(Woptim), column = "ENTREZID", keytype = "SYMBOL")
@@ -1012,17 +1013,18 @@ msig <- fastenrichment(colnames(meas),
                        enrichment_space = 'msig_db_h',
                        n_permutations = 10000,
                        order_columns=F)
-msig_nes <- as.data.frame(msig$NES$`NES MSIG Hallmark`) %>% rownames_to_column('Hallmark')
+msig_nes <- as.data.frame(msig$NES$`NES MSIG Hallmark`) %>% rownames_to_column('Hallmark')  #%>% gather('PC','NES',-Hallmark)
 colnames(msig_nes)[2] <- 'NES'
-msig_pval <- as.data.frame(msig$Pval$`Pval MSIG Hallmark`) %>% rownames_to_column('Hallmark')
+msig_pval <- as.data.frame(msig$Pval$`Pval MSIG Hallmark`) %>% rownames_to_column('Hallmark')#%>% gather('PC','padj',-Hallmark)
 colnames(msig_pval)[2] <- 'padj'
 df_msig <- left_join(msig_nes,msig_pval)
 df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
 
-df_msig <- df_msig %>% mutate(Hallmark=strsplit(Hallmark,"_"))
-df_msig <- df_msig %>% unnest(Hallmark) %>% filter(!(Hallmark %in% c("HALLMARK","FL1000","MSIG","H")))
+# df_msig <- df_msig %>% mutate(Hallmark=strsplit(Hallmark,"_"))
+# df_msig <- df_msig %>% unnest(Hallmark) %>% filter(!(Hallmark %in% c("HALLMARK","FL1000","MSIG","H")))
 df_msig <- df_msig %>% mutate(Hallmark=as.character(Hallmark))
 df_msig <- df_msig %>% mutate(Hallmark=gsub('_'," ",Hallmark))
+# df_msig_tmp <- df_msig %>% filter(PC=='PC12')
 df_msig$Hallmark <- factor(df_msig$Hallmark,levels = df_msig$Hallmark[order(df_msig$NES)])
 p1 <- ggplot(df_msig %>% arrange(NES),aes(x=NES,y=Hallmark,fill=padj))+ 
   geom_bar(stat = 'identity',color='black',size=1.5) +
@@ -1044,7 +1046,7 @@ ggsave('../results/pc_loadings_scores_analysis/hallmark_on_optimal_loadings.png'
        units = 'in',
        dpi = 600)
 ### NicheNet analysis-----------------------------------------
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 colnames(Woptim) <- 'w_optimal'
 gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,8,12))]
 

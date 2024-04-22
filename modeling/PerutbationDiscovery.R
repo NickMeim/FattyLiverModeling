@@ -55,7 +55,7 @@ PCA_alldata <- prcomp(X_B, scale. = F, center = T)
 gene_loadings <- PCA_alldata$rotation[,c('PC1','PC2','PC8','PC12')]
 
 ### Load optimal gene loading and infer TF activities-----------------------------------
-Woptim <- readRDS('../results/Wm_opt.rds')
+Woptim <- readRDS('../results/Wm_opt_2.rds')
 # regulon <- decoupleR::get_dorothea(levels = c("A","B"))
 dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))

@@ -1,0 +1,68 @@
+[2024-04-14 19:23:47] [INFO]    [OmnipathR] Welcome to OmnipathR!
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] Reading JSON from `C:\Users\nmeim\AppData\Local\cache\OmnipathR/cache.json` (encoding: UTF-8).
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:23:47] [INFO]    [OmnipathR] Initialized cache: `C:\Users\nmeim\AppData\Local\cache\OmnipathR`.
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/db/db_def.json` (encoding: UTF-8).
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/magic_bytes.json` (encoding: UTF-8).
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/urls.json` (encoding: UTF-8).
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/id_types.json` (encoding: UTF-8).
+[2024-04-14 19:23:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:23:55] [INFO]    [OmnipathR] Loading database `Ensembl and OMA organism names`.
+[2024-04-14 19:23:55] [INFO]    [OmnipathR] Looking up in cache `https://www.ensembl.org/info/about/species.html`: key=7332486db7400730697234bad76ca0c8e4d00799, latest version=1.
+[2024-04-14 19:23:55] [TRACE]   [OmnipathR] Cache file path: C:\Users\nmeim\AppData\Local\cache\OmnipathR/7332486db7400730697234bad76ca0c8e4d00799-1.html
+[2024-04-14 19:23:56] [TRACE]   [OmnipathR] Looking up in cache: `https://omabrowser.org/All/oma-species.txt`.
+[2024-04-14 19:23:56] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/30e690cbb55dfc63b5903ab337f34ffc2f4be397-1.rds`.
+[2024-04-14 19:23:56] [INFO]    [OmnipathR] Loaded database `Ensembl and OMA organism names`.
+[2024-04-14 19:23:56] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&datasets=omnipath&organisms=9606&fields=sources,references,curation_effort&license=academic`
+[2024-04-14 19:23:56] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/a7b21d9d80a3837a50268df16d168128fc1c6ede-1.rds`.
+[2024-04-14 19:23:56] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&datasets=omnipath&organisms=9606&fields=sources,references,curation_effort&license=academic`
+[2024-04-14 19:23:58] [SUCCESS] [OmnipathR] Loaded 40014 interactions from cache.
+[2024-04-14 19:23:59] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:23:59] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:23:59] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=Guide2Pharma,HPMR,ICELLNET,Kirouac2010,CellTalkDB,connectomeDB2020&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=sources,references,curation_effort&license=academic`
+[2024-04-14 19:23:59] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/69503cb1a01671e7c77c0e80e6ca0ce4110a89fe-1.rds`.
+[2024-04-14 19:23:59] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=Guide2Pharma,HPMR,ICELLNET,Kirouac2010,CellTalkDB,connectomeDB2020&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:00] [SUCCESS] [OmnipathR] Loaded 4568 interactions from cache.
+[2024-04-14 19:24:01] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:24:01] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:24:01] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=CellPhoneDB&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:01] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/ec8c89037e2c920468342c7c2326c74a5474eedc-1.rds`.
+[2024-04-14 19:24:01] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=CellPhoneDB&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:01] [TRACE]   [OmnipathR] Converting JSON column `extra_attrs` to list.
+[2024-04-14 19:24:02] [SUCCESS] [OmnipathR] Loaded 2879 interactions from cache.
+[2024-04-14 19:24:02] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:24:02] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:24:02] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=Cellinker&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:02] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/8173bc9dfc09711dc80f48d9c3c5bd57af3d8be5-1.rds`.
+[2024-04-14 19:24:02] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=Cellinker&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:02] [TRACE]   [OmnipathR] Converting JSON column `extra_attrs` to list.
+[2024-04-14 19:24:03] [SUCCESS] [OmnipathR] Loaded 3765 interactions from cache.
+[2024-04-14 19:24:03] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:24:03] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:24:03] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=talklr&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:03] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/b2de51666493a9c70a7b375972a2557903c14763-1.rds`.
+[2024-04-14 19:24:03] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=talklr&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:03] [TRACE]   [OmnipathR] Converting JSON column `extra_attrs` to list.
+[2024-04-14 19:24:03] [SUCCESS] [OmnipathR] Loaded 2484 interactions from cache.
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=CellChatDB&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/fedf7fd37a8e863f804aa073f2ae480ff78001e5-1.rds`.
+[2024-04-14 19:24:04] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=CellChatDB&datasets=omnipath,pathwayextra,kinaseextra,ligrecextra&organisms=9606&fields=extra_attrs,sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] Converting JSON column `extra_attrs` to list.
+[2024-04-14 19:24:04] [SUCCESS] [OmnipathR] Loaded 1894 interactions from cache.
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:24:04] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:24:05] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=SignaLink3&datasets=omnipath&organisms=9606&fields=sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:05] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/95ee739b50bbfea2c48e5c86a64525084a1dab30-1.rds`.
+[2024-04-14 19:24:05] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/interactions?genesymbols=yes&resources=SignaLink3&datasets=omnipath&organisms=9606&fields=sources,references,curation_effort&license=academic`
+[2024-04-14 19:24:05] [SUCCESS] [OmnipathR] Loaded 1796 interactions from cache.
+[2024-04-14 19:24:06] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-04-14 19:24:06] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-04-14 19:24:06] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=SignaLink_function&license=academic`
+[2024-04-14 19:24:06] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/4190db12b9aabca9c0851ec84aa3fbb71b5dfbcd-1.rds`.
+[2024-04-14 19:24:06] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=SignaLink_function&license=academic`
+[2024-04-14 19:24:06] [SUCCESS] [OmnipathR] Loaded 2001 annotation records from cache.

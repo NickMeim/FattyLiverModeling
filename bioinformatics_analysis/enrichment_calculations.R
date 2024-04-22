@@ -42,6 +42,7 @@ fastenrichment <- function(signature_ids,
   }
   if (length(sig_ids)<2){
     measurements <- as.matrix(measurements)
+    colnames(measurements) <- sig_ids
   }
   # load pathway data
   egsea.data(species = "human",returnInfo = TRUE)
