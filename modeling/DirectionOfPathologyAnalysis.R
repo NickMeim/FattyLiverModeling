@@ -196,6 +196,18 @@ gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,8,12))]
 net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
 pathways_progeny_pcs <- decoupleR::run_mlm(mat=gene_loadings, net=net_prog, .source='source', .target='target',
                                            .mor='weight', minsize = 1)
+# pathways_progeny_pcs <- decoupleR::decouple(mat=gene_loadings, net=net_prog, .source='source', .target='target',
+#                                             args = list(
+#                                               wmean = list(.mor = "weight", .likelihood = "likelihood"),
+#                                               ulm = list(.mor = "weight", .likelihood = "likelihood")
+#                                             ), 
+#                                             minsize =1,
+#                                             statistics = c('mlm','ulm','wmean','viper',
+#                                                            'fgsea',
+#                                                            'mdt','udt','ora',
+#                                                            'wsum'),
+#                                             consensus_score = F)
+# pathways_progeny_pcs <- decoupleR::run_consensus(pathways_progeny_pcs)
 # pathways_progeny_pcs <- progeny(gene_loadings,
 #                                 perm = 10000,
 #                                 z_scores = T,

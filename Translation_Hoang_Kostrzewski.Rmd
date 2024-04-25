@@ -82,8 +82,8 @@ load(paste0(dir_data,"idx_train_CV_NAFLD.RData"))
 #### Skipping for now to move quickly
 plsr_mod <- opls(x = Xh, 
                  y = Yh,
-               predI = 7,
-                crossvalI = 5,
+               predI = 9,
+                crossvalI = 1,
                scaleC = "center",
                 fig.pdfC = "none",
                  info.txtC = "none")

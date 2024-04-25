@@ -1004,11 +1004,9 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
   # Store sum of squared error between predicted phenotype and prediction when filtering
   ErrorY <- NULL
   dErrorY <- 100
-  ii <- 0
+  ii <- 1
   # Iterate and add latent variables until the error metric does not improve by more than 1%
-  while (dErrorY > 1){
-    # Update index
-    ii <- ii + 1
+  while ((dErrorY > 1) & (ii<ncol(Wh))){
     # Find optimal weights to combine basis vectors - reduce population size multiplier
     print(paste0("Finding LV #",ii,"..."))
     res_opt <- optim_function_evolutionary(Xh = Xh, Wh = Wh, Wm = Wm_new, 
@@ -1036,6 +1034,8 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
       theta <- find_extra_basis(Wm, Wm_new, Xh, ncomp = ncol(Wm) - ii)
     }
     theta <- theta$theta
+    # Update index
+    ii <- ii + 1
     print("Done!")
   }
   # After exiting it means the last component was unnecessary, so we exclude it and convert to matrix
