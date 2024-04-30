@@ -395,6 +395,8 @@ Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+# pca_humans <- prcomp(Xh,scale. = F)
+# Wpch <- pca_humans$rotation
 ### Re-split without any test set since we so no drop in performance
 trials <- 10000
 flag_nas <- FALSE
@@ -456,23 +458,30 @@ performance_1 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_plsr',
                                                     LVs = num_LVS)
-saveRDS(performance_1,'../results/performance_df_human_plsr.rds')
+# saveRDS(performance_1,'../results/performance_df_human_plsr.rds')
 #Plot
-performance_1$type <- factor(performance_1$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
-performance_1$set <- factor(performance_1$set ,levels=c('train','test'))
+performance_1 <- performance_1 %>% mutate(type = ifelse(type=='model',set,type))
+performance_1$type <- factor(performance_1$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
 ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(n.breaks = 6)+
+  scale_y_continuous(breaks = seq(-0.75,1,0.25))+
   xlab('')+
   theme(text = element_text(size=20,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=16),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  facet_wrap(~set,scales = 'free')+
-  stat_compare_means(comparisons = list(c('model','shuffle W'),
-                                        c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01)
+  stat_compare_means(comparisons = list(c('test','shuffle Y'),
+                                        c('test','shuffle X'),
+                                        c('test','random X')),
+                     method = 'wilcox',#label = 'p.signif',
+                     tip.length = 0.01,
+                     label.y = c(0.82, 0.87, 0.92))
+ggsave('../results/performance_df_just_human_plsr.png',
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
+
 # Task b)
 performance_2 <- cross_validation_complete_pipeline(Wm,
                                                     folds = num_folds,
@@ -480,11 +489,11 @@ performance_2 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected',
                                                     LVs = num_LVS)
-saveRDS(performance_2,'../results/performance_df_human_backprojected.rds')
+# saveRDS(performance_2,'../results/performance_df_human_backprojected.rds')
 performance_2$type <- factor(performance_2$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
 performance_2$set <- factor(performance_2$set ,levels=c('train','test'))
 ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(n.breaks = 6)+
+  scale_y_continuous(n.breaks = 10)+
   xlab('')+
   theme(text = element_text(size=20,family = 'Arial'),
         legend.position = 'none',
@@ -494,8 +503,14 @@ ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle W'),
                                         c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01)
+                     method = 'wilcox',#label = 'p.signif',
+                     tip.length = 0.01,
+                     step.increase = 0.04)
+ggsave('../results/performance_df_just_human_backprojected.png',
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
 # Task c)
 performance_3 <- cross_validation_complete_pipeline(Wm,
@@ -504,12 +519,12 @@ performance_3 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected_retrained',
                                                     LVs = num_LVS)
-saveRDS(performance_3,'../results/performance_df_human_backprojected_retrained.rds')
+# saveRDS(performance_3,'../results/performance_df_human_backprojected_retrained.rds')
 #Plot
-performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
+performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W'))
 performance_3$set <- factor(performance_3$set ,levels=c('train','test'))
 ggboxplot(performance_3,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(n.breaks = 6)+
+  scale_y_continuous(n.breaks = 10)+
   xlab('')+
   theme(text = element_text(size=20,family = 'Arial'),
         legend.position = 'none',
@@ -517,10 +532,14 @@ ggboxplot(performance_3,x='type',y='r',color='type',add='jitter') +
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
-  stat_compare_means(comparisons = list(c('model','shuffle W'),
-                                        c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
+  stat_compare_means(comparisons = list(c('model','shuffle W')),
+                     method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01)
+ggsave('../results/performance_df_just_human_backprojected_retrained.png',
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
 # Task d1)
 performance_4 <- cross_validation_complete_pipeline(Wm,
@@ -529,12 +548,12 @@ performance_4 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected_into_translatable_lvs',
                                                     LVs = num_LVS)
-saveRDS(performance_4,'../results/performance_df_translatable_lvs.rds')
+# saveRDS(performance_4,'../results/performance_df_translatable_lvs.rds')
 #Plot
-performance_4$type <- factor(performance_4$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
+performance_4$type <- factor(performance_4$type ,levels=c('model','shuffle W','shuffle Bh'))
 performance_4$set <- factor(performance_4$set ,levels=c('train','test'))
 ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(n.breaks = 6)+
+  scale_y_continuous(n.breaks = 10)+
   xlab('')+
   theme(text = element_text(size=20,family = 'Arial'),
         legend.position = 'none',
@@ -544,8 +563,9 @@ ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle W'),
                                         c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01)
+                     method = 'wilcox',#label = 'p.signif',
+                     tip.length = 0.01,
+                     step.increase = 0.04)
 ggsave('../results/performance_df_translatable_lvs.png',
        height = 9,
        width = 12,
@@ -560,10 +580,11 @@ performance_5 <- cross_validation_complete_pipeline(Wm,
                                                     LVs = num_LVS)
 saveRDS(performance_5,'../results/performance_df_optimal_direction.rds')
 #plot
-performance_5$type <- factor(performance_5$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
+performance_5$type <- factor(performance_5$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_5$set <- factor(performance_5$set ,levels=c('train','test'))
 ggboxplot(performance_5,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(n.breaks = 6)+
+  scale_y_continuous(breaks = seq(round(min(performance_5$r),1),1,0.1),
+                     limits = c(NA,1.15))+
   xlab('')+
   theme(text = element_text(size=20,family = 'Arial'),
         legend.position = 'none',
@@ -571,10 +592,11 @@ ggboxplot(performance_5,x='type',y='r',color='type',add='jitter') +
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
-  stat_compare_means(comparisons = list(c('model','shuffle W'),
+  stat_compare_means(comparisons = list(c('model','shuffle Wopt'),
                                         c('model','shuffle Bh')),
                      method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01)
+                     tip.length = 0.01,
+                     step.increase = 0.04)
 
 ggsave('../results/performance_df_optimal_direction.png',
        height = 9,
@@ -582,10 +604,127 @@ ggsave('../results/performance_df_optimal_direction.png',
        units = 'in',
        dpi=600)
 
+performance_6 <- cross_validation_complete_pipeline(Wm,
+                                                    folds = num_folds,
+                                                    file_loc = loc ,
+                                                    target_dataset = target_dataset,
+                                                    task = 'analytical_optimal',
+                                                    LVs = 9)
+saveRDS(performance_6,'../results/performance_df_analytical.rds')
 
+performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
+performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
+ggboxplot(performance_6,x='type',y='r',color='type',add='jitter') +
+  scale_y_continuous(breaks = seq(round(min(performance_6$r),1),1,0.1),
+                     limits = c(NA,1.15))+
+  xlab('')+
+  theme(text = element_text(size=20,family = 'Arial'),
+        legend.position = 'none',
+        axis.text.x = element_text(size=16),
+        strip.text = element_text(face = 'bold'),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  facet_wrap(~set,scales = 'free')+
+  stat_compare_means(comparisons = list(c('model','shuffle Wopt'),
+                                        c('model','shuffle Bh')),
+                     method = 'wilcox',label = 'p.signif',
+                     tip.length = 0.01)# ,label.y = c(0.82, 0.87, 0.92)
 
+ggsave('../results/performance_df_analytical.png',
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
+### Combine all results and make a nice figure--------------------------------------------------------------------
+performance_1 <- readRDS('../results/performance_df_human_plsr.rds')
+performance_2 <- readRDS('../results/performance_df_human_backprojected.rds')
+performance_3 <- readRDS('../results/performance_df_human_backprojected_retrained.rds')
+performance_4 <- readRDS('../results/performance_df_translatable_lvs.rds')
+performance_5 <- readRDS('../results/performance_df_optimal_direction.rds')
+performance_6 <- readRDS('../results/performance_df_analytical.rds')
 
+performance_all <- rbind(performance_1,
+                         performance_2,
+                         performance_3,
+                         performance_4,
+                         performance_5,
+                         performance_6)
+### Select what to show in the figure
+performance_all_plot <- performance_all %>% 
+  mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
+                     ifelse(type=='model',TRUE,FALSE))) %>% 
+  filter(keep==TRUE) %>% select(-keep) %>%
+  mutate(approach = ifelse(task=='human_plsr','PLSR',
+                        ifelse(task=='human_backprojected','backprojected',
+                               ifelse(task=='human_backprojected_retrained','backprojected retrained',
+                                      ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
+                                             ifelse(task=='analytical_optimal','analytical Wopt',
+                                             'Wopt')))))) %>%
+  mutate(approach = ifelse(approach=='PLSR',
+                           ifelse(type=='model',approach,type),
+                           approach)) %>%
+  select(-type,-task)
 
+performance_all_plot$approach <- factor(performance_all_plot$approach,
+                                        levels = c('PLSR',
+                                                   'backprojected',
+                                                   'backprojected retrained',
+                                                   'translatable LVs',
+                                                   'Wopt',
+                                                   'analytical Wopt',
+                                                   'shuffle X'))
+p_train <- ggboxplot(performance_all_plot %>% filter(set=='train'),x='approach',y='r',color='approach',add='jitter') +
+  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.5,NA))+
+  xlab('')+
+  ggtitle('10-fold Train')+
+  theme(text = element_text(size=20,family = 'Arial'),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=16,angle = 25),
+        strip.text = element_text(face = 'bold'),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
+                                        c('backprojected','backprojected retrained'),
+                                        c('PLSR','backprojected'),
+                                        c('analytical Wopt','backprojected'),
+                                        c('PLSR','Wopt'),
+                                        c('PLSR','analytical Wopt'),
+                                        c('Wopt','analytical Wopt')),
+                     method = 'wilcox',
+                     tip.length = 0.01,
+                     label.y = c(0.67,0.78,0.98,0.98,1,1.02,1.04))
+print(p_train)  
+ggsave('../results/approaches_comparison_training.png',
+       plot = p_train,
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
-
+p_test <- ggboxplot(performance_all_plot %>% filter(set=='test'),x='approach',y='r',color='approach',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.5,1,0.1))+
+  xlab('')+
+  ggtitle('10-fold Test')+
+  theme(text = element_text(size=20,family = 'Arial'),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=16,angle = 25),
+        strip.text = element_text(face = 'bold'),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
+                                        c('backprojected','backprojected retrained'),
+                                        c('PLSR','backprojected'),
+                                        c('analytical Wopt','backprojected'),
+                                        c('PLSR','Wopt'),
+                                        c('PLSR','analytical Wopt'),
+                                        c('Wopt','analytical Wopt')),
+                     method = 'wilcox',
+                     tip.length = 0.01,
+                     label.y = c(0.75,0.8,0.85,0.85,0.9,0.95,0.95))
+print(p_test)  
+ggsave('../results/approaches_comparison_10foldtest.png',
+       plot = p_test,
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
