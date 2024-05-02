@@ -28,6 +28,7 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
+
 ### Step 1: Determine number of LVs to keep for PLSR modeling--------------------------------------------
 ### Split into Train - Validation -Test
 trials <- 10000
@@ -370,6 +371,7 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tun
        units = 'in',
        dpi = 600)
 
+
 ### Since we do not overfit to validation now perform cross-validation with this dataset-------------
 ### Where you calculate validation and train performance of:
 ### a) human data PLSR to predict NAS,Fibrosis
@@ -635,6 +637,7 @@ ggsave('../results/performance_df_analytical.png',
        units = 'in',
        dpi=600)
 
+
 ### Combine all results and make a nice figure--------------------------------------------------------------------
 performance_1 <- readRDS('../results/performance_df_human_plsr.rds')
 performance_2 <- readRDS('../results/performance_df_human_backprojected.rds')
@@ -726,5 +729,310 @@ ggsave('../results/approaches_comparison_10foldtest.png',
        plot = p_test,
        height = 9,
        width = 12,
+       units = 'in',
+       dpi=600)
+
+
+# Explore how the evolutionary algorithm VS analytical approach works-------------------------------------
+
+#Load data
+dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
+ref_dataset <- "Hoang"
+target_dataset <- "Kostrzewski"
+# Load
+data_list <- load_datasets(dataset_names, dir_data = '../data/')
+# Run PCA
+tmp <- process_datasets(data_list, filter_variance = F)
+data_list <- tmp$data_list
+plt_list <- tmp$plt_list
+# Define matrices of interest
+Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+colnames(Yh) <- c('NAS','fibrosis')
+Xh <- data_list[[ref_dataset]]$data_center %>% t()
+rownames(Yh) <- rownames(Xh)
+Xm <- data_list[[target_dataset]]$data_center %>% t()
+# Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
+Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+
+# Parameters of PLSR
+num_LVS <- 9
+
+# Begin iterations
+partitions <- c(1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2)
+iterations <- 10
+analytical_performance <- data.frame()
+evol_performance <- data.frame()
+plsr_performance <- data.frame()
+number_of_optimal_LVs <- data.frame()
+analytical_performance_val <- data.frame()
+evol_performance_val <- data.frame()
+plsr_performance_val <- data.frame()
+for (p in partitions){
+  message(paste0('Begun partition:',100*p,'%'))
+  for (i in 1:iterations){
+    Xh_parted <- as.matrix(as.data.frame(Xh) %>% sample_frac(size=p))
+    Yh_parted <- Yh[rownames(Xh_parted),]
+    
+    ### Keep the rest randomly for validation
+    if (p <1){
+      Xh_val <- Xh[which(!(rownames(Xh) %in% rownames(Xh_parted))),]
+      Yh_val <- Yh[rownames(Xh_val),]
+    }
+    
+    #### First run human PLSR
+    plsr_model <- suppressMessages(opls(x = Xh_parted, 
+                       y = Yh_parted,
+                       predI = num_LVS,
+                       crossvalI = 1,
+                       scaleC = "center",
+                       fig.pdfC = "none",
+                       info.txtC = "none"))
+    y_hat_plsr <- predict(plsr_model,Xh_parted)
+    if (p <1){
+      y_hat_val_plsr <- predict(plsr_model,Xh_val)
+    }
+    # Get Wh of PLSR
+    Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh_parted))
+    rownames(Wh) <- colnames(Xh_parted)
+    colnames(Wh) <- colnames(plsr_model@weightMN)
+    for (ii in 1:nrow(plsr_model@weightMN)){
+      Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+    }
+    # Get regression coefficients
+    Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+    # Define projection matrices to make more readable
+    Th <- Xh_parted %*% Wh
+    Thm <- Xh_parted %*% Wm %*% t(Wm) %*% Wh
+    
+    ### Run evolutionary algorithm
+    Wm_opt <- get_translatable_LV(Xh_parted, Yh_parted, Wh, Wm,
+                                  rbind(apply(Yh_parted,2,mean),Bh),
+                                  find_extra = TRUE,
+                                  verbose = FALSE)
+
+    Wm_opt <- Wm_opt$Wm_new
+    number_of_optimal_LVs <- rbind(number_of_optimal_LVs,
+                                   data.frame(model = 'evolutionary',
+                                              partition = p,
+                                              sample=i,
+                                              num_lvs=ncol(Wm_opt)))
+    colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
+    # Extend latent variables
+    Wm_tot <- cbind(Wm, Wm_opt)
+    # predict
+    y_hat_evol <- cbind(1, Xh_parted %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(Yh_parted,2,mean),Bh)
+    if (p <1){
+      y_hat_val_evol <- cbind(1, Xh_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(Yh_parted,2,mean),Bh)
+    }
+    
+    ### Run analytical approach
+    phi <- Wh %*% Bh
+    Wm_opt <- analytical_solution_opt(y=Yh_parted,
+                                      W_invitro = Wm,
+                                      phi = phi)
+    # Extend latent variables
+    Wm_tot <- cbind(Wm, Wm_opt)
+    # predict
+    y_hat_analytical <- cbind(1, Xh_parted %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(Yh_parted,2,mean),Bh)
+    if (p <1){
+      y_hat_val_analytical <- cbind(1, Xh_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(Yh_parted,2,mean),Bh)
+    }
+    
+    ### Evaluate pearson correlation
+    r_analytical <- diag(cor(y_hat_analytical,Yh_parted))
+    analytical_performance <- rbind(analytical_performance,
+                                    data.frame(model = 'analytical',
+                                               partition = p,
+                                               sample=i,
+                                               NAS = r_analytical['NAS'],
+                                               fibrosis = r_analytical['fibrosis']))
+    r_evol <- diag(cor(y_hat_evol,Yh_parted))
+    evol_performance <- rbind(evol_performance,
+                                    data.frame(model = 'evolutionary',
+                                               partition = p,
+                                               sample=i,
+                                               NAS = r_evol['NAS'],
+                                               fibrosis = r_evol['fibrosis']))
+    r_plsr <- diag(cor(y_hat_plsr,Yh_parted))
+    plsr_performance <- rbind(plsr_performance,
+                                    data.frame(model = 'PLSR',
+                                               partition = p,
+                                               sample=i,
+                                               NAS = r_plsr['NAS'],
+                                               fibrosis = r_plsr['fibrosis']))
+    
+    if (p <1){
+      r_analytical <- diag(cor(y_hat_val_analytical,Yh_val))
+      analytical_performance_val <- rbind(analytical_performance_val,
+                                      data.frame(model = 'analytical',
+                                                 partition = p,
+                                                 sample=i,
+                                                 NAS = r_analytical['NAS'],
+                                                 fibrosis = r_analytical['fibrosis']))
+      r_evol <- diag(cor(y_hat_val_evol,Yh_val))
+      evol_performance_val <- rbind(evol_performance_val,
+                                data.frame(model = 'evolutionary',
+                                           partition = p,
+                                           sample=i,
+                                           NAS = r_evol['NAS'],
+                                           fibrosis = r_evol['fibrosis']))
+      r_plsr <- diag(cor(y_hat_val_plsr,Yh_val))
+      plsr_performance_val <- rbind(plsr_performance_val,
+                                data.frame(model = 'PLSR',
+                                           partition = p,
+                                           sample=i,
+                                           NAS = r_plsr['NAS'],
+                                           fibrosis = r_plsr['fibrosis']))
+    }
+    
+    message(paste0('Finished iteration ',i))
+
+  }
+  cat(paste0('Performance for partition ',100*p,'%',
+             '\nPLSR: NAS:',mean(plsr_performance_val$NAS),' , Fibrosis:',mean(plsr_performance_val$fibrosis),
+             '\nEvolutionary algorithm: NAS:',mean(evol_performance_val$NAS),' , Fibrosis:',mean(evol_performance_val$fibrosis),
+             '\nAnalytical approach: NAS:',mean(analytical_performance_val$NAS),' , Fibrosis:',mean(analytical_performance_val$fibrosis),
+             '\n'))
+}
+all_performance_train <- rbind(plsr_performance,analytical_performance,evol_performance)
+all_performance_val <- rbind(plsr_performance_val,analytical_performance_val,evol_performance_val)
+# saveRDS(all_performance_train,'../results/all_performance_train_analytical_vs_evol_parted.rds')
+# saveRDS(all_performance_val,'../results/all_performance_val_analytical_vs_evol_parted.rds')
+# saveRDS(number_of_optimal_LVs,'../results/number_of_optimal_LVs_parted.rds')
+
+all_performance_train_4_plotting <- all_performance_train %>% gather('phenotype','r',-model,-partition,-sample) %>% 
+  group_by(model,partition,phenotype) %>% mutate(mu = mean(r)) %>% mutate(std=sd(r)) %>% ungroup()
+all_performance_val_4_plotting <- all_performance_val %>% gather('phenotype','r',-model,-partition,-sample) %>% 
+  group_by(model,partition,phenotype) %>% mutate(mu = mean(r)) %>% mutate(std=sd(r)) %>% ungroup()
+p <- (ggplot(all_performance_train_4_plotting %>% select(model,partition,phenotype,mu,std) %>% unique(),
+       aes(x=100*partition,y=mu,color=model,fill=model)) +
+  geom_errorbar(aes(ymax = mu + std/sqrt(iterations), ymin = mu - std/sqrt(iterations)),width = 2)+
+  geom_point(aes(y=mu))+
+  geom_line() +
+  xlab('') + ylab('pearson`s r') +
+  ggtitle('Training performance')+
+  ylim(c(0.5,1))+
+  theme_pubr(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family = 'Arial'),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5))+
+  facet_wrap(~phenotype)) / 
+  (ggplot(all_performance_val_4_plotting %>% select(model,partition,phenotype,mu,std) %>% unique(),
+          aes(x=100*partition,y=mu,color=model,fill=model)) +
+     geom_errorbar(aes(ymax = mu + std/sqrt(iterations), ymin = mu - std/sqrt(iterations)),width = 2)+
+     geom_point(aes(y=mu))+
+     geom_line() +
+     xlab('partition (%)') + ylab('pearson`s r') +
+     ggtitle('Test performance')+
+     ylim(c(0.5,1))+
+     theme_pubr(base_size = 20,base_family = 'Arial')+
+     theme(text = element_text(size=20,family = 'Arial'),
+           legend.position = 'right',
+           plot.title = element_text(hjust = 0.5))+
+     facet_wrap(~phenotype))
+p <- p + plot_layout(guides = "collect")
+print(p)
+ggsave(filename = '../results/compare_analytical_vs_evol_across_partitions.png',
+       plot = p,
+       height = 9,
+       width=12,
+       unit = 'in',
+       dpi=600)
+
+ggplot(number_of_optimal_LVs %>% mutate(partition=100*partition) %>% mutate(partition=as.factor(partition)),
+       aes(x=partition,y=num_lvs)) +
+  geom_boxplot()+
+  geom_jitter(width = 0.1,height = 0.1) +
+  xlab('partition (%)') + ylab('number of extra latent vectors used') +
+  scale_y_continuous(breaks = c(1,2,3,4,5),limits = (c(1,5.5)))+
+  theme_pubr(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family = 'Arial'),
+        legend.position = 'right',
+        plot.title = element_text(hjust = 0.5))+ 
+  stat_compare_means(method = 'kruskal',size=5)
+ggsave(filename = '../results/evol_number_lvs_inferred.png',
+       height = 9,
+       width=12,
+       unit = 'in',
+       dpi=600)
+
+### Check how similar are the the LVs found by the evolutionary algorithm
+### with the analytical solution
+### with the averaged LV across multiple runs of the evolutionary algorithm
+### with the result of the evolutionary algorithm from shuffled data
+### with the result of the analytical approach from shuffled data
+iterations <- 100
+similarity_df <- data.frame()
+for (i in 1:iterations){
+  Xh_parted <- as.matrix(as.data.frame(Xh) %>% sample_frac(size=1))
+  Yh_parted <- Yh[rownames(Xh_parted),]
+  #### First run human PLSR
+  plsr_model <- suppressMessages(opls(x = Xh_parted, 
+                                      y = Yh_parted,
+                                      predI = num_LVS,
+                                      crossvalI = 1,
+                                      scaleC = "center",
+                                      fig.pdfC = "none",
+                                      info.txtC = "none"))
+  # Get Wh of PLSR
+  Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh_parted))
+  rownames(Wh) <- colnames(Xh_parted)
+  colnames(Wh) <- colnames(plsr_model@weightMN)
+  for (ii in 1:nrow(plsr_model@weightMN)){
+    Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+  }
+  # Get regression coefficients
+  Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+  # Define projection matrices to make more readable
+  Th <- Xh_parted %*% Wh
+  Thm <- Xh_parted %*% Wm %*% t(Wm) %*% Wh
+  
+  ### Run evolutionary algorithm
+  Wm_opt_evol <- get_translatable_LV(Xh_parted, Yh_parted, Wh, Wm,
+                                     rbind(apply(Yh_parted,2,mean),Bh),
+                                     find_extra = TRUE,
+                                     verbose = FALSE)
+  Wm_opt_evol <- Wm_opt_evol$Wm_new
+  colnames(Wm_opt_evol) <- paste0('evol_LV_',seq(1,ncol(Wm_opt_evol)))
+  # Extend latent variables
+  Wm_tot_evol <- cbind(Wm, Wm_opt_evol)
+  
+  ### Run analytical approach
+  phi <- Wh %*% Bh
+  # div <- sqrt(apply(phi^2,2,sum))
+  # for (jj in 1:length(div)){
+  #   phi[,jj] <- phi[,jj]/div[jj]
+  # }
+  Wm_opt_analyt <- analytical_solution_opt(y=Yh_parted,
+                                    W_invitro = Wm,
+                                    phi = phi)
+  colnames(Wm_opt_analyt) <- paste0('analyt_LV_',seq(1,ncol(Wm_opt_analyt)))
+  # Extend latent variables
+  Wm_tot_analyt <- cbind(Wm, Wm_opt_analyt)
+  
+  ### Evaluate similarity between evol and analytical vectors
+  cosine_sim <- lsa::cosine(cbind(Wm_opt_analyt,Wm_opt_evol))
+  # cosine_sim[lower.tri(cosine_sim,diag = T)] <- -100
+  cosine_sim <- as.data.frame(cosine_sim) %>% rownames_to_column('vector_1') %>% gather('vector_2','sim',-vector_1)
+  # cosine_sim <- cosine_sim %>% filter(sim!=-100)
+  # ## Find the two maximum similar things
+  # cosine_sim_max1 <- cosine_sim %>% group_by(vector_1) %>% mutate(max_sim = max(abs_sim)) %>% ungroup() %>%
+  #   filter(abs_sim==max_sim) %>% select(-max_sim) %>% unique()
+  # cosine_sim_max2 <- anti_join(cosine_sim,cosine_sim_max1)
+  # cosine_sim_max2 <- cosine_sim_max2 %>% group_by(vector_1) %>% mutate(max_sim = max(abs_sim)) %>% ungroup() %>%
+  #   filter(abs_sim==max_sim) %>% select(-max_sim) %>% unique()
+  # cosine_sim <- rbind(cosine_sim_max1,cosine_sim_max2)
+  similarity_df <- rbind(similarity_df,
+                          cosine_sim %>% mutate(iteration=i))
+  if ((i %% 10 ==0) |(i==1)){
+    print(paste0('Finished iteration ',i))
+  }
+}
+# saveRDS(similarity_df,'../result/cosine_similarity_df_analyt_evol.rds')
+
+corrr::network_plot(tt[1:4,1:4],colors = c("red",'white', "blue"),min_cor = 0.01)
+ggsave('../results/analyt_evol_cosine_sim.png',
+       height = 9,
+       width = 9,
        units = 'in',
        dpi=600)

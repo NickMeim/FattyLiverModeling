@@ -982,19 +982,23 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
 # Function to get representative latent variables that are translatable linear combinations of 
 # the PCs of the data
 # TO DO: can be extended to use CV to determine optimal number of translatable LVs
-get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
+get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=TRUE){
   # If there is a single candidate vector, then we simply return it
   if (ncol(Wm) == 1){
     return(list(Wm_new = Wm))
   }
   # Define a vector basis depending on whether we want an extra LV or a spanned LV
   if (find_extra){
-    print("Finding extra LVs outside of MPS data")
+    if(verbose){
+      print("Finding extra LVs outside of MPS data")
+    }
     theta <- find_extra_basis(Wh, Wm, Xh, ncomp = ncol(Wh))
     theta <- theta$theta
     LV_lab <- "LV_extra"
   } else {
-    print("Finding translatable LVs in data")
+    if(verbose){
+      print("Finding translatable LVs in data")
+    }
     # Set the PCs of the MPS (Wm) as a set of basis vectors
     theta <- Wm
     LV_lab <- "LV_data"
@@ -1004,21 +1008,40 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
   # Store sum of squared error between predicted phenotype and prediction when filtering
   ErrorY <- NULL
   dErrorY <- 100
-  ii <- 1
+  ii <- 0
+  flag <- TRUE
   # Iterate and add latent variables until the error metric does not improve by more than 1%
   while ((dErrorY > 1) & (ii<ncol(Wh))){
+    if (flag){
+      ii <- ii +1
+    }
     # Find optimal weights to combine basis vectors - reduce population size multiplier
-    print(paste0("Finding LV #",ii,"..."))
+    if(verbose){
+      print(paste0("Finding LV #",ii,"..."))
+    }
     res_opt <- optim_function_evolutionary(Xh = Xh, Wh = Wh, Wm = Wm_new, 
                                            theta = theta, mod_coefs = Bh, pop_size = 5)
-    print("Done!")
+    if(verbose){
+      print("Done!")
+    }
    
     # Extract new latent variable
     Wopt <- res_opt$Wopt
     colnames(Wopt) <- paste0("LV_opt",ii)
     
     # Augment new basis 
-    Wm_new <- cbind(Wm_new, Wopt)
+    if ( (!is.null(Wm_new)) & (find_extra==TRUE)){
+      sim_cos <- lsa::cosine(cbind(Wm_new, Wopt))
+      sim_cos <- sim_cos[upper.tri(sim_cos)]
+      if (max(abs(sim_cos))<0.01){
+        Wm_new <- cbind(Wm_new, Wopt)
+        flag <- TRUE
+      }else{
+        flag <- FALSE
+      }
+    }else{
+      Wm_new <- cbind(Wm_new, Wopt)
+    }
     
     # Calculate error
     Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
@@ -1027,7 +1050,9 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
     
     # Find new basis for next iteration - find vectors orthogonal to the current new basis
     # that will still span the MPS space
-    print("Finding new vector basis...")
+    if(verbose){
+      print("Finding new vector basis...")
+    }
     if (find_extra){
       theta <- find_extra_basis(Wh, Wm, Xh, ncomp = ncol(Wh) - ii)
     } else {
@@ -1035,11 +1060,15 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE){
     }
     theta <- theta$theta
     # Update index
-    ii <- ii + 1
-    print("Done!")
+    # ii <- ii + 1
+    if(verbose){
+      print("Done!")
+    }
   }
   # After exiting it means the last component was unnecessary, so we exclude it and convert to matrix
-  Wm_new <- matrix(data = Wm_new[,-ii], ncol = ii - 1)
+  if((dErrorY <= 1)){
+    Wm_new <- matrix(data = Wm_new[,-ii], ncol = ii - 1)
+  }
   colnames(Wm_new) <- paste0(LV_lab,1:ncol(Wm_new))
   rownames(Wm_new) <- rownames(Wm)
   

@@ -5,11 +5,13 @@ library(ropls)
 analytical_solution_opt <- function(y,W_invitro,phi){
   Wopt <- matrix(0,nrow = nrow(W_invitro),ncol=ncol(y))
   for (i in 1:ncol(y)){
-    if (i == i){
-      Wopt[,i] <- (phi[,i] - W_invitro %*% t(W_invitro) %*% phi[,i])/sqrt(sum(phi[,i]^2) -sum(t(W_invitro) %*% phi[,i])^2)
+    if (i == 1){
+      alpha <- t(W_invitro) %*% phi[,i]
+      Wopt[,i] <- (phi[,i] - W_invitro %*% alpha)/sqrt(sum(phi[,i]^2) -sum(alpha^2))
     }else{
       Wnew <- cbind(W_invitro,Wopt[,1:(i-1)])
-      Wopt[,i] <- (phi[,i] - Wnew %*% t(Wnew) %*% phi[,i])/sqrt(sum(phi[,i]^2) -sum(t(Wnew) %*% phi[,i])^2)
+      alpha <- t(Wnew) %*% phi[,i]
+      Wopt[,i] <- (phi[,i] - Wnew %*% alpha)/sqrt(sum(phi[,i]^2) -sum(alpha^2))
     }
   }
   return(Wopt)
