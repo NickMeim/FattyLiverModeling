@@ -518,11 +518,16 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_diffi
        dpi=600)
 
 ### Check different random partitions
+num_lvs <- 20
+iterations <- 10
 partitions <- c(0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2)
 performance_train <- data.frame() 
 performance_val <- data.frame()
 for (p in partitions){
   message(paste0('Begun partition ',100*p,' %'))
+  if (round(p*nrow(Xh))<num_lvs){
+    num_lvs <- round(p*nrow(Xh))-1
+  }
   for (LV in 1:num_lvs){
     for (i in 1:iterations){
       Xh_parted <- as.matrix(as.data.frame(Xh) %>% sample_frac(size=p))
@@ -566,24 +571,25 @@ for (p in partitions){
 # saveRDS(performance_train,'../results/performance_train_random_partitions_many_lvs.rds')
 
 val_plot <- performance_val %>% gather('phenotype','r',-model,-num_LVs,-partition,-sample)  %>% 
-  group_by(model,num_LVs,parition,phenotype) %>% mutate(mu = mean(r)) %>% 
+  group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(r)) %>% 
   mutate(std = sd(r)) %>% ungroup() %>%
-  select(-sample,-r) %>% unique() 
+  unique() 
 train_plot <- performance_train %>% gather('phenotype','r',-model,-num_LVs,-partition,-sample)  %>% 
   group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(r)) %>% 
   mutate(std = sd(r)) %>% ungroup() %>%
-  select(-sample,-r) %>% unique()
+  unique()
 performance_plot <- rbind(train_plot %>% mutate(set='train'),
                           val_plot %>% mutate(set='test'))
 performance_plot$partition <- factor(performance_plot$partition,levels = partitions)
 performance_plot <- performance_plot %>% mutate(partition = paste0('train size = ',partition,'%'))
 
 ggplot(performance_plot,
-       aes(x=num_LVs,y=mu,colour=set))+
-  geom_line(lwd=1)+ 
-  geom_point()+ 
-  geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
+       aes(x=num_LVs,y=r,colour=set))+
+  geom_smooth(lwd=1)+ 
+  # geom_point()+ 
+  # geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
   scale_x_continuous(breaks = seq(1,20,2))+
+  scale_y_continuous(breaks = seq(0.5,1,0.1))+
   xlab('number of latent variables') +
   ylab('pearson`s r')+
   theme_pubr(base_family = 'Arial',base_size = 18)+
@@ -592,7 +598,7 @@ ggplot(performance_plot,
         panel.grid.major = element_line(),
         strip.text = element_text(face = 'bold'),
         plot.title = element_text(hjust = 0.5))+
-  facet_wrap(~partition)
+  facet_wrap(~partition,scale='free_x')
 
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multiple_partitions.png',
        width = 12,
