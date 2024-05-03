@@ -1009,12 +1009,17 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=T
   ErrorY <- NULL
   dErrorY <- 100
   ii <- 0
-  flag <- TRUE
+  # flag <- TRUE
+  # thresh <- 0.01
+  # th <- 0.25
+  # counter <- 1
+  base_err <- 1
   # Iterate and add latent variables until the error metric does not improve by more than 1%
-  while ((dErrorY > 1) & (ii<ncol(Wh))){
-    if (flag){
-      ii <- ii +1
-    }
+  while ((dErrorY > base_err) & (ii<ncol(Bh)+2)){
+    # if (flag){
+    #   ii <- ii +1
+    # }
+    ii <- ii +1
     # Find optimal weights to combine basis vectors - reduce population size multiplier
     if(verbose){
       print(paste0("Finding LV #",ii,"..."))
@@ -1030,19 +1035,27 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=T
     colnames(Wopt) <- paste0("LV_opt",ii)
     
     # Augment new basis 
-    if ( (!is.null(Wm_new)) & (find_extra==TRUE)){
-      sim_cos <- lsa::cosine(cbind(Wm_new, Wopt))
-      sim_cos <- sim_cos[upper.tri(sim_cos)]
-      if (max(abs(sim_cos))<0.01){
-        Wm_new <- cbind(Wm_new, Wopt)
-        flag <- TRUE
-      }else{
-        flag <- FALSE
-      }
-    }else{
-      Wm_new <- cbind(Wm_new, Wopt)
-    }
-    
+    # if ( (!is.null(Wm_new)) & (find_extra==TRUE)){
+    #   sim_cos <- lsa::cosine(cbind(Wm_new, Wopt))
+    #   sim_cos <- sim_cos[upper.tri(sim_cos)]
+    #   if (max(abs(sim_cos))<=thresh){
+    #     Wm_new <- cbind(Wm_new, Wopt)
+    #     # Calculate error
+    #     Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
+    #     ErrorY[ii] <- sum((Ypred - Yh)^2)
+    #     dErrorY <- ifelse(ii == 1, ErrorY[ii], 100*abs(ErrorY[ii] - ErrorY[ii-1])/ErrorY[ii])
+    #     flag <- TRUE
+    #   }else{
+    #     flag <- FALSE
+    #   }
+    # }else{
+    #   Wm_new <- cbind(Wm_new, Wopt)
+    #   # Calculate error
+    #   Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
+    #   ErrorY[ii] <- sum((Ypred - Yh)^2)
+    #   dErrorY <- ifelse(ii == 1, ErrorY[ii], 100*abs(ErrorY[ii] - ErrorY[ii-1])/ErrorY[ii])
+    # }
+    Wm_new <- cbind(Wm_new, Wopt)
     # Calculate error
     Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
     ErrorY[ii] <- sum((Ypred - Yh)^2)
@@ -1064,6 +1077,15 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=T
     if(verbose){
       print("Done!")
     }
+    # counter <- counter +1
+    # if (counter==10){
+    #   thresh <- thresh + 0.05
+    #   counter <- 1
+    # }
+    # if (thresh>=th){
+    #   th <- th + 0.15
+    #   base_err <- base_err + 2
+    # }
   }
   # After exiting it means the last component was unnecessary, so we exclude it and convert to matrix
   if((dErrorY <= 1)){

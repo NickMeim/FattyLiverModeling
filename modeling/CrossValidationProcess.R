@@ -158,6 +158,9 @@ test_R2 <- NULL
 val_r <- NULL
 train_r <- NULL
 test_r <- NULL
+val_R2_shuffled <- NULL
+val_r_shuffled <- NULL
+val_mae_shuffled <- NULL
 num_LVs <- seq(1,20)
 num_folds <- 10
 tuning_df <- data.frame()
@@ -169,7 +172,7 @@ for (i in 1:length(num_LVs)){
     x_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_val',j,'.rds'))
     y_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_val',j,'.rds'))
     
-    plsr_model <- opls(x = x_train, 
+    plsr_model <- opls(x = x_train,
                        y = y_train,
                        predI = num_LVs[i],
                        crossvalI = 1,
@@ -178,23 +181,36 @@ for (i in 1:length(num_LVs)){
                        info.txtC = "none")
     y_train_hat <- predict(plsr_model,x_train)
     y_val_hat <- predict(plsr_model,x_val)
-    # y_hat_test <- predict(plsr_model,Xh_test)
     
+    ### Shuffled X model
+    x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
+    colnames(x_train_shuffled) <- colnames(x_train)
+    plsr_model_shuffled <- opls(x = x_train_shuffled, 
+                       y = y_train,
+                       predI = num_LVs[i],
+                       crossvalI = 1,
+                       scaleC = "center",
+                       fig.pdfC = "none",
+                       info.txtC = "none")
+    y_val_hat_shuffled <- predict(plsr_model_shuffled,x_val)
+
     train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
     val_r[j] <- mean(diag(cor(y_val_hat,y_val)))
-    # test_r[j]<- mean(diag(cor(y_hat_test,Yh_test)))
+    val_r_shuffled[j] <- mean(diag(cor(y_val_hat_shuffled,y_val)))
     train_R2[j] <- mean(diag(cor(y_train_hat,y_train)^2))
     val_R2[j] <- mean(diag(cor(y_val_hat,y_val)^2))
-    # test_R2[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+    val_R2_shuffled[j] <- mean(diag(cor(y_val_hat_shuffled,y_val)^2))
     val_mae[j] <- mean(abs(y_val_hat-y_val))
+    val_mae_shuffled[j] <- mean(abs(y_val_hat_shuffled-y_val))
     train_mae[j] <- mean(abs(y_train_hat-y_train))
-    # test_mae[j] <- mean(abs(y_hat_test-Yh_test))
   }
   tuning_df <- rbind(tuning_df,
-                     data.frame(set='train',r = train_r,MAE = train_mae,R2=train_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
-                     data.frame(set='validation',r = val_r,MAE = val_mae,R2=val_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)))
+                     # data.frame(set='train',r = train_r,MAE = train_mae,R2=train_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
+                     # data.frame(set='validation',r = val_r,MAE = val_mae,R2=val_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
+                     data.frame(set='shuffled',r = val_r_shuffled,MAE = val_mae_shuffled,R2=val_R2_shuffled,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)))
   print(paste0('Finished fitting PLSR with ',num_LVs[i],' latent variables'))
 }
+
 # saveRDS(tuning_df,'../preprocessing/TrainingValidationData/WholePipeline/tuning_df.rds')
 
 plotting_df <- tuning_df  %>% gather('metric','value',-set,-fold,-LVs) %>% 
@@ -371,6 +387,218 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tun
        units = 'in',
        dpi = 600)
 
+### Check different partitions of data based on the average similarity of training and test set
+### First find similarity distribution of all data
+Xh <- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
+Yh <- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
+rownames(Yh) <- rownames(Xh)
+Xh_test<- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
+Yh_test<- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
+all_correlations <- cor(t(Xh))
+# all_correlations <- all_correlations[upper.tri(all_correlations,diag = FALSE)]
+diag(all_correlations) <- NA
+all_correlations <- apply(all_correlations,1,max,na.rm=TRUE)
+# min_lvl <- sign(min(all_correlations)) * ceiling(10*abs(min(all_correlations)))/10
+# max_lvl <- ceiling(10*max(all_correlations))/10
+# # binned_cor <- cut(all_correlations,breaks = seq(min_lvl,max_lvl,0.2))
+# bins_thresh_corr <- seq(min_lvl,max_lvl,0.2)[2:length(seq(min_lvl,max_lvl,0.2))]
+# hist(all_correlations,40,main='Pearson`s r of human samples')
+bins_thresh_corr <- c(0.2,0.3,0.4,0.5,0.7)
+
+partition_indices <- list()
+for (i in 1:length(bins_thresh_corr)){
+  # if (i==1){
+  #   [[i]] <- names(which(all_correlations<=bins_thresh_corr[i]))
+  # }else{
+  #   partition_indices[[i]] <- names(which(all_correlations<=bins_thresh_corr[i] & all_correlations>bins_thresh_corr[i-1]))
+  # }
+  partition_indices[[i]] <- names(which(all_correlations<=bins_thresh_corr[i]))
+}
+
+# Begin iterations
+performance_train <- data.frame()
+performance_val <- data.frame()
+iterations <- 10
+number_samp <- ceiling(0.2 * nrow(Xh))
+num_lvs <- 20
+for (j in 1:length(partition_indices)){
+  message(paste0('Begun withhelding samples with maximum correlation of ',bins_thresh_corr[j],' with all the data'))
+  for (LV in 1:num_lvs){
+    if (length(partition_indices[[j]])>number_samp){
+      kk <- iterations
+    }else{
+      kk <- 1
+    }
+    for (i in 1:kk){
+      Xh_val <- Xh[partition_indices[[j]],]
+      if (kk>1){
+        Xh_val <- as.matrix(as.data.frame(Xh_val) %>% sample_n(number_samp))
+      }
+      Xh_parted <- Xh[which(!(rownames(Xh) %in% rownames(Xh_val))),]
+      Yh_parted <- Yh[rownames(Xh_parted),]
+      Yh_val <- Yh[rownames(Xh_val),]
+      #### First run human PLSR
+      plsr_model <- suppressMessages(opls(x = Xh_parted, 
+                                          y = Yh_parted,
+                                          predI = LV,
+                                          crossvalI = 1,
+                                          scaleC = "center",
+                                          fig.pdfC = "none",
+                                          info.txtC = "none"))
+      y_hat_plsr <- predict(plsr_model,Xh_parted)
+      y_hat_val_plsr <- predict(plsr_model,Xh_val)
+      
+      r_plsr <- diag(cor(y_hat_plsr,Yh_parted))
+      performance_train <- rbind(performance_train,
+                                 data.frame(model = 'PLSR',
+                                            num_LVs = LV,
+                                            max_corr = bins_thresh_corr[j],
+                                            sample=i,
+                                            NAS = r_plsr['NAS'],
+                                            fibrosis = r_plsr['fibrosis']))
+      
+      r_plsr <- diag(cor(y_hat_val_plsr,Yh_val))
+      performance_val <- rbind(performance_val,
+                               data.frame(model = 'PLSR',
+                                          num_LVs = LV,
+                                          max_corr = bins_thresh_corr[j],
+                                          sample=i,
+                                          NAS = r_plsr['NAS'],
+                                          fibrosis = r_plsr['fibrosis']))
+      
+      print(paste0('Finished iteration ',i))
+    }
+    print(paste0('Finished PLSR with ',LV,' latent variables'))
+  }
+}
+# saveRDS(performance_val,'../results/performance_val_difficult_partitions.rds')
+# saveRDS(performance_train,'../results/performance_train_difficult_partitions.rds')
+
+val_plot <- performance_val %>% gather('phenotype','r',-model,-num_LVs,-max_corr,-sample)  %>% 
+  # group_by(model,num_LVs,max_corr,sample) %>% mutate(r = mean(r)) %>% select(-phenotype) %>% ungroup() %>%
+  group_by(model,num_LVs,max_corr,phenotype) %>% mutate(mu = mean(r)) %>% 
+  mutate(std = sd(r)) %>% ungroup() %>%
+  select(-sample,-r,) %>% unique() %>%
+  mutate(std = ifelse(is.na(std),0,std)) 
+val_plot$max_corr <- factor(val_plot$max_corr,levels = bins_thresh_corr)
+val_plot <- val_plot %>% mutate(max_corr = paste0('max r = ',max_corr))
+
+train_plot <- performance_train %>% gather('phenotype','r',-model,-num_LVs,-max_corr,-sample)  %>% 
+  # group_by(model,num_LVs,max_corr,sample) %>% mutate(r = mean(r)) %>% select(-phenotype) %>% ungroup() %>%
+  group_by(model,num_LVs,max_corr,phenotype) %>% mutate(mu = mean(r)) %>% 
+  mutate(std = sd(r)) %>% ungroup() %>%
+  select(-sample,-r) %>% unique() %>%
+  mutate(std = ifelse(is.na(std),0,std)) 
+train_plot$max_corr <- factor(train_plot$max_corr,levels = bins_thresh_corr)
+train_plot <- train_plot %>% mutate(max_corr = paste0('max r = ',max_corr))
+
+performance_plot <- rbind(train_plot %>% mutate(set='train'),
+                          val_plot %>% mutate(set='test'))
+
+ggplot(performance_plot,
+       aes(x=num_LVs,y=mu,colour=phenotype,shape=set))+
+  geom_line(aes(linetype = set),lwd=1)+ 
+  geom_point()+ 
+  geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
+  scale_x_continuous(breaks = seq(1,20,2))+
+  xlab('number of latent variables') +
+  ylab('pearson`s r')+
+  ggtitle('Performance for test sets of increasing difficulty')+
+  theme_pubr(base_family = 'Arial',base_size = 18)+
+  theme(text = element_text(size=18,family = 'Arial'),
+        legend.position = 'right',
+        panel.grid.major = element_line(),
+        strip.text = element_text(face = 'bold'),
+        plot.title = element_text(hjust = 0.5))+
+  facet_wrap(~max_corr)
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_difficult.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
+
+### Check different random partitions
+partitions <- c(0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2)
+performance_train <- data.frame() 
+performance_val <- data.frame()
+for (p in partitions){
+  message(paste0('Begun partition ',100*p,' %'))
+  for (LV in 1:num_lvs){
+    for (i in 1:iterations){
+      Xh_parted <- as.matrix(as.data.frame(Xh) %>% sample_frac(size=p))
+      Yh_parted <- Yh[rownames(Xh_parted),]
+      Xh_val <- Xh[which(!(rownames(Xh) %in% rownames(Xh_parted))),]
+      Yh_val <- Yh[rownames(Xh_val),]
+      #### First run human PLSR
+      plsr_model <- suppressMessages(opls(x = Xh_parted, 
+                                          y = Yh_parted,
+                                          predI = LV,
+                                          crossvalI = 1,
+                                          scaleC = "center",
+                                          fig.pdfC = "none",
+                                          info.txtC = "none"))
+      y_hat_plsr <- predict(plsr_model,Xh_parted)
+      y_hat_val_plsr <- predict(plsr_model,Xh_val)
+      
+      r_plsr <- diag(cor(y_hat_plsr,Yh_parted))
+      performance_train <- rbind(performance_train,
+                                 data.frame(model = 'PLSR',
+                                            num_LVs = LV,
+                                            partition = p,
+                                            sample=i,
+                                            NAS = r_plsr['NAS'],
+                                            fibrosis = r_plsr['fibrosis']))
+      
+      r_plsr <- diag(cor(y_hat_val_plsr,Yh_val))
+      performance_val <- rbind(performance_val,
+                               data.frame(model = 'PLSR',
+                                          num_LVs = LV,
+                                          partition = p,
+                                          sample=i,
+                                          NAS = r_plsr['NAS'],
+                                          fibrosis = r_plsr['fibrosis']))
+      
+    }
+    print(paste0('Finished PLSR with ',LV,' latent variables'))
+  }
+}
+# saveRDS(performance_val,'../results/performance_val_random_partitions_many_lvs.rds')
+# saveRDS(performance_train,'../results/performance_train_random_partitions_many_lvs.rds')
+
+val_plot <- performance_val %>% gather('phenotype','r',-model,-num_LVs,-partition,-sample)  %>% 
+  group_by(model,num_LVs,parition,phenotype) %>% mutate(mu = mean(r)) %>% 
+  mutate(std = sd(r)) %>% ungroup() %>%
+  select(-sample,-r) %>% unique() 
+train_plot <- performance_train %>% gather('phenotype','r',-model,-num_LVs,-partition,-sample)  %>% 
+  group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(r)) %>% 
+  mutate(std = sd(r)) %>% ungroup() %>%
+  select(-sample,-r) %>% unique()
+performance_plot <- rbind(train_plot %>% mutate(set='train'),
+                          val_plot %>% mutate(set='test'))
+performance_plot$partition <- factor(performance_plot$partition,levels = partitions)
+performance_plot <- performance_plot %>% mutate(partition = paste0('train size = ',partition,'%'))
+
+ggplot(performance_plot,
+       aes(x=num_LVs,y=mu,colour=set))+
+  geom_line(lwd=1)+ 
+  geom_point()+ 
+  geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
+  scale_x_continuous(breaks = seq(1,20,2))+
+  xlab('number of latent variables') +
+  ylab('pearson`s r')+
+  theme_pubr(base_family = 'Arial',base_size = 18)+
+  theme(text = element_text(size=18,family = 'Arial'),
+        legend.position = 'right',
+        panel.grid.major = element_line(),
+        strip.text = element_text(face = 'bold'),
+        plot.title = element_text(hjust = 0.5))+
+  facet_wrap(~partition)
+
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multiple_partitions.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
 
 ### Since we do not overfit to validation now perform cross-validation with this dataset-------------
 ### Where you calculate validation and train performance of:
@@ -580,7 +808,8 @@ performance_5 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected_into_optimal_lvs',
                                                     LVs = num_LVS)
-saveRDS(performance_5,'../results/performance_df_optimal_direction.rds')
+# saveRDS(performance_5,'../results/performance_df_optimal_direction.rds')
+# performance_5_tosave <- performance_5
 #plot
 performance_5$type <- factor(performance_5$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_5$set <- factor(performance_5$set ,levels=c('train','test'))
@@ -612,7 +841,7 @@ performance_6 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'analytical_optimal',
                                                     LVs = 9)
-saveRDS(performance_6,'../results/performance_df_analytical.rds')
+# saveRDS(performance_6,'../results/performance_df_analytical.rds')
 
 performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
@@ -636,6 +865,7 @@ ggsave('../results/performance_df_analytical.png',
        width = 12,
        units = 'in',
        dpi=600)
+
 
 
 ### Combine all results and make a nice figure--------------------------------------------------------------------
@@ -733,7 +963,8 @@ ggsave('../results/approaches_comparison_10foldtest.png',
        dpi=600)
 
 
-# Explore how the evolutionary algorithm VS analytical approach works-------------------------------------
+
+### Explore how the evolutionary algorithm VS analytical approach works-------------------------------------
 
 #Load data
 dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
@@ -1028,11 +1259,25 @@ for (i in 1:iterations){
     print(paste0('Finished iteration ',i))
   }
 }
-# saveRDS(similarity_df,'../result/cosine_similarity_df_analyt_evol.rds')
+# saveRDS(similarity_df,'../results/cosine_similarity_df_analyt_evol.rds')
+similarity_2_plot <- similarity_df %>% group_by(vector_1,vector_2) %>%
+  mutate(mean_abs = mean(abs(sim))) %>% ungroup() %>%
+  select(vector_1,vector_2,mean_abs) %>% unique() %>%
+  spread('vector_2','mean_abs') %>% column_to_rownames('vector_1')
+png('../results/analyt_evol_cosine_sim.png',width = 9,height = 9,units = 'in',res = 600)
+corrplot::corrplot(as.matrix(similarity_2_plot), is.corr = F,addCoef.col = T,
+                   diag = F,method = 'shade',tl.col = 'black',col = brewer.pal(n = 9, name = "Reds"),
+                   type="upper")
+dev.off()
+# corrr::network_plot(similarity_2_plot,colors = c('white',"red"),min_cor = 0.01)
+# ggsave('../results/analyt_evol_cosine_sim_net.png',
+#        height = 9,
+#        width = 9,
+#        units = 'in',
+#        dpi=600)
 
-corrr::network_plot(tt[1:4,1:4],colors = c("red",'white', "blue"),min_cor = 0.01)
-ggsave('../results/analyt_evol_cosine_sim.png',
-       height = 9,
-       width = 9,
-       units = 'in',
-       dpi=600)
+
+### Explore how analytical LVs change by: ----------------------
+### a) Human data partition
+### b) In-Vitro data partition (LOOCV of PCs perhaps)
+### c) number of LVs used in PLSR of human genes

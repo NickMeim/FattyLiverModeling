@@ -290,7 +290,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
     }else if (task=='human_backprojected_into_optimal_lvs'){
       Wm_opt <- get_translatable_LV(x_train, y_train, Wh, W_invitro,
                                     rbind(apply(y_train,2,mean),Bh),
-                                    find_extra = TRUE)
+                                    find_extra = TRUE,
+                                    verbose = FALSE)
       Wm_opt <- Wm_opt$Wm_new
       colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
       # Extend latent variables
@@ -324,7 +325,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       Bshuffled <- rbind(apply(y_train,2,mean),Bshuffled)
       Wm_opt <- get_translatable_LV(x_train, y_train, Wh, W_invitro,
                                     Bshuffled,
-                                    find_extra = TRUE)
+                                    find_extra = TRUE,
+                                    verbose = FALSE)
       Wm_opt <- Wm_opt$Wm_new
       colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
       # Extend latent variables
