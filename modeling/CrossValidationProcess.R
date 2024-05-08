@@ -235,7 +235,7 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.png',
        units = 'in',
        dpi=600)
 
-### After selecting 9 LVs as the tuned parameter re-fit with only those
+### After selecting 7 LVs as the tuned parameter re-fit with only those
 ### But also calculate shuffled and null models performance
 val_mae <- NULL
 train_mae <- NULL
@@ -261,7 +261,7 @@ for (j in 1:num_folds){
   
   plsr_model <- opls(x = x_train, 
                      y = y_train,
-                     predI = 9,
+                     predI = 7,
                      crossvalI = 1,
                      scaleC = "center",
                      fig.pdfC = "none",
@@ -286,7 +286,7 @@ for (j in 1:num_folds){
   rownames(y_train_shuffled) <- rownames(y_train)
   plsr_model_shuffle_y <- opls(x = x_train, 
                      y = y_train_shuffled,
-                     predI = 9,
+                     predI = 7,
                      crossvalI = 1,
                      scaleC = "center",
                      fig.pdfC = "none",
@@ -303,7 +303,7 @@ for (j in 1:num_folds){
   colnames(x_train_shuffled) <- colnames(x_train)
   plsr_model_shuffle_x <- opls(x = x_train_shuffled, 
                                y = y_train,
-                               predI = 9,
+                               predI = 7,
                                crossvalI = 1,
                                scaleC = "center",
                                fig.pdfC = "none",
@@ -321,7 +321,7 @@ for (j in 1:num_folds){
   rownames(x_train_random) <- rownames(x_train)
   plsr_model_random_x <- opls(x = x_train_random, 
                                y = y_train,
-                               predI = 9,
+                               predI = 7,
                                crossvalI = 1,
                                scaleC = "center",
                                fig.pdfC = "none",
@@ -339,7 +339,7 @@ performance_df <- rbind(data.frame(set='train',r = train_r,MAE = train_mae,fold 
                         data.frame(set='shuffle Y',r = test_r_shuffle_y,MAE = test_mae_shuffle_y,fold = seq(1,num_folds)),
                         data.frame(set='shuffle X',r = test_r_shuffle_x,MAE = test_mae_shuffle_x,fold = seq(1,num_folds)),
                         data.frame(set='random X',r = test_r_random_x,MAE = test_mae_random_x,fold = seq(1,num_folds)))
-saveRDS(performance_df,'../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.rds')
+# saveRDS(performance_df,'../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.rds')
 
 avg_mae <- mean(abs(Yh_test-apply(Yh,2,mean)))
 plotting_performance_df <- performance_df %>% 
@@ -584,8 +584,8 @@ performance_plot$partition <- factor(performance_plot$partition,levels = partiti
 performance_plot <- performance_plot %>% mutate(partition = paste0('train size = ',partition,'%'))
 
 ggplot(performance_plot,
-       aes(x=num_LVs,y=r,colour=set))+
-  geom_smooth(lwd=1)+ 
+       aes(x=num_LVs,y=r,colour=set,shape=phenotype))+
+  geom_smooth(aes(linetype=phenotype),lwd=1)+ 
   # geom_point()+ 
   # geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
   scale_x_continuous(breaks = seq(1,20,2))+
@@ -614,7 +614,7 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multi
 ### d) c) back-projected human data PLSR to predict NAS, Fibrosis with optimal direction
 num_folds <- 10
 loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
-num_LVS <- 9
+num_LVS <- 5
 dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
 ref_dataset <- "Hoang"
 target_dataset <- "Kostrzewski"
@@ -992,7 +992,7 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
 # Parameters of PLSR
-num_LVS <- 9
+num_LVS <- 5
 
 # Begin iterations
 partitions <- c(1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2)

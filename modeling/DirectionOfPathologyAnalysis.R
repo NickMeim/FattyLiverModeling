@@ -8,6 +8,7 @@ library(ggsignif)
 library(ggrepel)
 library(ggbreak) 
 library(patchwork)
+library(ggradar)
 library(pls)
 library(pheatmap)
 library(patchwork)
@@ -25,52 +26,191 @@ library(GO.db)
 library(OmnipathR)
 library(EGSEAdata)
 # library(nichenetr)
+source("../utils/plotting_functions.R")
+source("functions_translation_jose.R")
+source("CrossValidationUtilFunctions.R")
 
 #### Load pre-processed data----------------------
-data <- readRDS("../data/preprocessed_NAFLD.rds")
-data_A <- data$data_A
-data_B <- data$data_B
-Y_A <- data$Y_A
+# data <- readRDS("../data/preprocessed_NAFLD.rds")
+# data_A <- data$data_A
+# data_B <- data$data_B
+# Y_A <- data$Y_A
 
-### read optimal direction
-Woptim <- readRDS('../results/Wm_opt_2.rds')
-colnames(Woptim) <- 'w_optimal'
+# ## normalize
+# ## I do not think I need any more common genes to interogate
+# # Intersect datasets - keep common genes
+# genes_common <- intersect(rownames(data_A), rownames(data_B))
+# # Transform to log2(cpm + 1) and keep features that are present in at least 10% of each dataset
+# data_A <- apply(data_A[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6)
+# data_B <- apply(data_B[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6)
+# # Remove features absent from at least 10% in each samples
+# keep_gene <- (rowSums(data_A >= 1) >= 0.1*ncol(data_A)) &
+#   (rowSums(data_B >= 1) >= 0.1*ncol(data_B))
+# # Run PCA on each dataset. Not scaling PCA
+# # Log and center dataset A and run PCA
+# X_A <- log2(1 + data_A[keep_gene,])
+# X_A <- t(X_A - rowMeans(X_A))
+# # Log and center dataset B and run PCA
+# Xm <- log2(1 + data_B[keep_gene,])
+# Xm <- t(Xm - rowMeans(Xm))
+# # Transform to log2(cpm + 1) and keep features that are present in at least 10% of each dataset
+# # data_B <- apply(data_B, MARGIN = 2, FUN = function(x) x/sum(x)*1e6) 
+# # Remove features absent from at least 10% in each samples
+# # keep_gene <- rowSums(data_B >= 1) >= 0.1*ncol(data_B)
+# # Run PCA on each dataset. Not scaling PCA
+# # Log and center dataset B and run PCA
+# # keep_gene <- rownames(Woptim)[which(rownames(Woptim) %in% rownames(data_B))]
+# # Xm <- log2(1 + data_B[keep_gene,])
+# # Xm <- t(Xm - rowMeans(Xm))
 
-## normalize
-## I do not think I need any more common genes to interogate
-# Intersect datasets - keep common genes
-genes_common <- intersect(rownames(data_A), rownames(data_B))
-# Transform to log2(cpm + 1) and keep features that are present in at least 10% of each dataset
-data_A <- apply(data_A[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6)
-data_B <- apply(data_B[genes_common,], MARGIN = 2, FUN = function(x) x/sum(x)*1e6)
-# Remove features absent from at least 10% in each samples
-keep_gene <- (rowSums(data_A >= 1) >= 0.1*ncol(data_A)) &
-  (rowSums(data_B >= 1) >= 0.1*ncol(data_B))
-# Run PCA on each dataset. Not scaling PCA
-# Log and center dataset A and run PCA
-X_A <- log2(1 + data_A[keep_gene,])
-X_A <- t(X_A - rowMeans(X_A))
-# Log and center dataset B and run PCA
-X_B <- log2(1 + data_B[keep_gene,])
-X_B <- t(X_B - rowMeans(X_B))
-# Transform to log2(cpm + 1) and keep features that are present in at least 10% of each dataset
-# data_B <- apply(data_B, MARGIN = 2, FUN = function(x) x/sum(x)*1e6) 
-# Remove features absent from at least 10% in each samples
-# keep_gene <- rowSums(data_B >= 1) >= 0.1*ncol(data_B)
-# Run PCA on each dataset. Not scaling PCA
-# Log and center dataset B and run PCA
-# keep_gene <- rownames(Woptim)[which(rownames(Woptim) %in% rownames(data_B))]
-# X_B <- log2(1 + data_B[keep_gene,])
-# X_B <- t(X_B - rowMeans(X_B))
+dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
+ref_dataset <- "Hoang"
+target_dataset <- "Kostrzewski"
+# Load
+data_list <- load_datasets(dataset_names, dir_data = '../data/')
+# Run PCA
+tmp <- process_datasets(data_list, filter_variance = F)
+data_list <- tmp$data_list
+plt_list <- tmp$plt_list
+# Define matrices of interest
+Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+colnames(Yh) <- c('NAS','fibrosis')
+Xh <- data_list[[ref_dataset]]$data_center %>% t()
+Xm <- data_list[[target_dataset]]$data_center %>% t()
+# Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
+Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
+## Find optimal
+plsr_model <- opls(x = Xh, 
+                   y = Yh,
+                   predI = 7,
+                   crossvalI = 1,
+                   scaleC = "center",
+                   fig.pdfC = "none",
+                   info.txtC = "none")
+# Get Wh of PLSR
+Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
+rownames(Wh) <- colnames(Xh)
+colnames(Wh) <- colnames(plsr_model@weightMN)
+for (ii in 1:nrow(plsr_model@weightMN)){
+  Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+}
+# Get regression coefficients
+Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+phi <- Wh %*% Bh
+Woptim <- analytical_solution_opt(y=Yh,
+                                  W_invitro = Wm,
+                                  phi = phi)
+
+rownames(Woptim) <- rownames(Wm)
+Zh <- as.data.frame(Xh %*% Woptim)
+Zh$NAS <- Yh[,1]
+Zh$fibrosis <- Yh[,2]
+Zh <- Zh %>% rownames_to_column('sample')
+w1 <- c(seq(-1,1,0.01))
+w2 <- c(seq(-1,1,0.01))
+r <- NULL
+k <- 1
+df <- data.frame()
+# for (a in w1){
+#   for (b in w2){
+#     r[k] <- b/a
+#     tmp <- Zh %>% mutate(u = a * V1 + b * V2)
+#     corr_nas <- cor(tmp$u,tmp$NAS)
+#     corr_fib <- cor(tmp$u,tmp$fibrosis)
+#     df <- rbind(df,
+#                 data.frame(w1=a,w2=b,phenotype = 'NAS',corr=corr_nas),
+#                 data.frame(w1=a,w2=b,phenotype = 'fibrosis',corr=corr_fib))
+#   }
+# }
+# thetas <- c(0,5,10,20,30,45,60,75,90,120,seq(140,240,20),270,seq(300,360,20))
+thetas <- seq(0,360,5)
+df_proj <- data.frame()
+df <- data.frame()
+for (theta in thetas){
+  u <- c(cos(theta * pi / 180),sin(theta * pi / 180))
+  u <- as.matrix(u)
+  proj <- u %*% t(u) # since it is unit norm vector
+  tmp <- as.matrix(Zh%>% select(V1,V2))
+  Z_proj <- tmp %*% proj
+  if (theta %in% c(90,270)){
+    corr_nas <- cor(Z_proj[,2],Zh$NAS)
+    corr_fib <- cor(Z_proj[,2],Zh$fibrosis)
+  }else{
+    corr_nas <- cor(Z_proj[,1],Zh$NAS)
+    corr_fib <- cor(Z_proj[,1],Zh$fibrosis)
+  }
+  df <- rbind(df,
+              data.frame(theta = theta,phenotype = 'NAS',corr=corr_nas),
+              data.frame(theta = theta,phenotype = 'fibrosis',corr=corr_fib))
+  df_proj <- rbind(df_proj,
+                   data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'NAS',corr=corr_nas),
+                   data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'fibrosis',corr=corr_fib))
+}
+# ggplot(df,aes(x=w1,y=w2,fill=corr)) +
+#   scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0, limits = c(-1, 1))+
+#   geom_tile()+
+#   facet_wrap(~phenotype) +
+#   theme_pubr(base_size = 20,base_family = 'Arial')+
+#   theme(text = element_text(size=20,family='Arial'),
+#         legend.position = 'right')
+# ggsave('../results/pc_loadings_scores_analysis/optimal_directions_combinations_corr.png',
+#        height = 9,
+#        width = 12,
+#        units = 'in',
+#        dpi=600)
+p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>% 
+               mutate(`absolute average`=0.5*(abs(NAS)+abs(fibrosis))) %>% 
+               ungroup() %>% gather('phenotype','corr',-theta),
+             aes(x=theta,y=corr,colour=phenotype)) +
+  geom_line()+
+  geom_point()+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(breaks = seq(-1,1,0.25))+
+  scale_x_continuous(breaks = seq(0,360,15))+
+  xlab(expression(theta*" (\u00B0)"))+
+  theme_minimal(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family='Arial'),
+        legend.position = 'top')
+
+# p2 <- ggplot(df %>% spread('phenotype','corr'),aes(x=NAS,y=fibrosis,fill=theta * pi / 180)) +
+#   geom_point(shape=22)+
+#   scale_fill_gradient(low = 'red',high = 'white',limits = c(0, 2*pi))+
+#   geom_hline(yintercept = 0) +
+#   geom_vline(xintercept = 0) +
+#   theme_minimal(base_size = 20,base_family = 'Arial')+
+#   theme(text = element_text(size=20,family='Arial'),
+#         legend.position = 'right')
+
+p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
+  # geom_point()+
+  geom_segment(aes(x=0,y=0,xend =LV_opt_1,yend=LV_opt_2),
+               arrow = arrow(length = unit(0.03, "npc")))+
+  scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
+  scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~phenotype)+
+  theme_minimal(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family='Arial'),
+        legend.position = 'right')
+p1 / p2
+ggsave('../results/pc_loadings_scores_analysis/optimal_space_phenotypes_correlations_directions.png',
+       height = 12,
+       width = 12,
+       units = 'in',
+       dpi=600)
+
+## Check out 
 Woptim <- as.data.frame(Woptim) %>% rownames_to_column('gene')
 Woptim$significant <- ''
-Woptim$significant[order(-abs(Woptim$w_optimal))[1:20]] <- Woptim$gene[order(-abs(Woptim$w_optimal))[1:20]]
-Woptim <- Woptim[order(Woptim$w_optimal),]
+Woptim$significant[order(-abs(Woptim$V1))[1:20]] <- Woptim$gene[order(-abs(Woptim$V1))[1:20]]
+Woptim <- Woptim[order(Woptim$V1),]
 Woptim$gene <- factor(Woptim$gene,levels = Woptim$gene)
 
+
 ### Perform PCA and get loadings----------------
-PCA_alldata <- prcomp(X_B, scale. = F, center = T)
+PCA_alldata <- prcomp(Xm, scale. = F, center = T)
 loadings <- PCA_alldata$rotation
 loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,PC12)
 loadings$significant <- ''
@@ -810,7 +950,7 @@ ggsave('../results/pc_loadings_scores_analysis/protein_activity_from_loadings_vo
 
 ### Perform KEGG pathway analysis (GSEA)------------
 # rownames(loadings) <- NULL
-PCA_alldata <- prcomp(X_B, scale. = F, center = T)
+PCA_alldata <- prcomp(Xm, scale. = F, center = T)
 loadings <- PCA_alldata$rotation
 Woptim <- readRDS('../results/Wm_opt_2.rds')
 loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,PC12,PC8) %>% column_to_rownames('gene')
