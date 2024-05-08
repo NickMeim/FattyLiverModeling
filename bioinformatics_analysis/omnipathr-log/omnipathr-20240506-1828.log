@@ -1,0 +1,12 @@
+[2024-05-06 18:28:38] [INFO]    [OmnipathR] Welcome to OmnipathR!
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] Reading JSON from `C:\Users\nmeim\AppData\Local\cache\OmnipathR/cache.json` (encoding: UTF-8).
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-05-06 18:28:38] [INFO]    [OmnipathR] Initialized cache: `C:\Users\nmeim\AppData\Local\cache\OmnipathR`.
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/db/db_def.json` (encoding: UTF-8).
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/magic_bytes.json` (encoding: UTF-8).
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/urls.json` (encoding: UTF-8).
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/id_types.json` (encoding: UTF-8).
+[2024-05-06 18:28:38] [TRACE]   [OmnipathR] JSON validation successful: TRUE

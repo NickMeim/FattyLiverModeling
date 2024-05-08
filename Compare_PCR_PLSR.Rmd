@@ -1,0 +1,124 @@
+---
+title: "Compare PLSR and PCR"
+output: html_notebook
+---
+
+This notebook compares the performance and number of latent variables of regression
+models of the NAFLD score in the Hoang et al dataset. We analyze PCR, PCR + Lasso,
+PCR + stepwise selection, and PLSR.
+
+Results from this notebook are part fo supplementary analysis.
+
+# Load libraries
+
+```{r}
+library(caret)
+library(olsrr)
+library(ropls)
+library(matrixStats)
+
+dir_root <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling/"
+
+source(paste0(dir_root,"utils/plotting_functions.R"))
+source(paste0(dir_root,"modeling/functions_translation_jose.R"))
+
+options(expressions = 5e5)
+```
+
+# Build PC regression models to predict phenotype of interest (NAFLD score)
+
+Loop through each of the datasets and build a regression model linking the projected dataset (capping PCs) to phenotype
+using LASSO. At the same time build an augmented matrix including the key PCs in each MPS
+
+TO DO - use wrapper functions to clean loop and dump fewer variables to workspace
+
+IDEA: using polynomials of the PCs seems to create much better models 
+as done here 
+https://www-sciencedirect-com.libproxy.mit.edu/science/article/pii/0169743989801169
+
+Compare with PLSR model
+
+
+```{r}
+# Plot PC1 and PC2 - override to include colors
+plt_list$Hoang$pca <- plot_scatter(x = data_list$Hoang$pca$x[,1], 
+                                  y  = data_list$Hoang$pca$x[,2], 
+                                  xlab = paste0("PC1 (", round(data_list$Hoang$pca$var_per[1],2),"%)"), 
+                                  ylab = paste0("PC2 (", round(data_list$Hoang$pca$var_per[2],2),"%)"),
+                                  args_extra = data.frame(color = Yh),
+                                  aes_extra = aes(color = color)) + scale_color_viridis_c() + labs(color = "NAS")
+
+# Initialize empty lists
+mod_PC <- NULL
+nPC <- data_list$Hoang$pca$nPC
+X_PC <- data_list$Hoang$pca$x[,1:nPC]
+
+# Use all PCs to make a full model
+mod_PC$full <- lm(y ~., data = data.frame(y = Yh, X_PC))
+mod_PC$full$nFeatures <- ncol(X_PC)
+# Do 10 fold CV on model 
+mod_PC$full$CV <- get_model_CV(X_PC, Yh, idx_train_CV)
+  
+# Do PC selection with LASSO
+mod_PC$lasso <- get_lasso_model(X = X_PC, 
+                               Y = Yh, 
+                               idx_train_list = NULL)
+  
+mod_PC$lasso$nFeatures <- length(mod_PC$lasso[["final_features"]])
+# Do 10 fold CV on model
+mod_PC$lasso$CV <- get_model_CV(X_PC[, mod_PC$lasso$final_features], Yh, idx_train_CV)
+  
+  
+# Model selection with forward - backward selection
+mod_PC$forward <- ols_step_both_aic(mod_PC$full)
+# Get features in final model
+mod_PC$forward$final_features <- coef(mod_PC$forward$model) %>% names()
+# Remove intercept
+mod_PC$forward$final_features <- mod_PC$forward$final_features[!grepl("Intercept", mod_PC$forward$final_features)]
+mod_PC$forward$nFeatures <- length(mod_PC$forward$final_features)
+# Do 10 fold CV on model
+mod_PC$forward$CV <- get_model_CV(X_PC[, mod_PC$forward$final_features], Yh, idx_train_CV)
+  
+# Plot prediction
+plt_list$Hoang$plt_PCA_mod <- plot_scatter(x = Yh, y = predict(mod_PC$forward$model), 
+                                             xlab = "NAS Measured", ylab = "NAS Predicted", xjitter = T) +
+                                geom_abline(slope = 1, intercept = 0, color = "indianred",
+                                            linetype="dotted", size = 1)
+
+```
+
+
+
+
+
+##  Compare PLSR model and PCA regression models
+
+Also show information lost when projecting to MPS space
+
+```{r}
+plt_list$Hoang$model_CV <- data.frame(model = c(rep("PCR", 10),
+                                           rep("PCR LASSO", 10),
+                                           rep("PCR Step", 10),
+                                           rep("PLSR", 10),
+                                           rep("PLSR shuffle", 10)),
+                                 MAE = c(mod_PC$full$CV$mod_MAE,
+                                        mod_PC$lasso$CV$mod_MAE,
+                                        mod_PC$forward$CV$mod_MAE,
+                                        plsr_mod$MAE_CV,
+                                        plsr_mod$MAE_CV_shuffle),
+                                 Q2Y = c(mod_PC$full$CV$mod_Q2Y,
+                                        mod_PC$lasso$CV$mod_Q2Y,
+                                        mod_PC$forward$CV$mod_Q2Y,
+                                        plsr_mod$Q2Y_CV,
+                                        plsr_mod$Q2Y_CV_shuffle)) %>%
+                    ggplot(aes(x = factor(model), y = MAE)) +
+                      geom_boxplot() +
+                      geom_jitter(width = 0.1) +
+                      #stat_compare_means(method = "anova") + 
+                      stat_compare_means(label = "p.signif", method = "t.test",
+                                          ref.group = "PCR", label.y = 1.8) +
+                      labs(x = "Model selection strategy", y = "10-fold CV (MAE)")
+
+plt_list$Hoang$model_CV <- add_theme(plt_list$Hoang$model_CV) + ylim(c(0, 1.9))
+```
+

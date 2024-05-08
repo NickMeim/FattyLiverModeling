@@ -1,0 +1,384 @@
+---
+title: "Translation Hoang - Kostrzewski"
+output: html_notebook
+---
+
+Initial case study to develop methodology - translation and comparisong
+of Hoang et al (human) and Kostrzewski et al (MPS)
+
+# Load libraries and functions
+
+Additional libraries are called internally
+
+```{r}
+library(decoupleR)
+library(OmnipathR)
+library(caret)
+library(ropls)
+library(matrixStats)
+
+dir_root <- ""
+
+
+
+source(paste0(dir_root,"utils/plotting_functions.R"))
+source(paste0(dir_root,"modeling/functions_translation_jose.R"))
+source(paste0(dir_root,"utils/wrapper_DECOUPLER.R"))
+
+options(expressions = 5e5)
+set.seed(123)
+dir_data <- paste0(dir_root,"data/")
+
+```
+
+# Load datasets
+
+Focusing on Hoang et al and Kostrzewski et al. Pre-processing is intersecting features, log CPM normalization
+centering, and PCA for visualization although PCA is not crucial
+
+Doing a more stringent threshold to keep variable genes in all datasets. Could relax to keep variable
+genes in at least one datasets, but this allows for faster execution for testing
+
+```{r}
+dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver") #, "Feaver", "Wang", "Nilsson", "Govaere") #, "Wang", "Govaere")
+ref_dataset <- "Hoang"
+target_dataset <- "Kostrzewski"
+# Load
+data_list <- load_datasets(dataset_names, dir_data = dir_data)
+# Run PCA
+tmp <- process_datasets(data_list, filter_variance = F)
+data_list <- tmp$data_list
+plt_list <- tmp$plt_list
+# Define matrices of interest
+# Yh <- data_list$Hoang$metadata$nafld_activity_score #data_list$Hoang$metadata$Fibrosis_stage# 
+Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+colnames(Yh) <- c('NAS','fibrosis')
+Xh <- data_list[[ref_dataset]]$data_center %>% t()
+Xm <- data_list[[target_dataset]]$data_center %>% t()
+# Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
+Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+```
+
+# Build PLSR model
+
+Number of latent variables is selected internally based on 10-fold CV as the point where the 
+Q2Y metric is maximal
+
+```{r}
+### Load idx for CV splits
+#idx_train_CV <- createFolds(Yh, k = 10, returnTrain = T)
+#save(idx_train_CV, file = paste0(dir_data,"idx_train_CV_NAFLD.RData"))
+load(paste0(dir_data,"idx_train_CV_NAFLD.RData"))
+
+### Train PLSR - lots of internal CV, so it is slow - try to make parallel
+#plsr_mod <- train_plsr(Xh, Yh, idx_train_CV)
+#save(plsr_mod, file = paste0(dir_data,"temp_PLSR_mod.RData"))
+# Model coefficients (including intercept) - TO DO: get rid of intercept by centering Y
+#Wh <- plsr_mod$Wf
+#load(file = paste0(dir_data,"temp_PLSR_mod.RData"))
+# Model coefficients (including intercept) - TO DO: get rid of intercept by centering Y
+#Wh <- plsr_mod$Wf
+
+#### Skipping for now to move quickly
+plsr_mod <- opls(x = Xh, 
+                 y = Yh,
+               predI = 9,
+                crossvalI = 1,
+               scaleC = "center",
+                fig.pdfC = "none",
+                 info.txtC = "none")
+
+Wh <- matrix(data = 0, ncol = ncol(plsr_mod@weightMN), nrow = ncol(Xh))
+rownames(Wh) <- colnames(Xh)
+colnames(Wh) <- colnames(plsr_mod@weightMN)
+for (ii in 1:nrow(plsr_mod@weightMN)){
+  Wh[rownames(plsr_mod@weightMN)[ii], ] <- plsr_mod@weightMN[ii,]
+}
+######
+# Get regression coefficients
+Bh <- matrix(lm(Yh ~ Xh %*% Wh) %>% coef(), ncol = 2)
+
+# Get variances in LVs
+plsr_var_plsr <- colVars(Xh %*% Wh)
+plsr_per_var_plsr <- round(100*plsr_var_plsr/sum(data_list$Hoang$pca$sdev^2),2)
+
+### Visualize
+# Plot predictions in full training
+yhat <- cbind(1, Xh %*% Wh) %*% Bh
+plt_PLSR_mod_nas <- plot_scatter(x = Yh[,1], y = yhat[,1], 
+                                        xlab = "NAS Measured", ylab = "NAS Predicted", xjitter = T) +
+                            geom_abline(slope = 1, intercept = 0, color = "indianred",
+                                        linetype="dotted", size = size_line)
+
+plt_PLSR_mod_fibrosis <- plot_scatter(x = Yh[,2], y = yhat[,2], 
+                                        xlab = "Fibrosis Measured", ylab = "Fibrosis Predicted", xjitter = T) +
+                            geom_abline(slope = 1, intercept = 0, color = "indianred",
+                                        linetype="dotted", size = size_line)
+
+
+
+
+plt_PLSR_score_NAS <- plot_scatter(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2],
+                         xlab = paste0("LV1 (", plsr_per_var_plsr[1],"%)"),
+                         ylab = paste0("LV2 (", plsr_per_var_plsr[2],"%)"),
+                         args_extra = data.frame(color = Yh[,1]),
+                         aes_extra = aes(color = color)) +
+            scale_color_viridis_c() + labs(color = "NAS")
+
+plt_PLSR_score_FIBROSIS <- plot_scatter(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2],
+                         xlab = paste0("LV1 (", plsr_per_var_plsr[1],"%)"),
+                         ylab = paste0("LV2 (", plsr_per_var_plsr[2],"%)"),
+                         args_extra = data.frame(color = Yh[,2]),
+                         aes_extra = aes(color = color)) +
+            scale_color_viridis_c() + labs(color = "Fibrosis")
+
+```
+
+# Check information preservation
+
+See how model prediction worsens when we use the MPS space
+
+```{r}
+# Get plots - TO DO: Extend statistics with CV
+plt_info_loss <- get_info_loss(Xh, Yh, Wh, Wm, Bh)
+print(plt_info_loss[[1]])
+print(plt_info_loss[[2]])
+```
+
+# Find translatable latent variables
+
+Find latent variables that are combinations of MPS PCs (i.e. vectors of non-zero variance)
+that are the most translatable
+
+```{r}
+Wm_new <- get_translatable_LV(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE)
+Wm_new <- Wm_new$Wm_new
+colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
+
+# Plot Yh predicted with this reduced space vs the larger MPS space
+Ypred1 <- cbind(1, Xh %*% Wm %*% t(Wm) %*% Wh) %*% Bh
+Ypred2 <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
+
+plt_new_basis_nas <- plot_scatter(x = Ypred1[,1], y = Ypred2[,1], 
+                              xlab = "NAS full MPS space", ylab = "NAS reduced space") +
+                  geom_abline(intercept = 0, slope = 1, linetype = 2, color = "indianred") +
+                  stat_cor(aes(label = after_stat(r.label)), show.legend = F, color = "black")
+print(plt_new_basis_nas)
+plt_new_basis_fibrosis <- plot_scatter(x = Ypred1[,2], y = Ypred2[,2], 
+                              xlab = "Fibrosis full MPS space", ylab = "Fibrosis reduced space") +
+                  geom_abline(intercept = 0, slope = 1, linetype = 2, color = "indianred") +
+                  stat_cor(aes(label = after_stat(r.label)), show.legend = F, color = "black")
+print(plt_new_basis_fibrosis)
+
+# Find experimental factors that contribute to the new latent variable (to do: Wrap in functions)
+
+df_exp <- data.frame(data_list[[target_dataset]]$metadata[,data_list[[target_dataset]]$exp_factors])
+colnames(df_exp) <- data_list[[target_dataset]]$exp_factors
+aov(y ~., data = data.frame(y = as.numeric(Xm %*% Wm_new[,1]), 
+                            df_exp)) %>% summary()
+
+# Project MPS data on this space
+plt_new_basis_project <- data.frame(y = as.numeric(Xm %*% Wm_new[,1]),
+                                    data_list[[target_dataset]]$metadata) %>%
+                          ggplot(aes(x = y, y = reorder(Combination_name, y), fill = TGF)) +
+                            geom_boxplot(size = size_col) +
+                            facet_grid(rows = vars(NPC), cols = vars(Background)) +
+                            labs(x = "LV1 score", y = NULL) 
+
+plt_new_basis_project <- add_theme(plt_new_basis_project) + scale_fill_brewer(palette = color_palette)
+```
+
+# Find additional latent variables
+
+Find latent variables that, if included, would help retrieve lost information for
+translation. Importantly, these new latent variables can be constructed to have zero 
+variance in the MPS dataset
+
+Number of additional vectors could be obtained with cross validation
+
+```{r}
+Wm_opt <- get_translatable_LV(Xh, Yh, Wh, Wm, Bh, find_extra = TRUE)
+Wm_opt <- Wm_opt$Wm_new
+colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
+
+# Extend latent variables
+Wm_tot <- cbind(Wm_new, Wm_opt)
+
+# Visualize
+Ypred1 <- cbind(1, Xh %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% Bh
+Ypred2 <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
+
+
+df_nas <- rbind(data.frame(x = Yh[,1], y = Ypred2[,1], Basis = "MPS"),
+           data.frame(x = Yh[,1], y = Ypred1[,1], Basis = "Expanded"))
+df_fib <- rbind(data.frame(x = Yh[,2], y = Ypred2[,2], Basis = "MPS"),
+           data.frame(x = Yh[,2], y = Ypred1[,2], Basis = "Expanded"))
+
+plt_aug_nas <- plot_scatter(x = df_nas$x, 
+             y = df_nas$y,
+             xlab = "NAS measured",
+             ylab = "NAS predicted",
+             aes_extra = aes(color = Basis),
+             args_extra = list(Basis = df_nas$Basis)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, color = "indianred") +
+  lims(x = c(min(Yh[,1]),max(Yh[,1])), y = c(min(df_nas$y),max(df_nas$y))) +
+  facet_wrap(facets = vars(Basis), nrow = 1) +
+  stat_cor(aes(label = after_stat(r.label)), show.legend = F, color = "black")
+print(plt_aug_nas)
+plt_aug_fib <- plot_scatter(x = df_fib$x, 
+             y = df_fib$y,
+             xlab = "Fibrosis measured",
+             ylab = "Fibrosis predicted",
+             aes_extra = aes(color = Basis),
+             args_extra = list(Basis = df_fib$Basis)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, color = "indianred") +
+  lims(x = c(min(Yh[,2]),max(Yh[,2])), y = c(min(df_fib$y),max(df_fib$y))) +
+  facet_wrap(facets = vars(Basis), nrow = 1) +
+  stat_cor(aes(label = after_stat(r.label)), show.legend = F, color = "black")
+print(plt_aug_fib)
+
+```
+
+# Visualize human data on latent MPS space
+
+```{r}
+Thm <- Xh %*% Wm_opt
+plt_NAS_LV <- plot_scatter(x = Thm[,1], y = Thm[,2], xlab = "MPS LV 1", ylab = "MPS LV extra 1",
+                           args_extra = data.frame(NAS = Yh[,1]), aes_extra = aes(color = NAS)) +
+              scale_color_viridis_c()
+print(plt_NAS_LV)
+
+plt_Fibrosis_LV <- plot_scatter(x = Thm[,1], y = Thm[,2], xlab = "MPS LV 1", ylab = "MPS LV extra 1",
+                           args_extra = data.frame(Fibrosis = Yh[,2]), aes_extra = aes(color = Fibrosis)) +
+              scale_color_viridis_c()
+print(plt_Fibrosis_LV)
+```
+
+
+## Interpret loadings of new latent variables - pathway and TF activities
+
+TO DO: Use PCGSEA for further interpretation
+
+```{r}
+pwy_acts_LV <- get_pwy_activities(Wm_tot, method = "mlm")
+
+# Plot
+ggplot(pwy_acts_LV$TABLE, aes(y = reorder(source, score), x = score)) + 
+    geom_bar(aes(fill = score), stat = "identity", color = "black", show.legend = F) +
+    scale_fill_gradient2(low = "darkblue", high = "indianred", 
+        mid = "whitesmoke", midpoint = 0) +
+    labs(x = "Pathway score", y = NULL) +
+    facet_wrap(facets = vars(condition), ncol = 2, scales = "free")
+
+# Plot pathway scores in PC loadings in Hoang data
+
+# nice red #67001F
+corrplot::corrplot(pwy_acts_LV$MAT %>% scale(),
+                   p.mat = pwy_acts_LV$MAT_pval,
+                   sig.level = c(0.001, 0.01, 0.05), pch.cex = 0.9,
+                   insig = 'label_sig', is.corr = F, method = "color", 
+                   col=colorRampPalette(c("#053061","white","indianred"))(100), 
+                   tl.col = "black", type = "full", col.lim = c(-3,3), cl.offset = 0.2,
+                   cl.align.text = "l", cl.length = 3, cl.ratio = 0.2, cl.pos = "b")
+
+
+# For CHEMPERT - TO DO
+loading_perturb_viper <- run_viper(tf_acts_extra$MAT, resp_net, minsize = 5)
+
+# Transcription factor activities
+tf_acts_LV <- get_TF_activities(Wm_tot)
+
+tf_acts_LV <- tf_acts_LV$MAT %>% as.data.frame() %>% 
+              mutate(score1 = abs(LV_data1 - mean(LV_data1)) - 2*sd(LV_data1) > 0,
+                     score2 = abs(LV_extra1 - mean(LV_extra1)) - 2*sd(LV_extra1) > 0,
+                     interesting = (score1 & !score2) | (score2 & !score1),
+                     TF = rownames(.))
+
+plt_tf_LV <- plot_scatter(x = tf_acts_LV$LV_data1, y = tf_acts_LV$LV_extra1,
+                          xlab = "MPS LV 1", ylab = "MPS LV extra 1",
+                          args_extra = tf_acts_LV[,c("TF", "interesting")],
+                          aes_extra = aes(color = interesting, label = TF)) +
+              geom_text_repel(data = . %>% filter(interesting), color = "black") +
+                  scale_color_brewer(palette = color_palette)
+                          
+
+
+```
+
+
+
+
+
+## Plot gene loadings across LVs based for each pathway
+
+Do this to find which genes are driving differences in scores across LVs
+
+```{r}
+pwy_genes_LV <- pwy_net[,c("source", "target")] %>% 
+                filter(target %in% rownames(Wm_tot) &
+                       source %in% c("JAK-STAT", "PI3K", "MAPK"))
+
+pwy_genes_LV <- cbind(pwy_genes_LV, Wm_tot[pwy_genes_LV$target,]) 
+
+pwy_genes_LV <- pwy_genes_LV %>% 
+                group_by(source) %>%
+                mutate(score1 = abs(LV_data1 - mean(LV_data1)) - 2*sd(LV_data1) > 0,
+                       score2 = abs(LV_extra1 - mean(LV_extra1)) - 2*sd(LV_extra1) > 0,
+                       interesting = (score1 & !score2) | (score2 & !score1))
+
+
+plt_pwy_genes <- plot_scatter(x = pwy_genes_LV$LV_data1, y = pwy_genes_LV$LV_extra1, 
+                              args_extra = pwy_genes_LV[,c("target", "source", "interesting")],
+                              aes_extra = aes(color = interesting, label = target, group = source),
+                              xlab = "MPS LV 1", ylab = "MPS LV extra 1") +
+                  facet_wrap(facets = vars(source)) +
+                  stat_ellipse(linetype = 2, size = size_line, color = "indianred") +
+                  geom_text_repel(data = . %>% filter(interesting), color = "black") +
+                  scale_color_brewer(palette = color_palette)
+
+# Calculate the correlation of gene expression and phenotype in human data for interesting genes
+pwy_genes_cor <- pwy_genes_LV %>% ungroup() %>% 
+                  filter(interesting) %>% select(target) %>% 
+                  unique() %>% mutate(cor_Yh = 0)
+
+for (ii in 1:nrow(pwy_genes_cor)){
+  pwy_genes_cor$cor_Yh[ii] <- cor(Yh, Xh[, pwy_genes_cor$target[ii]])
+}
+
+
+
+```
+
+
+# Analyze pathway activity at sample level
+
+Bug with PCA plot and metadata, so manual for now
+```{r}
+
+pwy_acts_MPS <- get_pwy_activities(data_list$Kostrzewski$data_center)
+pwy_acts_Human <- get_pwy_activities(data_list$Hoang$data_center)
+
+
+plt_pca_pwy_Human <- plot_pca(pwy_acts_Human$MAT, scale_data = F, return_data = T)
+plt_dummy <- plot_scatter(x = plt_pca_pwy_Human$data$x[,1], y = plt_pca_pwy_Human$data$x[,2],
+                          xlab = "PC1 (60.1%)", ylab = "PC2 (13.5%)", aes_extra = aes(color = color),
+                          args_extra = data.frame(color = Yh)) +
+            labs(color = "NAS") + scale_color_viridis_c()
+
+plt_dummy <- plot_scatter(x = as.numeric(pwy_acts_Human$MAT["JAK-STAT", ]), y = Yh)
+
+plsr_pwy <- opls(x = pwy_acts_Human$MAT %>% t(), 
+                   y = Yh,
+                   scaleC = "center",
+                   crossvalI = 5,
+                   predI = NA)
+
+
+plt_pca_pwy_MPS <- plot_pca(pwy_acts_MPS$MAT, scale_data = F, return_data = T)
+plt_dummy <- plot_scatter(x = plt_pca_pwy_MPS$data$x[,1], y = plt_pca_pwy_MPS$data$x[,2],
+                          xlab = "PC1 (78.9%)", ylab = "PC2 (9.12%)", aes_extra = aes(color = color),
+                          args_extra = data.frame(color = data_list$Kostrzewski$metadata$TGF)) +
+            labs(color = "TGFb added") + scale_color_brewer(palette = "Dark2")
+
+
+```
