@@ -29,6 +29,7 @@ library(EGSEAdata)
 source("../utils/plotting_functions.R")
 source("functions_translation_jose.R")
 source("CrossValidationUtilFunctions.R")
+source('enrichment_calculations.R')
 
 #### Load pre-processed data----------------------
 # data <- readRDS("../data/preprocessed_NAFLD.rds")
@@ -63,8 +64,8 @@ source("CrossValidationUtilFunctions.R")
 # # Xm <- log2(1 + data_B[keep_gene,])
 # # Xm <- t(Xm - rowMeans(Xm))
 
-dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
-ref_dataset <- "Hoang"
+dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver","Govaere")
+ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
@@ -73,36 +74,18 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
-## Find optimal
-plsr_model <- opls(x = Xh, 
-                   y = Yh,
-                   predI = 7,
-                   crossvalI = 1,
-                   scaleC = "center",
-                   fig.pdfC = "none",
-                   info.txtC = "none")
-# Get Wh of PLSR
-Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
-rownames(Wh) <- colnames(Xh)
-colnames(Wh) <- colnames(plsr_model@weightMN)
-for (ii in 1:nrow(plsr_model@weightMN)){
-  Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
-}
-# Get regression coefficients
-Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
-phi <- Wh %*% Bh
-Woptim <- analytical_solution_opt(y=Yh,
-                                  W_invitro = Wm,
-                                  phi = phi)
-
+Woptim <- readRDS('../results/Wm_extra.rds')
+Wtot <- readRDS('../results/Wm_total.rds')
+Wm_combo<- readRDS('../results/Wm_combo.rds')
 rownames(Woptim) <- rownames(Wm)
+rownames(Wtot) <- rownames(Wm)
 Zh <- as.data.frame(Xh %*% Woptim)
 Zh$NAS <- Yh[,1]
 Zh$fibrosis <- Yh[,2]
@@ -201,6 +184,24 @@ ggsave('../results/pc_loadings_scores_analysis/optimal_space_phenotypes_correlat
        units = 'in',
        dpi=600)
 
+(ggplot(Zh ,aes(x=V1,y=V2,colour=NAS))+
+  geom_point()+
+  scale_color_viridis_c()+
+  theme_minimal(base_size=20,base_family = 'Arial')+
+  theme(text= element_text(size=20,family = 'Arial'),
+        legend.position = 'right')) +
+  (ggplot(Zh ,aes(x=V1,y=V2,colour=fibrosis))+
+                                        geom_point()+
+                                        scale_color_viridis_c()+
+                                        theme_minimal(base_size=20,base_family = 'Arial')+
+                                        theme(text= element_text(size=20,family = 'Arial'),
+                                              legend.position = 'right'))
+ggsave('../results/projected_govaere_samples_on_extra_basis.png',
+       height = 12,
+       width = 16,
+       units = 'in',
+       dpi=600)
+
 ## Check out 
 Woptim <- as.data.frame(Woptim) %>% rownames_to_column('gene')
 Woptim$significant <- ''
@@ -210,8 +211,8 @@ Woptim$gene <- factor(Woptim$gene,levels = Woptim$gene)
 
 
 ### Perform PCA and get loadings----------------
-PCA_alldata <- prcomp(Xm, scale. = F, center = T)
-loadings <- PCA_alldata$rotation
+# PCA_alldata <- prcomp(Xm, scale. = F, center = T)
+loadings <- Wm
 loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,PC12)
 loadings$significant <- ''
 loadings$significant[order(-abs(loadings$PC12))[1:10]] <- loadings$gene[order(-abs(loadings$PC12))[1:10]]
@@ -332,39 +333,71 @@ ggsave('../results/pc_loadings_scores_analysis/gene_loadings_points_withstats.pn
        units = 'in',
        dpi = 600)
 ### Infer Pathway activity with progeny----------------------------------------------------------------------------
-gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,8,12))]
 net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-pathways_progeny_pcs <- decoupleR::run_mlm(mat=gene_loadings, net=net_prog, .source='source', .target='target',
-                                           .mor='weight', minsize = 1)
-# pathways_progeny_pcs <- decoupleR::decouple(mat=gene_loadings, net=net_prog, .source='source', .target='target',
-#                                             args = list(
-#                                               wmean = list(.mor = "weight", .likelihood = "likelihood"),
-#                                               ulm = list(.mor = "weight", .likelihood = "likelihood")
-#                                             ), 
-#                                             minsize =1,
-#                                             statistics = c('mlm','ulm','wmean','viper',
-#                                                            'fgsea',
-#                                                            'mdt','udt','ora',
-#                                                            'wsum'),
-#                                             consensus_score = F)
-# pathways_progeny_pcs <- decoupleR::run_consensus(pathways_progeny_pcs)
-# pathways_progeny_pcs <- progeny(gene_loadings,
-#                                 perm = 10000,
-#                                 z_scores = T,
-#                                 top = 500)
-# tt <- pathways_progeny_pcs[c('PC12','PC8'),]
-Woptim <- readRDS('../results/Wm_opt_2.rds')
-pathways_progeny <- decoupleR::run_mlm(mat=Woptim, net=net_prog, .source='source', .target='target',
-                                           .mor='weight', minsize = 1)
-# pathways_progeny <- progeny(Woptim,
-#                             perm = 10000,
-#                             z_scores = T,
-#                             top = 500)
-# rownames(pathways_progeny) <- 'optimal direction'
-ggplot(pathways_progeny %>% select(c('activity'='score'),c('Pathway'='source'),p_value) %>% 
-         mutate(Pathway=factor(Pathway,levels=pathways_progeny$source[order(pathways_progeny$score)])),
-       aes(x=activity,y=Pathway,fill=activity)) + geom_bar(stat = 'identity',color='black') +
+Woptim <- readRDS('../results/Wm_extra.rds')
+rownames(Woptim) <- rownames(Wm)
+# library(doFuture)
+# # parallel: set number of workers
+# cores <- 16
+# registerDoFuture()
+# plan(multisession,workers = cores)
+# iters <- 1000
+# null_activity <- foreach(i = seq(iters)) %dopar% {
+#   shuffled_genes <-  Wm_combo_selected[sample(nrow(Wm_combo_selected)),]
+#   rownames(shuffled_genes) <- rownames(Wm_combo_selected)
+#   tmp_paths <- decoupleR::run_viper(shuffled_genes, net_prog,minsize = 1,verbose = FALSE)
+#   tmp_paths <- tmp_paths %>% select(source,condition,score) %>% spread('condition','score')
+#   tmp_paths <- tmp_paths %>% select(source,NAS,fibrosis)
+#   tmp_paths
+# }
+# null_activity <- do.call(rbind,null_activity)
+# saveRDS(null_activity,'../results/pc_loadings_scores_analysis/null_activity_translatable_lvs.rds')
+# translatable_progenies <- decoupleR::run_viper(Wm_combo_selected, net_prog,minsize = 1,verbose = FALSE)
+# all_null_distribution_nas <- null_activity[,1]
+# all_null_distribution_fibrosis <- null_activity[,2]
+# null_activity <- null_activity %>% gather('condition','random_val',-source)
+# translatable_progenies <- left_join(translatable_progenies,null_activity)
+# translatable_progenies <- translatable_progenies %>% select(c('Pathway'='source'),condition,score,random_val)
+
+# df_translatable_pathways_progeny <- translatable_progenies %>% group_by(condition,Pathway) %>%
+#   mutate(bool=abs(random_val)>=abs(score)) %>% mutate(p_value_null = sum(bool)) %>%
+#   ungroup() %>% select(-bool) %>% mutate(p_value_null=p_value_null/iters)
+# df_pathways_progeny_weights_all  <- df_pathways_progeny_weights_all %>% 
+#   mutate(p.adj = p_value_null*length(unique(df_pathways_progeny_weights_all$Pathway)))
+# df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(Pathway) %>%
+#   mutate(sig1 = sum(p.adj<=0.05)) %>% ungroup() %>%
+#   group_by(direction) %>% mutate(sig2 = sum(p.adj<=0.05)) %>% ungroup()
+extra_basis_paths <- decoupleR::run_viper(Woptim, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
+PC_space_paths <- decoupleR::run_viper(Wm, net_prog,minsize = 1,verbose = TRUE)
+PC_space_paths <- PC_space_paths %>% select(source,c('pc_activity'='score'))
+PC_space_paths <- PC_space_paths$pc_activity
+extra_basis_paths <- extra_basis_paths %>% select(-p_value)
+# extra_basis_paths <- left_join(extra_basis_paths %>% select(-p_value),PC_space_paths)
+colnames(extra_basis_paths)[1] <- 'Pathway'
+
+# extra_basis_paths <- extra_basis_paths %>% group_by(condition,Pathway) %>%
+#   mutate(bool=abs(PC_space_paths)>=abs(score)) %>% mutate(p_value_null = sum(bool)) %>%
+#   ungroup() %>% select(-bool) %>% mutate(p_value_null=p_value_null/length(PC_space_paths))
+extra_basis_paths <- extra_basis_paths %>% group_by(condition,Pathway) %>%
+  mutate(p_value=sum(abs(PC_space_paths)>=abs(score))/length(PC_space_paths))
+extra_basis_paths  <- extra_basis_paths %>%
+  mutate(p.adj = p_value*length(unique(extra_basis_paths$Pathway))) %>%
+  mutate(p.adj = ifelse(p.adj>1,1,p.adj))
+# extra_basis_paths <- extra_basis_paths %>% group_by(Pathway) %>%
+#   mutate(sig1 = sum(p.adj<0.1)) %>% ungroup() %>%
+#   group_by(condition) %>% mutate(sig2 = sum(p.adj<0.1)) %>% ungroup()
+
+
+# %>% 
+#   mutate(Pathway=factor(Pathway,levels=extra_basis_paths$source[order(extra_basis_paths$score)]))
+
+(ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
+         filter (condition=='V1'),
+       aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
   scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
+  scale_x_continuous(n.breaks = 8,limits = c(-8,8))+
+  ggtitle('Extra LV1')+
+  ylab('Pathway')+
   geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
                                ifelse(p_value <= 0.001,"***",
                                       ifelse(p_value<=0.01,"**",
@@ -376,120 +409,36 @@ ggplot(pathways_progeny %>% select(c('activity'='score'),c('Pathway'='source'),p
             color = 'black',
             angle=90) +                                   
   theme_pubr(base_size = 20,base_family = 'Arial')+
-  theme(text = element_text(size = 20,family = 'Arial'))
+  theme(text = element_text(size = 20,family = 'Arial'),
+        legend.position = 'right',
+        plot.title = element_text(hjust = 0.5))) +
+  (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
+            filter (condition=='V2'),
+          aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
+     ggtitle('Extra LV2')+
+     ylab('Pathway')+
+     scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
+     scale_x_continuous(n.breaks = 8,limits = c(-8,8))+
+     geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
+                                  ifelse(p_value <= 0.001,"***",
+                                         ifelse(p_value<=0.01,"**",
+                                                ifelse(p_value<=0.05,'*',
+                                                       ifelse(p_value<=0.1,'\u2219',
+                                                              'ns'))))),
+                   x = ifelse(activity < 0, activity - 0.2, activity + 0.2)),
+               size = 6,
+               color = 'black',
+               angle=90) +                                   
+     theme_pubr(base_size = 20,base_family = 'Arial')+
+     theme(text = element_text(size = 20,family = 'Arial'),
+           legend.position = 'right',
+           plot.title = element_text(hjust = 0.5),
+           axis.title.y = element_blank())) 
 ggsave('../results/pc_loadings_scores_analysis/progenies_only_optimal_loadings_barplot.png',
        width = 12,
        height = 9,
        dpi = 600)
-pathways_progeny_all <- rbind(pathways_progeny,pathways_progeny_pcs)
 
-### use progeny weights
-# progeny_weights <- progeny::getModel()
-progeny_weights <- net_prog %>% select(-p_value) %>% spread(target,weight) %>% replace(is.na(.), 0) %>% column_to_rownames('source')
-progeny_weights <- t(progeny_weights)
-common_genes_wopt_prog <- Reduce(intersect,list(rownames(progeny_weights), rownames(Woptim)))
-progeny_weights_subset <- progeny_weights[common_genes_wopt_prog,]
-Woptim_subset <- as.matrix(Woptim[common_genes_wopt_prog,])
-woptim_pathways <- t(progeny_weights_subset) %*% Woptim_subset
-colnames(woptim_pathways) <- 'optimal direction'
-common_genes_pc_prog <- Reduce(intersect,list(rownames(progeny_weights), rownames(gene_loadings)))
-progeny_weights_subset2 <- progeny_weights[common_genes_pc_prog,]
-# gene_loadings_subset <- as.matrix(gene_loadings[common_genes_pc_prog,])
-gene_loadings_subset <- as.matrix(PCA_alldata$rotation[common_genes_pc_prog,])
-gene_loadings_pathways <- t(progeny_weights_subset2) %*% gene_loadings_subset
-pathways_progeny_weights_all <- cbind(woptim_pathways,gene_loadings_pathways)
-# colnames(pathways_progeny_all) <- rownames(pathways_progeny_weights_all)
-# pheatmap(pathways_progeny_all)
-df_pathways_progeny_weights_all <- as.data.frame(pathways_progeny_weights_all) %>% rownames_to_column('Pathway') %>%
-  gather('direction','loading',-Pathway)
-weight_distribution <- df_pathways_progeny_weights_all$loading
-df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(direction,Pathway) %>%
-  mutate(p_value_naive = sum(abs(weight_distribution)>=abs(loading))/length(weight_distribution)) %>% ungroup()
-
-### Create Null distribution for Woptim and PCs by shuffling genes when performing the matrix multiplication
-iters <- 10000
-df_shuffled_optim <- data.frame()
-df_shuffled_pcs <- data.frame()
-for (i in 1:iters){
-  ### For optimal vector
-  shuffled <- as.matrix(Woptim_subset[sample.int(nrow(Woptim_subset)),])
-  rownames(shuffled) <- rownames(Woptim_subset)
-  woptim_pathways_shuffled <- t(progeny_weights_subset) %*% shuffled
-  colnames(woptim_pathways_shuffled) <- 'score'
-  df_shuffled_optim <- rbind(df_shuffled_optim,
-                             as.data.frame(woptim_pathways_shuffled) %>% rownames_to_column('Pathway') %>% mutate(trial=i) %>%
-                               mutate(direction = 'optimal direction') %>% select(Pathway,direction,score,trial))
-  ### For PC loadings
-  shuffled <- as.matrix(gene_loadings_subset[sample.int(nrow(gene_loadings_subset)),])
-  rownames(shuffled) <- rownames(gene_loadings_subset)
-  pc_pathways_shuffled <- t(progeny_weights_subset2) %*% shuffled
-  df_shuffled_pcs <- rbind(df_shuffled_pcs,
-                           as.data.frame(pc_pathways_shuffled)  %>% 
-                             rownames_to_column('Pathway') %>% mutate(trial=i) %>% 
-                             gather('direction','score',-Pathway,-trial) %>% select(Pathway,direction,score,trial))
-  if (i %% 1000 == 0){
-    print(paste0('Finished permutation ',i))
-  }
-}
-df_all_nulls <- rbind(df_shuffled_optim,df_shuffled_pcs)
-# saveRDS(df_all_nulls,'../results/pc_loadings_scores_analysis/random_progeny_loadings.rds')
-df_all_nulls <- readRDS('../results/pc_loadings_scores_analysis/random_progeny_loadings.rds')
-
-df_pathways_progeny_weights_all <- left_join(df_pathways_progeny_weights_all,df_all_nulls)
-df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(direction,Pathway) %>%
-  mutate(bool=abs(score)>=abs(loading)) %>% mutate(p_value_null = sum(bool)) %>%
-  ungroup() %>% select(-bool) %>% mutate(p_value_null=p_value_null/iters)
-df_pathways_progeny_weights_all  <- df_pathways_progeny_weights_all %>% 
-  mutate(p.adj = p_value_null*length(unique(df_pathways_progeny_weights_all$Pathway)))
-df_pathways_progeny_weights_all <- df_pathways_progeny_weights_all %>% group_by(Pathway) %>%
-  mutate(sig1 = sum(p.adj<=0.05)) %>% ungroup() %>%
-  group_by(direction) %>% mutate(sig2 = sum(p.adj<=0.05)) %>% ungroup()
-keep_paths <- unique(df_pathways_progeny_weights_all$Pathway[which(df_pathways_progeny_weights_all$sig1!=0)])
-keep_pcs <- unique(df_pathways_progeny_weights_all$direction[which(df_pathways_progeny_weights_all$sig2!=0)])
-# pheatmap(t(pathways_progeny_weights_all[,c('optimal direction','PC12','PC8')]))
-significant_pathways_progeny_weights_all <- pathways_progeny_weights_all[keep_paths,keep_pcs]
-selected_row_names <- c("PC1", "PC8","PC12","optimal direction")
-custom_labels <- rownames(t(pathways_progeny_weights_all)[c('PC1','PC11','PC12','PC13','PC35','PC8','optimal direction'),])
-custom_labels[!custom_labels %in% selected_row_names] <- "" 
-l <- distinct(df_pathways_progeny_weights_all %>% select(Pathway,direction,p.adj) %>%
-  filter(Pathway %in% keep_paths) %>% filter(direction %in% keep_pcs)) %>% 
-  mutate(p.adj = ifelse(p.adj<=0.0001,'****',
-                        ifelse(p.adj<=0.001,'***',
-                               ifelse(p.adj<=0.01,'**',
-                               ifelse(p.adj<=0.05,'*',
-                               ''))))) %>% spread(direction,p.adj) %>% column_to_rownames('Pathway')
-png('../results/pc_loadings_scores_analysis/significant_pathWeights_subset_heatmap.png',width = 6,height = 6,units = 'in',res = 600)
-pheatmap(t(significant_pathways_progeny_weights_all)[c('PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC11','PC12','PC13','PC35','PC8','optimal direction'),],
-         display_numbers = t(l)[c('PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC11','PC12','PC13','PC35','PC8','optimal direction'),]) #,
-         # labels_row = custom_labels)
-dev.off()
-
-### barplot weights
-df_pathways_progeny_weights_all_visualize <- distinct(df_pathways_progeny_weights_all %>% select(Pathway,direction,loading,p.adj))
-ggplot(df_pathways_progeny_weights_all_visualize %>% filter(direction=='optimal direction') %>%
-         mutate(Pathway=factor(Pathway,
-                               levels=df_pathways_progeny_weights_all_visualize[
-                                 df_pathways_progeny_weights_all_visualize$direction=='optimal direction',]$Pathway[
-                                 order(df_pathways_progeny_weights_all_visualize[
-                                   df_pathways_progeny_weights_all_visualize$direction=='optimal direction',]$loading)])),
-       aes(x=loading,y=Pathway,fill=loading)) + geom_bar(stat = 'identity',color='black') +
-  scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
-  geom_text(aes(label = ifelse(p.adj <= 0.0001, "****",
-                               ifelse(p.adj <= 0.001,"***",
-                                      ifelse(p.adj<=0.01,"**",
-                                             ifelse(p.adj<=0.05,'*',
-                                                    ifelse(p.adj<=0.1,'\u2219',
-                                                           'ns'))))),
-                x = ifelse(loading < 0, loading - 0.2, loading + 0.2)),
-            size = 6,
-            color = 'black',
-            angle=90) +                                   
-  theme_pubr(base_size = 20,base_family = 'Arial')+
-  theme(text = element_text(size = 20,family = 'Arial'))
-ggsave('../results/pc_loadings_scores_analysis/progeniesLoadings_optimal_barplot.png',
-       width = 12,
-       height = 9,
-       dpi = 600)
 
 #### Run CARNIVAL--------------------------
 library(CARNIVAL)
@@ -640,192 +589,66 @@ write_delim(nodes,paste0(Result_dir,'/','edited_node_attributes.txt'),delim = '\
 
 
 ### Infer TF activity with Dorothea from loadings of PC12 and PC8--------------------------------------------------
-gene_loadings <- PCA_alldata$rotation
-# gene_loadings <- gene_loadings[,c('PC8','PC12')]
-minNrOfGenes  <-  5
 dorotheaData = read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
 dorotheaData = dorotheaData[confidenceFilter,]
 colnames(dorotheaData)[1] <- 'source' 
+Woptim <- readRDS('../results/Wm_extra.rds')
+rownames(Woptim) <- rownames(Wm)
+extra_basis_tfs <- decoupleR::run_viper(Woptim, dorotheaData,minsize = 5,verbose = TRUE) %>% select(-statistic)
+PC_space_paths <- decoupleR::run_viper(Wm, dorotheaData,minsize = 5,verbose = TRUE)
+PC_space_paths <- PC_space_paths %>% select(source,c('pc_activity'='score'))
+PC_space_paths <- PC_space_paths$pc_activity
+extra_basis_tfs <- extra_basis_tfs %>% select(-p_value)
+# extra_basis_tfs <- left_join(extra_basis_tfs %>% select(-p_value),PC_space_paths)
+colnames(extra_basis_tfs)[1] <- 'TF'
 
-TF_activities_loadings = decoupleR::run_viper(gene_loadings, dorotheaData,minsize = minNrOfGenes,verbose = TRUE) %>% select(-statistic)
-Woptim <- readRDS('../results/Wm_opt_2.rds')
-TF_activities = decoupleR::run_viper(Woptim, dorotheaData,minsize = minNrOfGenes,verbose = TRUE) %>% select(-statistic)
-TF_activities$condition <- 'optimal direction'
-# pheatmap(TF_activities)
-genes <- rownames(gene_loadings)
-# Build distribution of TF activities across all PCs and
-# check what TF activities you can anyway observe in the data
-# For now do permutations
-# library(doFuture)
-# # parallel: set number of workers
-# cores <- 16
-# registerDoFuture()
-# plan(multisession,workers = cores)
-iters <- 10000
-# null_activity <- foreach(i = seq(iters)) %dopar% {
-#   shuffled_genes <-  gene_loadings[sample(nrow(gene_loadings)),]
-#   rownames(shuffled_genes) <- genes
-#   tmp_tfs = decoupleR::run_viper(shuffled_genes, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
-#   tmp_tfs
-# }
-# # null_activity <- data.frame()
-# #for (i in 1:iters){
-# #  shuffled_genes <-  gene_loadings[sample(nrow(gene_loadings)),]
-# #  rownames(shuffled_genes) <- genes
-# #  tmp_tfs = decoupleR::run_viper(shuffled_genes, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
-# #  null_activity <- rbind(null_activity,tmp_tfs)
-# #  if (i %% 1000 ==0){
-# #    message(paste0('Finished iteration ',i))
-# #  }
-# #}
-# null_activity <- do.call(rbind,null_activity)
-# gc()
-# #saveRDS(null_activity,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads.rds')
-
-### Null activity for Woptim
-# iters <- 10000
-# genes <- rownames(Woptim)
-# null_activity_optimal <- foreach(i = seq(iters)) %dopar% {
-#   shuffled_genes <-  as.matrix(Woptim[sample(nrow(Woptim)),])
-#   rownames(shuffled_genes) <- genes
-#   tmp_tfs = decoupleR::run_viper(shuffled_genes, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
-#   tmp_tfs
-# }
-# null_activity_optimal <- do.call(rbind,null_activity_optimal)
-# #saveRDS(null_activity_optimal,'../results/dorothea_shuffled_gene_loads_optimal.rds')
-# null_activity_all <- rbind(null_activity_optimal,null_activity)
-# saveRDS(null_activity_all,'../results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds')
-# null_activity_all <- readRDS('../results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds')
-# gc()
-# #null_activity_optimal <- data.frame()
-# #settings = list(verbose = FALSE, minsize = minNrOfGenes)
-# #shuffled_genes <- matrix(nrow=nrow(Woptim),ncol=iters)
-# #for (i in 1:iters){
-# #  shuffled_genes[,i] <- Woptim[sample(nrow(Woptim)),]
-# #}
-# #rownames(shuffled_genes) <- rownames(Woptim)
-# #random_tfs = run_viper(shuffled_genes, dorotheaData, options =  settings)
-# #random_tfs <- as.data.frame(random_tfs) %>% rownames_to_column('TF')
-# #null_activity_optimal <- random_tfs %>% gather('trial','null_activity',-TF)
-# # saveRDS(null_activity_optimal,'../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads_optimal.rds')
-# null_activity_optimal <- readRDS('../results/pc_loadings_scores_analysis/dorothea_shuffled_gene_loads_optimal.rds')
-
-# TF_activities_plot_frame <-  rbind(TF_activities,TF_activities_loadings)
-# TF_activities_plot_frame <- left_join(TF_activities_plot_frame,
-#                                       null_activity_all %>% select(-statistic,-p_value) %>% 
-#                                         mutate(condition = ifelse(condition=='V1','optimal direction',condition)),
-#                                       by = c('condition','source'))
-# TF_activities_plot_frame <- TF_activities_plot_frame %>% group_by(source,score.x) %>%
-#   mutate(p = sum(abs(score.y)>=abs(score.x))/iters) %>%
-#   ungroup() %>% group_by(condition) %>% mutate(num_tfs = n_distinct(source)) %>%
-#   ungroup() %>% mutate(p.adj = p*num_tfs) %>% select(source,condition,c('score'='score.x'),p_value,p,p.adj) %>%
-#   mutate(p.adj = ifelse(p.adj>1,1,p.adj))
-# TF_activities_plot_frame <- distinct(TF_activities_plot_frame)
-# saveRDS(TF_activities_plot_frame,'../results/pc_loadings_scores_analysis/TF_activities_plot_frame.rds')
-# gc()
-TF_activities_plot_frame <- readRDS('../results/pc_loadings_scores_analysis/TF_activities_plot_frame.rds')
-TF_activities_plot_frame <-  TF_activities_plot_frame %>%
-  mutate(statistical=ifelse(p.adj<=0.01,'p.adj<=0.01',
-                            ifelse(p.adj<=0.05,'p.adj<=0.05',
-                                   ifelse(p.adj<=0.1,'p.adj<=0.1','p.adj>0.1'))))
-TF_activities_PC8 <- TF_activities_plot_frame %>% filter(condition=='PC8')
-TF_activities_PC8$significant <- ''
-TF_activities_PC8$significant[order(-abs(TF_activities_PC8$score))[1:20]] <- TF_activities_PC8$source[order(-abs(TF_activities_PC8$score))[1:20]]
-TF_activities_PC12 <- TF_activities_plot_frame %>% filter(condition=='PC12')
-TF_activities_PC12$significant <- ''
-TF_activities_PC12$significant[order(-abs(TF_activities_PC12$score))[1:20]] <- TF_activities_PC12$source[order(-abs(TF_activities_PC12$score))[1:20]]
-TF_activities_opt <- TF_activities_plot_frame %>% filter(condition=='optimal direction')
-TF_activities_opt$significant <- ''
-TF_activities_opt$significant[order(-abs(TF_activities_opt$score))[1:20]] <- TF_activities_opt$source[order(-abs(TF_activities_opt$score))[1:20]]
-TF_activities_plot_frame <- rbind(TF_activities_opt,
-                                  TF_activities_PC12,
-                                  TF_activities_PC8)
-TF_activities_PC8$source <- factor(TF_activities_PC8$source,levels = TF_activities_PC8$source[order(TF_activities_PC8$score)])
-TF_activities_PC12$source <- factor(TF_activities_PC12$source,levels = TF_activities_PC12$source[order(TF_activities_PC12$score)])
-TF_activities_opt$source <-  factor(TF_activities_opt$source,levels = TF_activities_opt$source[order(TF_activities_opt$score)])
-# Combine into one data frame
-# TF_activities_plot_frame <- rbind(TF_activities_PC8 %>% dplyr::rename(value = PC8) %>% mutate(PC='PC8'),
-#                                   TF_activities_PC12 %>% dplyr::rename(value = PC12) %>% mutate(PC='PC12'),
-#                                   TF_activities_optim %>% dplyr::rename(value = `optimal direction`) %>% mutate(PC='optimal direction'))
-# TF_activities_plot_frame <- TF_activities_plot_frame %>% mutate(PC=ifelse(PC=='optimal direction','used optimal gene loadings',paste0('used ',PC,' gene loadings')))
-### Make barplot to look at top TFs
-p <- (ggplot(TF_activities_PC8,aes(x=source,y=score,color = statistical)) + geom_point() +
-  # scale_color_gradient(high = 'red',low='white')+
-    scale_color_manual(values = c('red','#fa4c4c','#fa8e8e','black'))+
-  geom_text_repel(aes(label=significant),size=6,max.overlaps=40)+
-  xlab('TFs') + ylab('activity from PC8 loadings')+
-  scale_x_discrete(expand = c(0.1, 0.1))+
-  theme_pubr(base_family = 'Arial',base_size = 20)+
-  theme(text = element_text(family = 'Arial',size=20),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_blank(),
-        legend.position = 'none')) +
-  (ggplot(TF_activities_PC12,aes(x=source,y=score,color = statistical)) + geom_point() +
-     scale_color_manual(values =c('red','#fa4c4c','#fa8e8e','black'))+
-     # scale_color_gradient(high = 'red',low='white')+
-     geom_text_repel(aes(label=significant),size=6,max.overlaps=40,show.legend = FALSE)+
-     xlab('TFs') + ylab('activity from PC12 loadings')+
-     scale_x_discrete(expand = c(0.1, 0.1))+
-     theme_pubr(base_family = 'Arial',base_size = 20)+
-     theme(text = element_text(family = 'Arial',size=20),
-           axis.ticks.x = element_blank(),
-           axis.text.x = element_blank(),
-           legend.position = 'right'))
-print(p)
-ggsave('../results/pc_loadings_scores_analysis/TFs_from_loadings_PCs_ordered.png',
-       plot = p,
-       width = 16,
-       height = 12,
-       units = 'in',
-       dpi = 600)
-p <- ggplot(TF_activities_plot_frame %>% dplyr::rename(`statistical threshold`=statistical),
-            aes(x=score,y=-log10(p.adj),color = `statistical threshold`)) + geom_point() +
-  scale_color_manual(values = c('red','#fa4c4c','#fa8e8e','black'))+
-  # ggbreak::scale_y_break(breaks = c(2,15),space = 0.5,ticklabels = c(15,16))+
-  geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
-  xlab('activity') + ylab(expression(-log[10]('adjusted p-value'))) +
-  # ylab('adjusted p-value') +
-  # scale_x_discrete(expand = c(0.1, 0.1))+
-  geom_hline(yintercept=-log10(0.1), linetype="dashed",color = "#525252", size=1) +
-  # annotate("text",x=-2,y=1.5,label="adjusted p-value=0.05",size=6)+
-  theme_pubr(base_family = 'Arial',base_size = 24)+
-  theme(text = element_text(family = 'Arial',size=24),
-        legend.position = 'top')+
-  facet_wrap(~condition,scales = 'free_x')+
-  guides(color = guide_legend(
-    override.aes = list(
-      linetype = NA,
-      size = 3
-    )
-  ))
-print(p)
-p <- ggplot(TF_activities_opt,aes(x=source,y=score,color = statistical)) + geom_point() +
-  scale_color_manual(values =c('red','#fa4c4c','#fa8e8e','black'))+
-  # scale_color_gradient(high = 'red',low='white')+
-  geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7,show.legend = FALSE)+
-  xlab('TFs') + ylab('activity from optimal loadings')+
-  scale_x_discrete(expand = c(0.1, 0.1))+
-  theme_pubr(base_family = 'Arial',base_size = 20)+
-  theme(text = element_text(family = 'Arial',size=20),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_blank(),
-        legend.position = 'right')
-print(p)
-ggsave('../results/pc_loadings_scores_analysis/optimal_direction_TF_activity.png',
-       plot = p,
+# extra_basis_tfs <- extra_basis_tfs %>% group_by(condition,TF) %>%
+#   mutate(bool=abs(PC_space_paths)>=abs(score)) %>% mutate(p_value_null = sum(bool)) %>%
+#   ungroup() %>% select(-bool) %>% mutate(p_value_null=p_value_null/length(PC_space_paths))
+extra_basis_tfs <- extra_basis_tfs %>% group_by(condition,TF) %>%
+  mutate(p_value=sum(abs(PC_space_paths)>=abs(score))/length(PC_space_paths))
+extra_basis_tfs  <- extra_basis_tfs %>%
+  mutate(p.adj = p_value*length(unique(extra_basis_tfs$TF))) %>%
+  mutate(p.adj = ifelse(p.adj>1,1,p.adj))
+# extra_basis_tfs <- extra_basis_tfs %>% group_by(TF) %>%
+#   mutate(sig1 = sum(p.adj<0.1)) %>% ungroup() %>%
+#   group_by(condition) %>% mutate(sig2 = sum(p.adj<0.1)) %>% ungroup()
+extra_basis_tfs$significant <- NA  
+extra_basis_tfs <- extra_basis_tfs %>% mutate(significant = ifelse(p_value<0.1,
+                                                               TF,
+                                                               significant))
+(ggplot(extra_basis_tfs %>% select(c('activity'='score'),TF,p_value,condition,significant) %>% 
+          filter (condition=='V1'),
+        aes(x=reorder(TF,activity),y=activity,fill=p_value)) + geom_point(shape=21,size=2) +
+    geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
+    scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
+    scale_y_continuous(n.breaks = 6,limits = c(-6,6))+
+    ggtitle('Extra LV1')+
+    xlab('TF')+
+    theme_pubr(base_size = 20,base_family = 'Arial')+
+    theme(text = element_text(size = 20,family = 'Arial'),
+          legend.position = 'right',
+          plot.title = element_text(hjust = 0.5),
+          axis.text.x = element_blank())) +
+  (ggplot(extra_basis_tfs %>% select(c('activity'='score'),TF,p_value,condition,significant) %>% 
+            filter (condition=='V2'),
+          aes(x=reorder(TF,activity),y=activity,fill=p_value)) + geom_point(shape=21,size=2) +
+     geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
+     scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
+     scale_y_continuous(n.breaks = 6,limits = c(-6,6))+
+     ggtitle('Extra LV2')+
+     xlab('TF')+
+     theme_pubr(base_size = 20,base_family = 'Arial')+
+     theme(text = element_text(size = 20,family = 'Arial'),
+           legend.position = 'right',
+           plot.title = element_text(hjust = 0.5),
+           axis.title.y = element_blank(),
+           axis.text.x = element_blank())) 
+ggsave('../results/pc_loadings_scores_analysis/TF_only_optimal_loadings_barplot.png',
        width = 12,
        height = 9,
-       units = 'in',
        dpi = 600)
-significant_tfs <- TF_activities_plot_frame %>% filter(p.adj<0.1)
-significant_tfs <- unique(as.character(significant_tfs$source))
-TF_activities <- rbind(TF_activities,TF_activities_loadings) %>% select(source,condition,score) %>% spread(condition,score) %>% column_to_rownames('source')
-TF_activities <- TF_activities[which(rownames(TF_activities) %in% TF_activities_loadings$source),]
-png('../results/pc_loadings_scores_analysis/significant_TFs_from_loadings_optinal_heatmap.png',width = 9,height = 9,units = 'in',res = 600)
-pheatmap(TF_activities[which(rownames(TF_activities) %in% significant_tfs),
-                       c('optimal direction',paste0('PC',c(1,2,8,12)))])
-dev.off()
 
 ### Infer protein activity-----------------------------------------
 interactions <- import_omnipath_interactions()
@@ -950,81 +773,8 @@ ggsave('../results/pc_loadings_scores_analysis/protein_activity_from_loadings_vo
 
 ### Perform KEGG pathway analysis (GSEA)------------
 # rownames(loadings) <- NULL
-PCA_alldata <- prcomp(Xm, scale. = F, center = T)
-loadings <- PCA_alldata$rotation
-Woptim <- readRDS('../results/Wm_opt_2.rds')
-loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,PC12,PC8) %>% column_to_rownames('gene')
-entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(loadings), column = "ENTREZID", keytype = "SYMBOL")
-entrez_ids <- unname(entrez_ids)
-inds <- which(!is.na(entrez_ids))
-entrez_ids <- entrez_ids[inds]
-meas <- loadings[inds,]
-# meas <- as.matrix(loadings[inds,1])
-# rownames(meas) <- NULL
-rownames(meas) <- entrez_ids
-# names(meas) <- entrez_ids
-
-## run gsea
-egsea.data(species = "human",returnInfo = TRUE)
-kegg_list <-  kegg.pathways$human$kg.sets
-# keggs <- fgseaSimple(pathways = kegg_list,
-#                      stats=meas,
-#                      minSize=10,
-#                      maxSize=500,
-#                      nperm = 10000)
-keggs <- fastenrichment(colnames(meas),
-                        rownames(meas),
-                        meas,
-                        enrichment_space = 'kegg',
-                        n_permutations = 10000)
-kegg_nes <- as.data.frame(keggs$NES$`NES KEGG`) %>% rownames_to_column('pathway') %>% gather('PC','NES',-pathway)
-kegg_pval <- as.data.frame(keggs$Pval$`Pval KEGG`) %>% rownames_to_column('pathway') %>% gather('PC','padj',-pathway)
-df_keggs <- left_join(kegg_nes,kegg_pval)
-# df_keggs <- keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
-df_keggs <- df_keggs %>% mutate(pathway=strsplit(pathway,"_"))
-df_keggs <- df_keggs %>% unnest(pathway) %>% filter(!(pathway %in% c("KEGG","FL1000")))
-df_keggs <- df_keggs %>% mutate(pathway=as.character(pathway))
-df_keggs <- df_keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
-
-df_keggs <- df_keggs %>% mutate(sig=ifelse(abs(NES)>1.5 & padj<0.05,'yes','no'))
-df_keggs <- df_keggs%>% mutate(label = ifelse(sig=='yes',pathway,NA))
-# p1 <- ggplot(df_keggs %>% filter(PC=='PC12') %>% arrange(NES),aes(x=NES,y=-log10(padj),color=sig))+ 
-#   geom_point()+
-#   ylab(expression(-log[10]('p.adj')))+
-#   geom_label_repel(aes(label=label),
-#                    size=4,
-#                    box.padding = 0.1, 
-#                    point.padding = 0.1,
-#                    max.overlaps = 40)+
-#   scale_x_continuous(n.breaks = 10)+
-#   ggtitle('Pathways enriched in PC12 loadings')+
-#   theme(text=element_text(family = 'Arial',size=18),
-#         legend.position = 'none',
-#         plot.title = element_text(hjust = 0.5),
-#         panel.grid.major.y = element_blank())
-# print(p1)
-df_keggs_tmp <- df_keggs %>% filter(PC=='PC8')
-df_keggs_tmp <- df_keggs_tmp[order(df_keggs_tmp$NES),]
-df_keggs_tmp$pathway <- factor(df_keggs_tmp$pathway,levels = df_keggs_tmp$pathway)
-p2 <- ggplot(df_keggs_tmp %>% arrange(NES) %>% filter(padj<0.05),aes(x=NES,y=pathway,fill=padj))+
-  geom_bar(stat = 'identity',color='black',size=1.5) +
-  scale_fill_gradient(low = "red",high = "white",limits = c(min(df_keggs_tmp$padj),0.05)) +
-  xlab('Normalized Enrichment Score') +
-  ggtitle('Pathways enriched in PC8 loadings')+
-  theme_pubr(base_family = 'Arial',base_size = 20)+
-  theme(plot.title = element_text(hjust = 0.5),
-        legend.key.size = unit(1.5, "lines"),
-        legend.position = 'right',
-        legend.justification = "center")
-print(p2)
-ggsave('../results/pc_loadings_scores_analysis/kegg_bar_on_pc8.png',
-       plot=p2,
-       width=16,
-       height=9,
-       units = 'in',
-       dpi = 600)
-
-### Repeat for Wopt
+Woptim <- readRDS('../results/Wm_extra.rds')
+rownames(Woptim) <- rownames(Wm)
 entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(Woptim), column = "ENTREZID", keytype = "SYMBOL")
 entrez_ids <- unname(entrez_ids)
 inds <- which(!is.na(entrez_ids))
@@ -1038,31 +788,50 @@ keggs <- fastenrichment(colnames(meas),
                         n_permutations = 10000,
                         order_columns=F)
 kegg_nes <- as.data.frame(keggs$NES$`NES KEGG`) %>% rownames_to_column('pathway')
-colnames(kegg_nes)[2] <- 'NES'
+kegg_nes <- kegg_nes %>% gather('LV','NES',-pathway)
 kegg_pval <- as.data.frame(keggs$Pval$`Pval KEGG`) %>% rownames_to_column('pathway')
-colnames(kegg_pval)[2] <- 'padj'
+kegg_pval <- kegg_pval %>% gather('LV','padj',-pathway)
 df_keggs <- left_join(kegg_nes,kegg_pval)
 df_keggs <- df_keggs %>% mutate(pathway=strsplit(pathway,"_"))
 df_keggs <- df_keggs %>% unnest(pathway) %>% filter(!(pathway %in% c("KEGG","FL1000")))
 df_keggs <- df_keggs %>% mutate(pathway=as.character(pathway))
 df_keggs <- df_keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
-df_keggs <- df_keggs %>% mutate(sig=ifelse(abs(NES)>1.5 & padj<0.05,'yes','no'))
-df_keggs <- df_keggs%>% mutate(label = ifelse(sig=='yes',pathway,NA))
-p1 <- ggplot(df_keggs %>% arrange(NES),aes(x=NES,y=-log10(padj),color=sig))+ 
-  geom_point()+
-  ylab(expression(-log[10]('p.adj')))+
-  geom_label_repel(aes(label=label),
-                   size=4,
-                   box.padding = 0.1, 
-                   point.padding = 0.1,
-                   max.overlaps = 40)+
-  scale_x_continuous(n.breaks = 10)+
-  ggtitle('Pathways enriched in optimal loadings')+
-  theme(text=element_text(family = 'Arial',size=18),
-        legend.position = 'none',
-        plot.title = element_text(hjust = 0.5),
-        panel.grid.major.y = element_blank())
+# df_keggs <- df_keggs %>% mutate(sig=ifelse(abs(NES)>1.5 & padj<0.1,'yes','no'))
+# df_keggs <- df_keggs%>% mutate(label = ifelse(sig=='yes',pathway,NA))
+p1 <- (ggplot(df_keggs %>% filter(abs(NES)>1) %>% filter(padj<0.5) %>% filter(LV=='V1') %>% 
+                arrange(NES),aes(x=NES,y=reorder(pathway,-NES),fill=padj))+ 
+         geom_bar(stat = 'identity',color='black',size=1.5) +
+         scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+         xlab('Normalized Enrichment Score') + ylab('KEGG Pathway')+
+         ggtitle('KEEGs enriched in extra basis 1')+
+         theme_pubr(base_family = 'Arial',base_size = 15)+
+         theme(text = element_text(family = 'Arial',size=15),
+               axis.text.y = element_text(size=13),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'right',
+               legend.justification = "center"))+
+  (ggplot(df_keggs %>% filter(abs(NES)>1)%>% filter(padj<0.25) %>% filter(LV=='V2') %>% 
+            arrange(NES),aes(x=NES,y=reorder(pathway,-NES),fill=padj))+ 
+     geom_bar(stat = 'identity',color='black',size=1.5) +
+     scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+     xlab('Normalized Enrichment Score') +ylab('KEEG Pathway')+
+     ggtitle('KEEGs enriched in extra basis 2')+
+     theme_pubr(base_family = 'Arial',base_size = 15)+
+     theme(text = element_text(family = 'Arial',size=15),
+           axis.text.y = element_text(size=13),
+           plot.title = element_text(hjust = 0.5),
+           legend.key.size = unit(1.5, "lines"),
+           legend.position = 'right',
+           legend.justification = "center",
+           axis.title.y = element_blank()))
 print(p1)
+ggsave('../results/pc_loadings_scores_analysis/keggs_on_optimal_loadings.png',
+       plot=p1,
+       width=12,
+       height=9,
+       units = 'in',
+       dpi = 600)
 
 ### Perform GO Terms analysis (GSEA)------------
 loadings <- PCA_alldata$rotation
@@ -1166,30 +935,43 @@ msig <- fastenrichment(colnames(meas),
                        n_permutations = 10000,
                        order_columns=F)
 msig_nes <- as.data.frame(msig$NES$`NES MSIG Hallmark`) %>% rownames_to_column('Hallmark')  #%>% gather('PC','NES',-Hallmark)
-colnames(msig_nes)[2] <- 'NES'
+msig_nes <- msig_nes %>% gather('LV','NES',-Hallmark)
 msig_pval <- as.data.frame(msig$Pval$`Pval MSIG Hallmark`) %>% rownames_to_column('Hallmark')#%>% gather('PC','padj',-Hallmark)
-colnames(msig_pval)[2] <- 'padj'
+msig_pval <- msig_pval %>% gather('LV','padj',-Hallmark)
 df_msig <- left_join(msig_nes,msig_pval)
 df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
 
 # df_msig <- df_msig %>% mutate(Hallmark=strsplit(Hallmark,"_"))
 # df_msig <- df_msig %>% unnest(Hallmark) %>% filter(!(Hallmark %in% c("HALLMARK","FL1000","MSIG","H")))
-df_msig <- df_msig %>% mutate(Hallmark=as.character(Hallmark))
-df_msig <- df_msig %>% mutate(Hallmark=gsub('_'," ",Hallmark))
+# df_msig <- df_msig %>% mutate(Hallmark=as.character(Hallmark))
+# df_msig <- df_msig %>% mutate(Hallmark=gsub('_'," ",Hallmark))
 # df_msig_tmp <- df_msig %>% filter(PC=='PC12')
-df_msig$Hallmark <- factor(df_msig$Hallmark,levels = df_msig$Hallmark[order(df_msig$NES)])
-p1 <- ggplot(df_msig %>% arrange(NES),aes(x=NES,y=Hallmark,fill=padj))+ 
+# df_msig$Hallmark <- factor(df_msig$Hallmark,levels = df_msig$Hallmark[order(df_msig$NES)])
+p1 <- (ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES),aes(x=NES,y=reorder(Hallmark,-NES),fill=padj))+ 
   geom_bar(stat = 'identity',color='black',size=1.5) +
   scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
-  xlab('Normalized Enrichment Score') +
-  ggtitle('Hallmarks enriched in optimal loadings')+
+  xlab('Normalized Enrichment Score') + ylab('Hallmark')+
+  ggtitle('Hallmarks enriched in extra basis 1')+
   theme_pubr(base_family = 'Arial',base_size = 15)+
   theme(text = element_text(family = 'Arial',size=15),
         axis.text.y = element_text(size=13),
         plot.title = element_text(hjust = 0.5),
         legend.key.size = unit(1.5, "lines"),
         legend.position = 'right',
-        legend.justification = "center")
+        legend.justification = "center"))+
+  (ggplot(df_msig %>% filter(LV=='V2') %>% arrange(NES),aes(x=NES,y=reorder(Hallmark,-NES),fill=padj))+ 
+     geom_bar(stat = 'identity',color='black',size=1.5) +
+     scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+     xlab('Normalized Enrichment Score') +ylab('Hallmark')+
+     ggtitle('Hallmarks enriched in extra basis 2')+
+     theme_pubr(base_family = 'Arial',base_size = 15)+
+     theme(text = element_text(family = 'Arial',size=15),
+           axis.text.y = element_text(size=13),
+           plot.title = element_text(hjust = 0.5),
+           legend.key.size = unit(1.5, "lines"),
+           legend.position = 'right',
+           legend.justification = "center",
+           axis.title.y = element_blank()))
 print(p1)
 ggsave('../results/pc_loadings_scores_analysis/hallmark_on_optimal_loadings.png',
        plot=p1,
@@ -1197,30 +979,3 @@ ggsave('../results/pc_loadings_scores_analysis/hallmark_on_optimal_loadings.png'
        height=9,
        units = 'in',
        dpi = 600)
-### NicheNet analysis-----------------------------------------
-Woptim <- readRDS('../results/Wm_opt_2.rds')
-colnames(Woptim) <- 'w_optimal'
-gene_loadings <- PCA_alldata$rotation[,paste0('PC',c(1,2,8,12))]
-
-weighted_networks = readRDS(url("https://zenodo.org/record/7074291/files/weighted_networks_nsga2r_final.rds"))
-ligand_tf_matrix = readRDS(url("https://zenodo.org/record/7074291/files/ligand_tf_matrix_nsga2r_final.rds"))
-lr_network = readRDS(url("https://zenodo.org/record/7074291/files/lr_network_human_21122021.rds"))
-sig_network = readRDS(url("https://zenodo.org/record/7074291/files/signaling_network_human_21122021.rds"))
-gr_network = readRDS(url("https://zenodo.org/record/7074291/files/gr_network_human_21122021.rds"))
-ligands_all = lr_network %>% pull(from) %>% unique()
-print(paste0('Is IFNa in available ligands? : ',any(grepl('IFNA',ligands_all))))
-print(paste0('Is IFNg in available ligands? : ',any(grepl('IFNG',ligands_all))))
-selected_ligands <- ligands_all[grepl('IFNA',ligands_all) | grepl('IFNG',ligands_all)]
-targets_all = names(Woptim[,1][order(-abs(Woptim[,1]))[1:40]])
-targets_all <- targets_all[which(targets_all %in% gr_network$to)]
-
-active_signaling_network = get_ligand_signaling_path(ligand_tf_matrix = ligand_tf_matrix, ligands_all = ligands_all, targets_all = targets_all, weighted_networks = weighted_networks)
-
-# For better visualization of edge weigths: normalize edge weights to make them comparable between signaling and gene regulatory interactions
-active_signaling_network_min_max = active_signaling_network
-active_signaling_network_min_max$sig = active_signaling_network_min_max$sig %>% mutate(weight = ((weight-min(weight))/(max(weight)-min(weight))) + 0.75)
-active_signaling_network_min_max$gr = active_signaling_network_min_max$gr %>% mutate(weight = ((weight-min(weight))/(max(weight)-min(weight))) + 0.75)
-
-graph_min_max = diagrammer_format_signaling_graph(signaling_graph_list = active_signaling_network_min_max, ligands_all = ligands_all, targets_all = targets_all, sig_color = "indianred", gr_color = "steelblue")
-
-DiagrammeR::render_graph(graph_min_max, layout = "tree")
