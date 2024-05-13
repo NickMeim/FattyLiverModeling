@@ -86,15 +86,15 @@ Wtot <- readRDS('../results/Wm_total.rds')
 Wm_combo<- readRDS('../results/Wm_combo.rds')
 rownames(Woptim) <- rownames(Wm)
 rownames(Wtot) <- rownames(Wm)
-Zh <- as.data.frame(Xh %*% Woptim)
-Zh$NAS <- Yh[,1]
-Zh$fibrosis <- Yh[,2]
-Zh <- Zh %>% rownames_to_column('sample')
-w1 <- c(seq(-1,1,0.01))
-w2 <- c(seq(-1,1,0.01))
-r <- NULL
-k <- 1
-df <- data.frame()
+# Zh <- as.data.frame(Xh %*% Woptim)
+# Zh$NAS <- Yh[,1]
+# Zh$fibrosis <- Yh[,2]
+# Zh <- Zh %>% rownames_to_column('sample')
+# w1 <- c(seq(-1,1,0.01))
+# w2 <- c(seq(-1,1,0.01))
+# r <- NULL
+# k <- 1
+# df <- data.frame()
 # for (a in w1){
 #   for (b in w2){
 #     r[k] <- b/a
@@ -106,30 +106,6 @@ df <- data.frame()
 #                 data.frame(w1=a,w2=b,phenotype = 'fibrosis',corr=corr_fib))
 #   }
 # }
-# thetas <- c(0,5,10,20,30,45,60,75,90,120,seq(140,240,20),270,seq(300,360,20))
-thetas <- seq(0,360,5)
-df_proj <- data.frame()
-df <- data.frame()
-for (theta in thetas){
-  u <- c(cos(theta * pi / 180),sin(theta * pi / 180))
-  u <- as.matrix(u)
-  proj <- u %*% t(u) # since it is unit norm vector
-  tmp <- as.matrix(Zh%>% select(V1,V2))
-  Z_proj <- tmp %*% proj
-  if (theta %in% c(90,270)){
-    corr_nas <- cor(Z_proj[,2],Zh$NAS)
-    corr_fib <- cor(Z_proj[,2],Zh$fibrosis)
-  }else{
-    corr_nas <- cor(Z_proj[,1],Zh$NAS)
-    corr_fib <- cor(Z_proj[,1],Zh$fibrosis)
-  }
-  df <- rbind(df,
-              data.frame(theta = theta,phenotype = 'NAS',corr=corr_nas),
-              data.frame(theta = theta,phenotype = 'fibrosis',corr=corr_fib))
-  df_proj <- rbind(df_proj,
-                   data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'NAS',corr=corr_nas),
-                   data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'fibrosis',corr=corr_fib))
-}
 # ggplot(df,aes(x=w1,y=w2,fill=corr)) +
 #   scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0, limits = c(-1, 1))+
 #   geom_tile()+
@@ -142,66 +118,6 @@ for (theta in thetas){
 #        width = 12,
 #        units = 'in',
 #        dpi=600)
-p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>% 
-               mutate(`absolute average`=0.5*(abs(NAS)+abs(fibrosis))) %>% 
-               ungroup() %>% gather('phenotype','corr',-theta),
-             aes(x=theta,y=corr,colour=phenotype)) +
-  geom_line()+
-  geom_point()+
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(breaks = seq(-1,1,0.25))+
-  scale_x_continuous(breaks = seq(0,360,15))+
-  xlab(expression(theta*" (\u00B0)"))+
-  theme_minimal(base_size = 20,base_family = 'Arial')+
-  theme(text = element_text(size=20,family='Arial'),
-        legend.position = 'top')
-
-# p2 <- ggplot(df %>% spread('phenotype','corr'),aes(x=NAS,y=fibrosis,fill=theta * pi / 180)) +
-#   geom_point(shape=22)+
-#   scale_fill_gradient(low = 'red',high = 'white',limits = c(0, 2*pi))+
-#   geom_hline(yintercept = 0) +
-#   geom_vline(xintercept = 0) +
-#   theme_minimal(base_size = 20,base_family = 'Arial')+
-#   theme(text = element_text(size=20,family='Arial'),
-#         legend.position = 'right')
-
-p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
-  # geom_point()+
-  geom_segment(aes(x=0,y=0,xend =LV_opt_1,yend=LV_opt_2),
-               arrow = arrow(length = unit(0.03, "npc")))+
-  scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
-  scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
-  geom_hline(yintercept = 0) +
-  geom_vline(xintercept = 0) +
-  facet_wrap(~phenotype)+
-  theme_minimal(base_size = 20,base_family = 'Arial')+
-  theme(text = element_text(size=20,family='Arial'),
-        legend.position = 'right')
-p1 / p2
-ggsave('../results/pc_loadings_scores_analysis/optimal_space_phenotypes_correlations_directions.png',
-       height = 12,
-       width = 12,
-       units = 'in',
-       dpi=600)
-
-(ggplot(Zh ,aes(x=V1,y=V2,colour=NAS))+
-  geom_point()+
-  scale_color_viridis_c()+
-  theme_minimal(base_size=20,base_family = 'Arial')+
-  theme(text= element_text(size=20,family = 'Arial'),
-        legend.position = 'right')) +
-  (ggplot(Zh ,aes(x=V1,y=V2,colour=fibrosis))+
-                                        geom_point()+
-                                        scale_color_viridis_c()+
-                                        theme_minimal(base_size=20,base_family = 'Arial')+
-                                        theme(text= element_text(size=20,family = 'Arial'),
-                                              legend.position = 'right'))
-ggsave('../results/projected_govaere_samples_on_extra_basis.png',
-       height = 12,
-       width = 16,
-       units = 'in',
-       dpi=600)
-
 ## Check out 
 Woptim <- as.data.frame(Woptim) %>% rownames_to_column('gene')
 Woptim$significant <- ''

@@ -9,6 +9,8 @@ library(patchwork)
 source('modeling/functions_translation_jose.R')
 source('modeling/CrossValidationUtilFunctions.R')
 source("utils/plotting_functions.R")
+source("modeling/vector_space_interpretation.R")
+
 ### Load the all the data to be used-----------------------
 dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver","Govaere")
 ref_dataset <- "Govaere"
@@ -27,7 +29,8 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
-### Check current TF and pathway activity
+
+### Check current TF and pathway activity in the data------------------------------
 net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
 
 path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
@@ -48,7 +51,7 @@ ggscatter(path_acitivity %>% mutate(p=ifelse(p_value<0.0001,'<0.0001',
   scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
   theme(text = element_text(size=20,family='Arial'))+
   facet_wrap(~Pathway)
-ggsave('results/pathway_activity_in_pc_space.png',
+ggsave(paste0('results/',tolower(target_dataset),'_pathway_activity_in_pc_space.png'),
        height = 12,
        width = 16,
        units = 'in',
@@ -83,6 +86,7 @@ ggscatter(left_join(path_acitivity,
   theme(text = element_text(size=20,family='Arial'))+
   facet_wrap(~PC)
 
+
 ### Run PLSR and find extra basis--------------------------
 plsr_model <- opls(x = Xh, 
                    y = Yh,
@@ -112,6 +116,92 @@ Wm_tot <- cbind(Wm, Wm_opt)
 y_hat <- cbind(1, Xh %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(Yh,2,mean),Bh)
 plot(Yh[,1],y_hat[,1],xlab='True NAS',ylab='Predicted NAS',main=paste0('r = ',cor(Yh[,1],y_hat[,1])))
 plot(Yh[,2],y_hat[,2],xlab='True fibrosis',ylab='Predicted fibrosis',main=paste0('r = ',cor(Yh[,2],y_hat[,2])))
+
+### Plot the directions of correlation with NAS ans Fibrosis in this space
+Zh <- as.data.frame(Xh %*% Wm_opt)
+Zh$NAS <- Yh[,1]
+Zh$fibrosis <- Yh[,2]
+Zh <- Zh %>% rownames_to_column('sample')
+thetas <- seq(0,360,5)
+df_proj <- data.frame()
+df <- data.frame()
+for (theta in thetas){
+  u <- c(cos(theta * pi / 180),sin(theta * pi / 180))
+  u <- as.matrix(u)
+  proj <- u %*% t(u) # since it is unit norm vector
+  tmp <- as.matrix(Zh%>% select(V1,V2))
+  Z_proj <- tmp %*% proj
+  if (theta %in% c(90,270)){
+    corr_nas <- cor(Z_proj[,2],Zh$NAS)
+    corr_fib <- cor(Z_proj[,2],Zh$fibrosis)
+  }else{
+    corr_nas <- cor(Z_proj[,1],Zh$NAS)
+    corr_fib <- cor(Z_proj[,1],Zh$fibrosis)
+  }
+  df <- rbind(df,
+              data.frame(theta = theta,phenotype = 'NAS',corr=corr_nas),
+              data.frame(theta = theta,phenotype = 'fibrosis',corr=corr_fib))
+  df_proj <- rbind(df_proj,
+                   data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'NAS',corr=corr_nas),
+                   data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'fibrosis',corr=corr_fib))
+}
+p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>% 
+               mutate(`absolute average`=0.5*(abs(NAS)+abs(fibrosis))) %>% 
+               ungroup() %>% gather('phenotype','corr',-theta),
+             aes(x=theta,y=corr,colour=phenotype)) +
+  geom_line()+
+  geom_point()+
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(breaks = seq(-1,1,0.25))+
+  scale_x_continuous(breaks = seq(0,360,15))+
+  xlab(expression(theta*" (\u00B0)"))+
+  theme_minimal(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family='Arial'),
+        legend.position = 'top')
+
+p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
+  geom_segment(aes(x=0,y=0,xend =LV_opt_1,yend=LV_opt_2),
+               arrow = arrow(length = unit(0.03, "npc")))+
+  scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
+  scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~phenotype)+
+  theme_minimal(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family='Arial'),
+        legend.position = 'right')
+p1 / p2
+ggsave(paste0('../results/pc_loadings_scores_analysis/',
+              tolower(ref_dataset),
+              'optimal_space_phenotypes_correlations_directions',
+              tolower(target_dataset),
+              '.png'),
+       height = 12,
+       width = 12,
+       units = 'in',
+       dpi=600)
+
+(ggplot(Zh ,aes(x=V1,y=V2,colour=NAS))+
+    geom_point()+
+    scale_color_viridis_c()+
+    theme_minimal(base_size=20,base_family = 'Arial')+
+    theme(text= element_text(size=20,family = 'Arial'),
+          legend.position = 'right')) +
+  (ggplot(Zh ,aes(x=V1,y=V2,colour=fibrosis))+
+     geom_point()+
+     scale_color_viridis_c()+
+     theme_minimal(base_size=20,base_family = 'Arial')+
+     theme(text= element_text(size=20,family = 'Arial'),
+           legend.position = 'right'))
+ggsave(paste0('../results/projected_',
+              tolower(ref_dataset),
+              '_samples_on_extra_basis',
+              tolower(target_dataset),
+              '.png'),
+       height = 12,
+       width = 16,
+       units = 'in',
+       dpi=600)
 
 ### Find translatable LV of the in vitro system
 ### Run evolutionary algorithm
@@ -145,7 +235,7 @@ plot(Yh[,2],y_hat[,2],xlab='True fibrosis',ylab='Predicted fibrosis',main=paste0
      theme_minimal(base_size=20,base_family = 'Arial')+
      theme(text= element_text(size=20,family = 'Arial'),
            legend.position = 'right'))
-ggsave('results/projected_govaere_samples_on_translatable_lvs.png',
+ggsave(paste0('results/',tolower(target_dataset),'_projected_',tolower(ref_dataset),'_samples_on_translatable_lvs.png'),
        height = 12,
        width = 16,
        units = 'in',
@@ -200,7 +290,7 @@ p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
   theme(text = element_text(size=20,family='Arial'),
         legend.position = 'right')
 p1 / p2
-ggsave('results/pc_loadings_scores_analysis/translatable_lvs_space_phenotypes_correlations_directions.png',
+ggsave(paste0('results/pc_loadings_scores_analysis/',tolower(target_dataset),'_translatable_lvs_space_phenotypes_correlations_directions.png'),
        height = 12,
        width = 12,
        units = 'in',
@@ -208,9 +298,13 @@ ggsave('results/pc_loadings_scores_analysis/translatable_lvs_space_phenotypes_co
 
 
 ### Save found result
-saveRDS(Wm_tot,'results/Wm_total.rds')
-saveRDS(Wm_opt,'results/Wm_extra.rds')
-saveRDS(Wm_combo,'results/Wm_combo.rds')
+rownames(Wm_tot) <- rownames(Wm)
+rownames(Wm_opt) <- rownames(Wm)
+rownames(Wm_combo) <- rownames(Wm)
+
+saveRDS(paste0(Wm_tot,'results/Wm_',tolower(target_dataset),'_total.rds'))
+saveRDS(paste0(Wm_opt,'results/Wm_',tolower(target_dataset),'_extra.rds'))
+saveRDS(paste0(Wm_combo,'results/Wm_',tolower(target_dataset),'_combo.rds'))
 
 ### Visualize activites in the new dimension
 path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
@@ -231,7 +325,7 @@ ggscatter(path_acitivity %>% mutate(p=ifelse(p_value<0.0001,'<0.0001',
   scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
   theme(text = element_text(size=20,family='Arial'))+
   facet_wrap(~Pathway)
-ggsave('results/pathway_activity_in_extra_space.png',
+ggsave(paste0('results/',tolower(target_dataset),'pathway_activity_in_extra_space.png'),
        height = 12,
        width = 16,
        units = 'in',
@@ -252,11 +346,69 @@ ggscatter(left_join(path_acitivity,
   theme(text = element_text(size=20,family='Arial'))+
   facet_wrap(~Pathway)
 
+
 ### Analyze gene loadings----------------------------------
+plot_extra_gene_loadings_lv1 <- plot_gene_loadings(loadings = Wm_opt,
+                                               selection='V1',
+                                               y_lab = 'weight in extra LV1')
+ggsave(paste0('results/pc_loadings_scores_analysis/gene_woptimal_LV1_',
+              tolower(target_dataset),
+              '_loadings.png'),
+       plot = plot_extra_gene_loadings_lv1,
+       width = 14,
+       height = 8,
+       units = 'in',
+       dpi = 600)
+
+plot_extra_gene_loadings_lv2 <- plot_gene_loadings(Wm_opt,
+                                               selection='V2',
+                                               y_lab = 'weight in extra LV2')
+ggsave(paste0('results/pc_loadings_scores_analysis/gene_woptimal_LV2_',
+              tolower(target_dataset),
+              '_loadings.png'),
+       plot = plot_extra_gene_loadings_lv2,
+       width = 14,
+       height = 8,
+       units = 'in',
+       dpi = 600)
+
+plot_translatable_gene_loadings_lv1 <- plot_gene_loadings(Wm_combo,
+                                                      colnames(Wm_combo)[1],
+                                                      'translatable LV1')
+ggsave(paste0('results/pc_loadings_scores_analysis/gene_wcombo_LV1',
+              tolower(target_dataset),
+              '_loadings.png'),
+       plot = plot_translatable_gene_loadings_lv1,
+       width = 14,
+       height = 8,
+       units = 'in',
+       dpi = 600)
+
+plot_translatable_gene_loadings_lv2 <- plot_gene_loadings(Wm_combo,
+                                                      colnames(Wm_combo)[2],
+                                                      'translatable LV2')
+ggsave(paste0('results/pc_loadings_scores_analysis/gene_wcombo_LV2',
+              tolower(target_dataset),
+              '_loadings.png'),
+       plot = plot_translatable_gene_loadings_lv2,
+       width = 14,
+       height = 8,
+       units = 'in',
+       dpi = 600)
+
 
 ### Analyze loadings at the TF activity level--------------
 
 ### Analyze loadings at the Pathway activity level--------------
+extra_basis_pathway_activity <- pathway_activity_interpretation(Wm_opt,
+                                                                Wm)
+ggsave(paste0('results/pc_loadings_scores_analysis/progenies_only_optimal_loadings_',
+              tolower(target_dataset),
+              '_barplot.png'),
+       plot = extra_basis_pathway_activity$figure,
+       width = 16,
+       height = 12,
+       dpi = 600)
 
 ### Analyze loadings with GSEA on MSIG Hallmarks genesets--------------
 
