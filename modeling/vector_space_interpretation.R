@@ -20,10 +20,18 @@ library(topGO)
 library(GO.db)
 library(OmnipathR)
 library(EGSEAdata)
-source("../utils/plotting_functions.R")
-source("functions_translation_jose.R")
-source("CrossValidationUtilFunctions.R")
-source('enrichment_calculations.R')
+dir = getwd()
+if (rev.Vector(strsplit(dir,split = '/')[[1]])[1] == "FattyLiverModeling"){
+  source("utils/plotting_functions.R")
+  source("modeling/functions_translation_jose.R")
+  source("modeling/CrossValidationUtilFunctions.R")
+  source('modeling/enrichment_calculations.R')
+}else{
+  source("../utils/plotting_functions.R")
+  source("functions_translation_jose.R")
+  source("CrossValidationUtilFunctions.R")
+  source('enrichment_calculations.R')
+}
 
 plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE){
   # n_lvs <- ncol(loadings)
@@ -80,8 +88,8 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE){
                 size = 6,
                 color = 'black',
                 angle=90) +                                   
-      theme_pubr(base_size = 20,base_family = 'Arial')+
-      theme(text = element_text(size = 20,family = 'Arial'),
+      theme_pubr(base_size = 18,base_family = 'Arial')+
+      theme(text = element_text(size = 18,family = 'Arial'),
             legend.position = 'right',
             plot.title = element_text(hjust = 0.5))) +
     (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
@@ -101,8 +109,8 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE){
                  size = 6,
                  color = 'black',
                  angle=90) +                                   
-       theme_pubr(base_size = 16,base_family = 'Arial')+
-       theme(text = element_text(size = 16,family = 'Arial'),
+       theme_pubr(base_size = 18,base_family = 'Arial')+
+       theme(text = element_text(size = 18,family = 'Arial'),
              legend.position = 'right',
              plot.title = element_text(hjust = 0.5),
              axis.title.y = element_blank())) 
@@ -110,4 +118,55 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE){
     print(p)
   }
   return(list(figure=p,extra_basis_paths))
+}
+
+TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE){
+  extra_basis_tfs <- decoupleR::run_viper(W, regulon,minsize = 1,verbose = TRUE) %>% select(-statistic)
+  PC_space_tfs <- decoupleR::run_viper(W_PCspace, regulon,minsize = 1,verbose = TRUE)
+  PC_space_tfs <- PC_space_tfs %>% select(source,c('pc_activity'='score'))
+  PC_space_tfs <- PC_space_tfs$pc_activity
+  extra_basis_tfs <- extra_basis_tfs %>% select(-p_value)
+  colnames(extra_basis_tfs)[1] <- 'TF'
+  
+  extra_basis_tfs <- extra_basis_tfs %>% group_by(condition,TF) %>%
+    mutate(p_value=sum(abs(PC_space_tfs)>=abs(score))/length(PC_space_tfs))
+  extra_basis_tfs  <- extra_basis_tfs %>%
+    mutate(p.adj = p_value*length(unique(extra_basis_tfs$TF))) %>%
+    mutate(p.adj = ifelse(p.adj>1,1,p.adj))
+  extra_basis_tfs$significant <- NA  
+  extra_basis_tfs <- extra_basis_tfs %>% mutate(significant = ifelse(p_value<0.1,
+                                                                     TF,
+                                                                     significant))
+  
+  p <- (ggplot(extra_basis_tfs %>% select(c('activity'='score'),TF,p_value,condition,significant) %>% 
+                 filter (condition=='V1'),
+               aes(x=reorder(TF,activity),y=activity,fill=p_value)) + geom_point(shape=21,size=2) +
+          geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
+          scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
+          scale_y_continuous(n.breaks = 6,limits = c(-6,6))+
+          ggtitle('Extra LV1')+
+          xlab('TF')+
+          theme_pubr(base_size = 20,base_family = 'Arial')+
+          theme(text = element_text(size = 20,family = 'Arial'),
+                legend.position = 'right',
+                plot.title = element_text(hjust = 0.5),
+                axis.text.x = element_blank())) +
+    (ggplot(extra_basis_tfs %>% select(c('activity'='score'),TF,p_value,condition,significant) %>% 
+              filter (condition=='V2'),
+            aes(x=reorder(TF,activity),y=activity,fill=p_value)) + geom_point(shape=21,size=2) +
+       geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
+       scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
+       scale_y_continuous(n.breaks = 6,limits = c(-6,6))+
+       ggtitle('Extra LV2')+
+       xlab('TF')+
+       theme_pubr(base_size = 20,base_family = 'Arial')+
+       theme(text = element_text(size = 20,family = 'Arial'),
+             legend.position = 'right',
+             plot.title = element_text(hjust = 0.5),
+             axis.title.y = element_blank(),
+             axis.text.x = element_blank())) 
+  if (plotting==TRUE){
+    print(p)
+  }
+  return(list(figure=p,extra_basis_tfs))
 }

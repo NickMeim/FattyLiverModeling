@@ -30,6 +30,9 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
 
+
+
+
 ### Check current TF and pathway activity in the data------------------------------
 net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
 
@@ -171,7 +174,7 @@ p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
   theme(text = element_text(size=20,family='Arial'),
         legend.position = 'right')
 p1 / p2
-ggsave(paste0('../results/pc_loadings_scores_analysis/',
+ggsave(paste0('results/pc_loadings_scores_analysis/',
               tolower(ref_dataset),
               'optimal_space_phenotypes_correlations_directions',
               tolower(target_dataset),
@@ -193,7 +196,7 @@ ggsave(paste0('../results/pc_loadings_scores_analysis/',
      theme_minimal(base_size=20,base_family = 'Arial')+
      theme(text= element_text(size=20,family = 'Arial'),
            legend.position = 'right'))
-ggsave(paste0('../results/projected_',
+ggsave(paste0('results/projected_',
               tolower(ref_dataset),
               '_samples_on_extra_basis',
               tolower(target_dataset),
@@ -302,9 +305,9 @@ rownames(Wm_tot) <- rownames(Wm)
 rownames(Wm_opt) <- rownames(Wm)
 rownames(Wm_combo) <- rownames(Wm)
 
-saveRDS(paste0(Wm_tot,'results/Wm_',tolower(target_dataset),'_total.rds'))
-saveRDS(paste0(Wm_opt,'results/Wm_',tolower(target_dataset),'_extra.rds'))
-saveRDS(paste0(Wm_combo,'results/Wm_',tolower(target_dataset),'_combo.rds'))
+# saveRDS(Wm_tot,paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+# saveRDS(Wm_opt,paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+# saveRDS(Wm_combo,paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 
 ### Visualize activites in the new dimension
 path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
@@ -347,7 +350,11 @@ ggscatter(left_join(path_acitivity,
   facet_wrap(~Pathway)
 
 
+
 ### Analyze gene loadings----------------------------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 plot_extra_gene_loadings_lv1 <- plot_gene_loadings(loadings = Wm_opt,
                                                selection='V1',
                                                y_lab = 'weight in extra LV1')
@@ -398,8 +405,28 @@ ggsave(paste0('results/pc_loadings_scores_analysis/gene_wcombo_LV2',
 
 
 ### Analyze loadings at the TF activity level--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+dorotheaData = read.table('data/dorothea.tsv', sep = "\t", header=TRUE)
+confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
+dorotheaData = dorotheaData[confidenceFilter,]
+colnames(dorotheaData)[1] <- 'source' 
+extra_basis_TF_activity <- TF_activity_interpretation(Wm_opt,
+                                                      Wm,
+                                                      dorotheaData)
 
+ggsave(paste0('results/pc_loadings_scores_analysis/tfs_only_optimal_loadings_',
+              tolower(target_dataset),
+              '_barplot.png'),
+       plot = extra_basis_TF_activity$figure,
+       width = 16,
+       height = 12,
+       dpi = 600)
 ### Analyze loadings at the Pathway activity level--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 extra_basis_pathway_activity <- pathway_activity_interpretation(Wm_opt,
                                                                 Wm)
 ggsave(paste0('results/pc_loadings_scores_analysis/progenies_only_optimal_loadings_',
@@ -410,8 +437,190 @@ ggsave(paste0('results/pc_loadings_scores_analysis/progenies_only_optimal_loadin
        height = 12,
        dpi = 600)
 
+
 ### Analyze loadings with GSEA on MSIG Hallmarks genesets--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(Wm_opt), column = "ENTREZID", keytype = "SYMBOL")
+entrez_ids <- unname(entrez_ids)
+inds <- which(!is.na(entrez_ids))
+entrez_ids <- entrez_ids[inds]
+meas <- as.matrix(Wm_opt[inds,])
+rownames(meas) <- entrez_ids
+msig <- fastenrichment(colnames(meas),
+                       entrez_ids,
+                       meas,
+                       enrichment_space = 'msig_db_h',
+                       n_permutations = 10000,
+                       order_columns=F)
+msig_nes <- as.data.frame(msig$NES$`NES MSIG Hallmark`) %>% rownames_to_column('Hallmark')  #%>% gather('PC','NES',-Hallmark)
+msig_nes <- msig_nes %>% gather('LV','NES',-Hallmark)
+msig_pval <- as.data.frame(msig$Pval$`Pval MSIG Hallmark`) %>% rownames_to_column('Hallmark')#%>% gather('PC','padj',-Hallmark)
+msig_pval <- msig_pval %>% gather('LV','padj',-Hallmark)
+df_msig <- left_join(msig_nes,msig_pval)
+df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
 
+p1 <- (ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES),aes(x=NES,y=reorder(Hallmark,-NES),fill=padj))+ 
+         geom_bar(stat = 'identity',color='black',size=1.5) +
+         scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+         xlab('Normalized Enrichment Score') + ylab('Hallmark')+
+         ggtitle('Hallmarks enriched in extra basis 1')+
+         theme_pubr(base_family = 'Arial',base_size = 15)+
+         theme(text = element_text(family = 'Arial',size=15),
+               axis.text.y = element_text(size=10),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'right',
+               legend.justification = "center"))+
+  (ggplot(df_msig %>% filter(LV=='V2') %>% arrange(NES),aes(x=NES,y=reorder(Hallmark,-NES),fill=padj))+ 
+     geom_bar(stat = 'identity',color='black',size=1.5) +
+     scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+     xlab('Normalized Enrichment Score') +ylab('Hallmark')+
+     ggtitle('Hallmarks enriched in extra basis 2')+
+     theme_pubr(base_family = 'Arial',base_size = 15)+
+     theme(text = element_text(family = 'Arial',size=15),
+           axis.text.y = element_text(size=10),
+           plot.title = element_text(hjust = 0.5),
+           legend.key.size = unit(1.5, "lines"),
+           legend.position = 'right',
+           legend.justification = "center",
+           axis.title.y = element_blank()))
+print(p1)
+ggsave(paste0('results/pc_loadings_scores_analysis/hallmark_',
+              tolower(target_dataset),
+              'on_optimal_loadings.png'),
+       plot=p1,
+       width=16,
+       height=9,
+       units = 'in',
+       dpi = 600)
 ### Analyze loadings with GSEA on KEGG Pathways genesets--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(Wm_opt), column = "ENTREZID", keytype = "SYMBOL")
+entrez_ids <- unname(entrez_ids)
+inds <- which(!is.na(entrez_ids))
+entrez_ids <- entrez_ids[inds]
+meas <- as.matrix(Wm_opt[inds,])
+rownames(meas) <- entrez_ids
+keggs <- fastenrichment(colnames(meas),
+                       entrez_ids,
+                       meas,
+                       enrichment_space = 'kegg',
+                       n_permutations = 10000,
+                       order_columns=F)
+kegg_nes <- as.data.frame(keggs$NES$`NES KEGG`) %>% rownames_to_column('pathway')
+kegg_nes <- kegg_nes %>% gather('LV','NES',-pathway)
+kegg_pval <- as.data.frame(keggs$Pval$`Pval KEGG`) %>% rownames_to_column('pathway')
+kegg_pval <- kegg_pval %>% gather('LV','padj',-pathway)
+df_keggs <- left_join(kegg_nes,kegg_pval)
+df_keggs <- df_keggs %>% mutate(pathway=strsplit(pathway,"_"))
+df_keggs <- df_keggs %>% unnest(pathway) %>% filter(!(pathway %in% c("KEGG","FL1000")))
+df_keggs <- df_keggs %>% mutate(pathway=as.character(pathway))
+df_keggs <- df_keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
 
+p1 <- (ggplot(df_keggs%>% filter(abs(NES)>1.30) %>% #filter(padj<0.5) %>% 
+                filter(LV=='V1') %>% arrange(NES),aes(x=NES,y=reorder(pathway,-NES),fill=padj))+ 
+         geom_bar(stat = 'identity',color='black',size=1.5) +
+         scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_keggs$padj),1)) +
+         xlab('Normalized Enrichment Score') + ylab('KEGG pathway')+
+         ggtitle('KEGG Pathways enriched in extra basis 1')+
+         theme_pubr(base_family = 'Arial',base_size = 15)+
+         theme(text = element_text(family = 'Arial',size=15),
+               axis.text.y = element_text(size=10),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'right',
+               legend.justification = "center"))+
+  (ggplot(df_keggs %>% filter(abs(NES)>1.30) %>% #filter(padj<0.5) %>% 
+            filter(LV=='V2') %>% arrange(NES),aes(x=NES,y=reorder(pathway,-NES),fill=padj))+ 
+     geom_bar(stat = 'identity',color='black',size=1.5) +
+     scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_keggs$padj),1)) +
+     xlab('Normalized Enrichment Score') +ylab('KEGG pathway')+
+     ggtitle('KEGG Pathways enriched in extra basis 2')+
+     theme_pubr(base_family = 'Arial',base_size = 15)+
+     theme(text = element_text(family = 'Arial',size=15),
+           axis.text.y = element_text(size=10),
+           plot.title = element_text(hjust = 0.5),
+           legend.key.size = unit(1.5, "lines"),
+           legend.position = 'right',
+           legend.justification = "center",
+           axis.title.y = element_blank()))
+print(p1)
+ggsave(paste0('results/pc_loadings_scores_analysis/keggs_',
+              tolower(target_dataset),
+              'on_optimal_loadings.png'),
+       plot=p1,
+       width=16,
+       height=9,
+       units = 'in',
+       dpi = 600)
 ### Analyze loadings with GSEA on GO Terms BP genesets--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+colnames(Wm_opt) <- c('V1','V2')
+go_annotations <- data.frame(GOs = Term(GOTERM),
+                             'GO Terms' = GOID(GOTERM),
+                             definition = Definition(GOTERM),
+                             ontology = Ontology(GOTERM))
+colnames(go_annotations) <- c('GO Terms','GO','definition','ontology')
+gos <- fastenrichment(colnames(Wm_opt),
+                        rownames(Wm_opt),
+                        Wm_opt,
+                        enrichment_space = 'go_bp',
+                        gene_id_type = 'symbol',
+                        n_permutations = 10000,
+                        order_columns=F)
+go_nes <- as.data.frame(gos$NES$`NES GO BP`) %>% rownames_to_column('GO')
+go_nes <- go_nes %>% gather('LV','NES',-GO)
+go_pval <- as.data.frame(gos$Pval$`Pval GO BP`) %>% rownames_to_column('GO')
+go_pval <- go_pval %>% gather('LV','padj',-GO)
+df_gos <- left_join(go_nes,go_pval)
+df_gos <- df_gos %>% mutate(GO=strsplit(GO,"_"))
+df_gos <- df_gos %>% unnest(GO) %>% filter(!(GO %in% c("GO","FL1000","BP")))
+df_gos <- df_gos %>% mutate(GO=as.character(GO))
+df_gos <- left_join(go_annotations %>% select(GO,`GO Terms`) %>% unique(),df_gos)
+df_gos <- df_gos %>% filter(!is.na(NES))
+
+p1 <- (ggplot(df_gos%>% filter(abs(NES)>1.75) %>% filter(padj<0.5) %>% 
+                filter(LV=='V1') %>% arrange(NES),aes(x=NES,y=reorder(`GO Terms`,-NES),fill=padj))+ 
+         geom_bar(stat = 'identity',color='black',size=1.5) +
+         scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_gos$padj),1)) +
+         xlab('Normalized Enrichment Score') + ylab('GO Terms')+
+         ggtitle('GO Terms enriched in extra basis 1')+
+         theme_pubr(base_family = 'Arial',base_size = 15)+
+         theme(text = element_text(family = 'Arial',size=15),
+               axis.text.y = element_text(size=10),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'right',
+               legend.justification = "center"))+
+  (ggplot(df_gos %>% filter(abs(NES)>1.75) %>% filter(padj<0.5) %>% 
+            filter(LV=='V2') %>% arrange(NES),aes(x=NES,y=reorder(`GO Terms`,-NES),fill=padj))+ 
+     geom_bar(stat = 'identity',color='black',size=1.5) +
+     scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_gos$padj),1)) +
+     xlab('Normalized Enrichment Score') +ylab('GO Terms')+
+     ggtitle('GO Terms enriched in extra basis 2')+
+     theme_pubr(base_family = 'Arial',base_size = 15)+
+     theme(text = element_text(family = 'Arial',size=15),
+           axis.text.y = element_text(size=10),
+           plot.title = element_text(hjust = 0.5),
+           legend.key.size = unit(1.5, "lines"),
+           legend.position = 'right',
+           legend.justification = "center",
+           axis.title.y = element_blank()))
+print(p1)
+ggsave(paste0('results/pc_loadings_scores_analysis/gos_',
+              tolower(target_dataset),
+              'on_optimal_loadings.png'),
+       plot=p1,
+       width=16,
+       height=9,
+       units = 'in',
+       dpi = 600)
+
+
+### Identify external perturbations with ChemPert "regulon"--------------
