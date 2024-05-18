@@ -624,3 +624,151 @@ ggsave(paste0('results/pc_loadings_scores_analysis/gos_',
 
 
 ### Identify external perturbations with ChemPert "regulon"--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+dorotheaData = read.table('data/dorothea.tsv', sep = "\t", header=TRUE)
+confidenceFilter = is.element(dorotheaData$confidence, c('A', 'B'))
+dorotheaData = dorotheaData[confidenceFilter,]
+colnames(dorotheaData)[1] <- 'source' 
+### Load relevent TF perturbations
+tf_responses <- readRDS("data/ChemPert/Transcriptional_responses.rds")
+colnames(tf_responses)[1] <- "Response_ID"
+metadata <- read.csv("data/ChemPert/Information_for_transcriptional_responses.csv")
+metadata_human <- metadata %>% filter(Species == "Human" & grepl("Hepatocy", Cell_Source))
+tf_responses_hep <- tf_responses %>% filter(Response_ID %in% metadata_human$Response_ID)
+resp_net <- NULL
+for (ii in 1:nrow(tf_responses_hep)){
+  if (tf_responses_hep$`Up-regulation number`[ii]>0){
+    dummy <- data.frame(source = tf_responses_hep$Response_ID[ii],
+                        target = strsplit(tf_responses_hep$`Up-regulation`[ii], split = "; ", fixed = T)
+                        %>% unlist(),
+                        mor = 1)
+  }
+  if (tf_responses_hep$`Down-regulation number`[ii]>0){
+    dummy <- rbind(dummy,
+                   data.frame(source = tf_responses_hep$Response_ID[ii],
+                              target = strsplit(tf_responses_hep$`Down-regulation`[ii], split = "; ", fixed = T)
+                              %>% unlist(),
+                              mor = -1))
+  }
+  resp_net <- rbind(resp_net, dummy)
+}
+resp_net <- resp_net %>% mutate(Response_ID = source)
+resp_net <- merge(resp_net, metadata_human, by = "Response_ID")
+
+### Run analysis with ChemPert
+extra_basis_inferred_perts <- perturnation_activity_inference(Wm_opt,metadata_human,dorotheaData,resp_net)
+
+ggsave(paste0('results/pc_loadings_scores_analysis/optimal_direction_',
+              tolower(target_dataset),
+              '_perturbation_activity.png'),
+       plot = extra_basis_inferred_perts$figure,
+       width = 16,
+       height = 12,
+       dpi = 600)
+
+### Identify external perturbations using L1000 data--------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+#Load the L1000 dataset
+drug_ligand_ex <- readRDS("data/l1000_drugs_ligands_expression.rds")
+gene_info <- readRDS("data/l1000_geneInfo.rds")
+
+print(all(gene_info$gene_id==rownames(drug_ligand_ex)))
+rownames(drug_ligand_ex) <- gene_info$gene_symbol
+  
+cell_info <- readRDS("data/l1000_cell_line_info_ligands_drugs.rds")
+# cell_info <- cell_info %>% filter(cell_lineage=='liver')
+sigInfo <- readRDS("data/l1000_meta_data.rds")
+# sigInfo <- sigInfo %>% filter(cell_iname %in% cell_info$cell_iname)
+drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
+
+### Infer pathway activity and keep drugs that affect desired pathways
+paths <- c('JAK-STAT','p53')
+combined_sign <- -1
+net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
+L1000_progenies <- decoupleR::run_viper(drug_ligand_ex, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
+L1000_progenies_filt <- L1000_progenies %>% filter(source %in% paths) %>% filter(p_value<=0.05)
+L1000_progenies_filt <- L1000_progenies_filt %>% spread('source','score') %>% mutate(s = sign(`JAK-STAT` * p53)) %>%
+  filter(s ==(-1) | is.na(s)) %>% select(-s,-p_value) %>% gather('pathway','score',-condition)
+L1000_progenies_filt <- L1000_progenies_filt %>% filter(!is.na(score))
+colnames(L1000_progenies_filt)[1] <- 'sig_id'
+L1000_progenies_filt <- left_join(L1000_progenies_filt,sigInfo) %>% 
+  select(sig_id,cmap_name,pert_idose,pert_itime,pert_type,cell_iname,pathway,score) %>% unique()
+L1000_progenies_filt <- L1000_progenies_filt %>% group_by(cmap_name,pert_idose,pert_itime,pathway) %>% 
+  mutate(mu_score = mean(score)) %>% ungroup() %>% spread('pathway','mu_score') %>% mutate(s = sign(`JAK-STAT` * p53)) %>%
+  filter(s ==(-1) | is.na(s)) %>% select(-s) %>% 
+  gather('pathway','mu_score',-sig_id,-cmap_name,-pert_idose,-pert_itime,-pert_type,-cell_iname,-score)
+L1000_progenies_filt <- L1000_progenies_filt %>% filter(abs(mu_score)>1)
+L1000_progenies_filt_liver <- L1000_progenies_filt %>% filter(cell_iname %in% c('HEPG2','HUH7')) %>%
+  select(-cell_iname,-mu_score) %>% unique() %>% group_by(cmap_name,pert_idose,pert_itime,pathway) %>% 
+  mutate(mu_score = mean(score)) %>% ungroup() %>% spread('pathway','mu_score') %>% mutate(s = sign(`JAK-STAT` * p53)) %>%
+  filter(s ==(-1) | is.na(s)) %>% select(-s) %>% 
+  gather('pathway','mu_score',-sig_id,-cmap_name,-pert_idose,-pert_itime,-pert_type,-score)
+L1000_progenies_filt_liver <- L1000_progenies_filt_liver %>% filter(abs(mu_score)>1)
+L1000_progenies_filt <- L1000_progenies_filt %>% filter(cmap_name %in% L1000_progenies_filt_liver$cmap_name)  
+L1000_selected <- L1000_progenies_filt %>% group_by(pathway) %>%
+  slice_max(order_by = abs(mu_score), n = 10) %>% ungroup() %>% 
+  select(cmap_name,pert_idose,pert_itime,pert_type,pathway,mu_score) %>% unique()
+L1000_selected <- L1000_selected %>% group_by(cmap_name) %>% mutate(dose_counts = n_distinct(pert_idose)) %>% 
+  mutate(time_counts = n_distinct(pert_itime)) %>% ungroup()
+# L1000_selected_liver <- L1000_progenies_filt_liver %>% group_by(pathway) %>%
+#   slice_max(order_by = abs(mu_score), n = 10) %>% ungroup() %>% unique()
+## Project L1000 data into extra basis
+# drug_ligand_ex_subset <- drug_ligand_ex[which(rownames(drug_ligand_ex) %in% rownames(Wm_opt)),]
+# Wm_opt_subset <- Wm_opt[which(rownames(Wm_opt) %in% rownames(drug_ligand_ex_subset)),] 
+# drug_ligand_ex_subset <- drug_ligand_ex_subset[rownames(Wm_opt_subset),]
+# Z_l1000 <- as.data.frame(t(drug_ligand_ex_subset) %*% Wm_opt_subset)
+# Z_l1000 <- Z_l1000 %>% rownames_to_column('sample')
+# Zh <- as.data.frame(Xh %*% Wm_opt)
+# Zh$NAS <- Yh[,1]
+# Zh$fibrosis <- Yh[,2]
+# Zh <- Zh %>% rownames_to_column('sample')
+# Z_l1000$NAS <- NA
+# Z_l1000$fibrosis <- NA
+# Z_all <- rbind(Zh,Z_l1000)
+# Z_all <- Z_all %>% mutate(NAS=ifelse(is.na(NAS),'L1000',
+#                                            ifelse(NAS<3,'Not NASH',
+#                                                   ifelse(NAS<=4,'Borderline NASH',
+#                                                          'Definate NASH'))))
+# Z_all <- Z_all %>% mutate(fibrosis=ifelse(is.na(fibrosis),'L1000',fibrosis))
+# (ggplot(Z_all ,aes(x=V1,y=V2,colour=NAS))+
+#     geom_point()+
+#     # scale_color_viridis_d()+
+#     theme_minimal(base_size=20,base_family = 'Arial')+
+#     theme(text= element_text(size=20,family = 'Arial'),
+#           legend.position = 'right')) +
+#   (ggplot(Z_all ,aes(x=V1,y=V2,colour=fibrosis))+
+#      geom_point()+
+#      # scale_color_viridis_d()+
+#      theme_minimal(base_size=20,base_family = 'Arial')+
+#      theme(text= element_text(size=20,family = 'Arial'),
+#            legend.position = 'right'))
+# ggsave(paste0('results/projected_L1000_',
+#               tolower(ref_dataset),
+#               '_samples_on_extra_basis',
+#               tolower(target_dataset),
+#               '.png'),
+#        height = 12,
+#        width = 16,
+#        units = 'in',
+#        dpi=600)
+# 
+# ## Calculate distances between L1000 and projected human samples
+# mat <- as.matrix(Z_all %>% column_to_rownames('sample') %>% select(V1,V2))
+# distances <- as.matrix(dist(mat, method = "euclidean", diag = TRUE, upper = TRUE))
+# distances <- distances[Z_l1000$sample,Zh$sample]
+# distances <- as.data.frame(distances) %>% rownames_to_column('sig_id') %>% gather('sample','dist',-sig_id)
+# distances <- left_join(distances,Zh %>% select(-V1,-V2) %>% unique())
+# # distances <- distances %>%mutate(NAS=ifelse(NAS<3,'Not NASH',
+# #                                             ifelse(NAS<=4,'Borderline NASH',
+# #                                                    'Definate NASH')))
+# distances_filt_nas <- left_join(distances,sigInfo) %>% select(cmap_name,pert_type,sample,dist,NAS,fibrosis) %>% unique()
+# distances_filt_nas <- distances_filt_nas %>% group_by(cmap_name,NAS) %>% mutate(per_sig_mean_nas_dist = mean(dist)) %>%
+#   ungroup() %>% group_by(cmap_name) %>% mutate(min_nas_dist = min(per_sig_mean_nas_dist)) %>% ungroup() %>%
+#   filter(per_sig_mean_nas_dist==min_nas_dist) %>% select(cmap_name,pert_type,NAS,per_sig_mean_nas_dist) %>% unique()
+# # distances_filt_nas <- distances_filt_nas %>% group_by(NAS) %>% mutate(counts = n_distinct(sig_id)) %>% ungroup()
+# distances_filt_nas <- distances_filt_nas %>% group_by(NAS) %>%
+#   slice_max(order_by = per_sig_mean_nas_dist, n = 25)

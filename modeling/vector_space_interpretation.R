@@ -121,8 +121,8 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE){
 }
 
 TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE){
-  extra_basis_tfs <- decoupleR::run_viper(W, regulon,minsize = 1,verbose = TRUE) %>% select(-statistic)
-  PC_space_tfs <- decoupleR::run_viper(W_PCspace, regulon,minsize = 1,verbose = TRUE)
+  extra_basis_tfs <- decoupleR::run_viper(W, regulon,minsize = 5,verbose = TRUE) %>% select(-statistic)
+  PC_space_tfs <- decoupleR::run_viper(W_PCspace, regulon,minsize = 5,verbose = TRUE)
   PC_space_tfs <- PC_space_tfs %>% select(source,c('pc_activity'='score'))
   PC_space_tfs <- PC_space_tfs$pc_activity
   extra_basis_tfs <- extra_basis_tfs %>% select(-p_value)
@@ -169,4 +169,69 @@ TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE){
     print(p)
   }
   return(list(figure=p,extra_basis_tfs))
+}
+
+perturnation_activity_inference <- function(W,metadata_human,regulon,perturbation_regulon,plotting=TRUE){
+  extra_basis_tfs <- decoupleR::run_viper(W, regulon,minsize = 5,verbose = FALSE) %>% select(-statistic)
+  extra_basis_tfs <- extra_basis_tfs %>% select(-p_value)
+  colnames(extra_basis_tfs)[1] <- 'TF'
+  extra_basis_tfs <- extra_basis_tfs %>% spread('condition','score') %>% column_to_rownames('TF')
+  pert_activity <- decoupleR::run_viper(extra_basis_tfs, 
+                                        perturbation_regulon %>% unique(),
+                                        minsize = 1,
+                                        verbose = TRUE)
+  colnames(pert_activity)[2] <- 'Response_ID'
+  
+  pert_activity <- left_join(pert_activity,metadata_human)
+  pert_activity <- pert_activity %>% select(Chemical_Compound,c('activity'='score'),Duration,Concentration,c('p-value'='p_value'),condition)
+  pert_activity <- pert_activity %>% mutate(perturbation = ifelse(!is.na(Concentration),
+                                                                  paste0(toupper(Chemical_Compound),':',Duration,':',Concentration),
+                                                                  paste0(toupper(Chemical_Compound),':',Duration)))
+  pert_activity <- pert_activity %>% group_by(perturbation,condition) %>% mutate(min_pvalue=min(`p-value`)) %>%
+    ungroup() %>% filter(`p-value`==min_pvalue) %>% select(-min_pvalue) %>% unique()
+  pert_activity$significant <- ''
+  pert_activity <- pert_activity %>% mutate(significant = ifelse(`p-value`<=0.05 & abs(activity)>1.5,
+                                                                 perturbation,
+                                                                 significant))
+  pert_activity <- pert_activity %>% mutate(significant = ifelse(Chemical_Compound=='Ifna',
+                                                                 perturbation,
+                                                                 significant))
+  
+  p <- (ggplot(pert_activity %>% filter(condition=='V1'),aes(x=reorder(perturbation,activity),y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
+          geom_text_repel(aes(label=significant,color=`p-value`),size=5,max.overlaps=60,box.padding = 0.7)+
+          xlab('perturbations') + ylab('inferred activity')+
+          scale_fill_gradient(trans='log10',low = "red",high = "white",
+                              limits = c(min(pert_activity$`p-value`),1),
+                              breaks = c(0.01,0.05,0.1,0.5,1)) +
+          scale_color_gradient(trans='log10',low = "red",high = "#f96464",
+                               limits = c(min(pert_activity$`p-value`),0.05)) +
+          guides(color = "none")+
+          ggtitle('Extra LV1')+
+          theme_pubr(base_family = 'Arial',base_size = 20)+
+          theme(text = element_text(family = 'Arial',size=20),
+                axis.ticks.x = element_blank(),
+                axis.text.x = element_blank(),
+                legend.position = 'right',
+                plot.title = element_text(hjust=0.5))) + 
+    (ggplot(pert_activity %>% filter(condition=='V2'),aes(x=reorder(perturbation,activity),y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
+       geom_text_repel(aes(label=significant,color=`p-value`),size=5,max.overlaps=60,box.padding = 0.7)+
+       xlab('perturbations') + ylab('inferred activity')+
+       scale_fill_gradient(trans='log10',low = "red",high = "white",
+                           limits = c(min(pert_activity$`p-value`),1),
+                           breaks = c(0.01,0.05,0.1,0.5,1)) +
+       scale_color_gradient(trans='log10',low = "red",high = "#f96464",
+                            limits = c(min(pert_activity$`p-value`),0.05)) +
+       guides(color = "none")+
+       ggtitle('Extra LV2')+
+       theme_pubr(base_family = 'Arial',base_size = 20)+
+       theme(text = element_text(family = 'Arial',size=20),
+             axis.ticks.x = element_blank(),
+             axis.title.y = element_blank(),
+             axis.text.x = element_blank(),
+             legend.position = 'right',
+             plot.title = element_text(hjust=0.5)))
+  if (plotting==TRUE){
+    print(p)
+  }
+  return(list(figure=p,pert_activity))
 }

@@ -1,5 +1,4 @@
 library(tidyverse)
-# library(dorothea)
 library(ggrepel)
 library(ggpubr)
 
