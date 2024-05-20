@@ -1,2 +1,2 @@
 ### Subfolders containing 10-fold validation split for training models
-1. 10fold_lasso : Contains the split human data used to train TransCompR-based models, using LASSO to predict phenotypes from the PC-space of the MPS data.
+1. WholePipeline : Contains the split human data used to train and evaluate the whole process of identifying an extra basis to span the human space, as well as splits and figures from tuning the number of latent componets for the PLSR models (which are trained to predict the human phenotype).

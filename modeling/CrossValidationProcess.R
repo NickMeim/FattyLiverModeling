@@ -7,12 +7,12 @@ library(patchwork)
 library(caret)
 library(ropls)
 source("../utils/plotting_functions.R")
-source("functions_translation_jose.R")
+source("functions_translation.R")
 source("CrossValidationUtilFunctions.R")
 
 ### Load in-vitro and in-vivo datasets and plit for Cross-Validation-----------------------------------------
-dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
-ref_dataset <- "Hoang"
+dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver","Govaere")
+ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
@@ -21,7 +21,7 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
@@ -44,10 +44,10 @@ while((i < trials)){
     flag_nas <- TRUE
     if(all(unique(Yh[TrainValIndex,2]) %in% unique(Yh[-TrainValIndex,2]))){
       flag_fibr <- TRUE
-      hist_test_nas <- hist(Yh[-TrainValIndex,1],freq = T,breaks = seq(0,6,0.25),plot = F)
-      hist_train_nas <- hist(Yh[TrainValIndex,1],freq = T,breaks = seq(0,6,0.25),plot = F)
-      hist_test_fibr <- hist(Yh[-TrainValIndex,2],freq = T,breaks = seq(0,6,0.25),plot = F)
-      hist_train_fibr <- hist(Yh[TrainValIndex,2],freq = T,breaks = seq(0,6,0.25),plot = F)
+      hist_test_nas <- hist(Yh[-TrainValIndex,1],freq = T,breaks = seq(0,8,0.25),plot = F)
+      hist_train_nas <- hist(Yh[TrainValIndex,1],freq = T,breaks = seq(0,8,0.25),plot = F)
+      hist_test_fibr <- hist(Yh[-TrainValIndex,2],freq = T,breaks = seq(0,8,0.25),plot = F)
+      hist_train_fibr <- hist(Yh[TrainValIndex,2],freq = T,breaks = seq(0,8,0.25),plot = F)
       mse <- mean(c(MLmetrics::MSE(hist_test_nas$density,hist_train_nas$density),
                     MLmetrics::MSE(hist_test_fibr$density,hist_train_fibr$density)))
       if (mse < best_mse) {
@@ -61,18 +61,18 @@ while((i < trials)){
   }
   i <- i+1
 }
-hist(Yh[-best_sample,1],main='Test NAS',breaks = seq(0,6,0.25))
-hist(Yh[best_sample,1],main='CrossVal NAS',breaks = seq(0,6,0.25))
+hist(Yh[-best_sample,1],main='Test NAS',breaks = seq(0,8,0.25))
+hist(Yh[best_sample,1],main='CrossVal NAS',breaks = seq(0,8,0.25))
 hist(Yh[-best_sample,2],main='Test Fibrosis',breaks = seq(0,4,0.25))
 hist(Yh[best_sample,2],main='CrossVal Fibrosis',breaks = seq(0,4,0.25))
 Yh_test <- Yh[-best_sample,]
 Xh_test <- Xh[-best_sample,]
 Yh <- Yh[best_sample,]
 Xh <- Xh[best_sample,]
-# saveRDS(Xh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
-# saveRDS(Yh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
-# saveRDS(Xh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
-# saveRDS(Yh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
+saveRDS(Xh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
+saveRDS(Yh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
+saveRDS(Xh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
+saveRDS(Yh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
 
 ### Perform 10-fold-cross-validation to tune the number of LVs of PLSR
 ### Take the best # of LVs on average across all validation sets
@@ -110,10 +110,10 @@ while((i < trials)){
     if (sum(flag_nas_all==FALSE)>2){
       break
     }
-    hist_val_nas <- hist(val_Y[,1],freq = T,breaks = seq(0,6,0.25),plot = F)
-    hist_train_nas <- hist(Yh[ind,1],freq = T,breaks = seq(0,6,0.25),plot = F)
-    hist_val_fibr <- hist(val_Y[,2],freq = T,breaks = seq(0,6,0.25),plot = F)
-    hist_train_fibr <- hist(Yh[ind,2],freq = T,breaks = seq(0,6,0.25),plot = F)
+    hist_val_nas <- hist(val_Y[,1],freq = T,breaks = seq(0,8,0.25),plot = F)
+    hist_train_nas <- hist(Yh[ind,1],freq = T,breaks = seq(0,8,0.25),plot = F)
+    hist_val_fibr <- hist(val_Y[,2],freq = T,breaks = seq(0,8,0.25),plot = F)
+    hist_train_fibr <- hist(Yh[ind,2],freq = T,breaks = seq(0,8,0.25),plot = F)
     mse <- mean(c(MLmetrics::MSE(hist_val_nas$density,hist_train_nas$density),
                   MLmetrics::MSE(hist_val_fibr$density,hist_train_fibr$density)))
     mse_all[j] <- mse
@@ -142,8 +142,8 @@ while((i < trials)){
 #   y_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Yh_train',j,'.rds'))
 #   # x_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Xh_val',j,'.rds'))
 #   y_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Yh_val',j,'.rds'))
-#   hist(y_train[,1],main=paste0('Train ',j,' NAS'),breaks = seq(0,6,0.25))
-#   hist(y_val[,1],main=paste0('Validation ',j,' NAS'),breaks = seq(0,6,0.25))
+#   hist(y_train[,1],main=paste0('Train ',j,' NAS'),breaks = seq(0,8,0.25))
+#   hist(y_val[,1],main=paste0('Validation ',j,' NAS'),breaks = seq(0,8,0.25))
 #   # hist(y_train[,2],main=paste0('Train ',j,' Fibrosis'),breaks = seq(0,4,0.25))
 #   # hist(y_val[,2],main=paste0('Validation ',j,' Fibrosis'),breaks = seq(0,4,0.25))
 # }
@@ -205,8 +205,8 @@ for (i in 1:length(num_LVs)){
     train_mae[j] <- mean(abs(y_train_hat-y_train))
   }
   tuning_df <- rbind(tuning_df,
-                     # data.frame(set='train',r = train_r,MAE = train_mae,R2=train_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
-                     # data.frame(set='validation',r = val_r,MAE = val_mae,R2=val_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
+                     data.frame(set='train',r = train_r,MAE = train_mae,R2=train_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
+                     data.frame(set='validation',r = val_r,MAE = val_mae,R2=val_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
                      data.frame(set='shuffled',r = val_r_shuffled,MAE = val_mae_shuffled,R2=val_R2_shuffled,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)))
   print(paste0('Finished fitting PLSR with ',num_LVs[i],' latent variables'))
 }
@@ -222,6 +222,7 @@ ggplot(plotting_df,aes(x=LVs,y=mu,color=set)) +
   geom_line(lwd=1)+
   geom_errorbar(aes(ymax = mu + std/num_folds, ymin = mu - std/num_folds))+
   scale_x_continuous(breaks = seq(1,20,2))+
+  scale_y_continuous(n.breaks = 12)+
   xlab('number of latent variables') + ylab('value') +
   theme_pubr(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size=20,family = 'Arial'),
@@ -234,158 +235,6 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.png',
        height = 9,
        units = 'in',
        dpi=600)
-
-### After selecting 7 LVs as the tuned parameter re-fit with only those
-### But also calculate shuffled and null models performance
-val_mae <- NULL
-train_mae <- NULL
-test_mae <- NULL
-val_r <- NULL
-train_r <- NULL
-test_r <- NULL
-num_folds <- 10
-tuning_df <- data.frame()
-all_models <- NULL
-test_r_shuffle_y <- NULL
-test_mae_shuffle_y <- NULL
-test_r_shuffle_x <- NULL
-test_mae_shuffle_x <- NULL
-test_r_random_x <- NULL
-test_mae_random_x <- NULL
-for (j in 1:num_folds){
-  message(paste0('Begun fold ',j))
-  x_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_train',j,'.rds'))
-  y_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_train',j,'.rds'))
-  x_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_val',j,'.rds'))
-  y_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_val',j,'.rds'))
-  
-  plsr_model <- opls(x = x_train, 
-                     y = y_train,
-                     predI = 7,
-                     crossvalI = 1,
-                     scaleC = "center",
-                     fig.pdfC = "none",
-                     info.txtC = "none")
-  y_train_hat <- predict(plsr_model,x_train)
-  y_val_hat <- predict(plsr_model,x_val)
-  y_hat_test <- predict(plsr_model,Xh_test)
-  
-  train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
-  val_r[j] <- mean(diag(cor(y_val_hat,y_val)))
-  test_r[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  print(paste0('NAS = ',diag(cor(y_hat_test,Yh_test))['NAS'],' , Fibrosis = ',diag(cor(y_hat_test,Yh_test))['fibrosis']))
-  # train_R2[j] <- mean(diag(cor(y_train_hat,y_train)^2))
-  # val_R2[j] <- mean(diag(cor(y_val_hat,y_val)^2))
-  # test_R2[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
-  val_mae[j] <- mean(abs(y_val_hat-y_val))
-  train_mae[j] <- mean(abs(y_train_hat-y_train))
-  test_mae[j] <- mean(abs(y_hat_test-Yh_test))
-  
-  ### shuffled labels model
-  y_train_shuffled <- y_train[sample.int(nrow(y_train)),]
-  rownames(y_train_shuffled) <- rownames(y_train)
-  plsr_model_shuffle_y <- opls(x = x_train, 
-                     y = y_train_shuffled,
-                     predI = 7,
-                     crossvalI = 1,
-                     scaleC = "center",
-                     fig.pdfC = "none",
-                     info.txtC = "none")
-  y_hat_test <- predict(plsr_model_shuffle_y,Xh_test)
-  test_r_shuffle_y[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  # test_R2_shuffle_y[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
-  test_mae_shuffle_y[j] <- mean(abs(y_hat_test-Yh_test))
-  
-  print('Finished shuffled labels model')
-  
-  ### shuffled features model
-  x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
-  colnames(x_train_shuffled) <- colnames(x_train)
-  plsr_model_shuffle_x <- opls(x = x_train_shuffled, 
-                               y = y_train,
-                               predI = 7,
-                               crossvalI = 1,
-                               scaleC = "center",
-                               fig.pdfC = "none",
-                               info.txtC = "none")
-  y_hat_test <- predict(plsr_model_shuffle_x,Xh_test)
-  test_r_shuffle_x[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  # test_R2_shuffle_x[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
-  test_mae_shuffle_x[j] <- mean(abs(y_hat_test-Yh_test))
-  
-  print('Finished shuffled features model')
-  
-  ### random features model
-  x_train_random <- matrix(rnorm(n = nrow(x_train)*ncol(x_train)),nrow = nrow(x_train))
-  colnames(x_train_random) <- colnames(x_train)
-  rownames(x_train_random) <- rownames(x_train)
-  plsr_model_random_x <- opls(x = x_train_random, 
-                               y = y_train,
-                               predI = 7,
-                               crossvalI = 1,
-                               scaleC = "center",
-                               fig.pdfC = "none",
-                               info.txtC = "none")
-  y_hat_test <- predict(plsr_model_random_x,Xh_test)
-  test_r_random_x[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  # test_R2_random_x[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
-  test_mae_random_x[j] <- mean(abs(y_hat_test-Yh_test))
-  
-  print('Finished random features model')
-}
-performance_df <- rbind(data.frame(set='train',r = train_r,MAE = train_mae,fold = seq(1,num_folds)),
-                        data.frame(set='validation',r = val_r,MAE = val_mae,fold = seq(1,num_folds)),
-                        data.frame(set='test',r = test_r,MAE = test_mae,fold = seq(1,num_folds)),
-                        data.frame(set='shuffle Y',r = test_r_shuffle_y,MAE = test_mae_shuffle_y,fold = seq(1,num_folds)),
-                        data.frame(set='shuffle X',r = test_r_shuffle_x,MAE = test_mae_shuffle_x,fold = seq(1,num_folds)),
-                        data.frame(set='random X',r = test_r_random_x,MAE = test_mae_random_x,fold = seq(1,num_folds)))
-# saveRDS(performance_df,'../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.rds')
-
-avg_mae <- mean(abs(Yh_test-apply(Yh,2,mean)))
-plotting_performance_df <- performance_df %>% 
-  gather('metric','value',-set,-fold) %>%
-  mutate(metric=ifelse(metric=='r','pearson`s r',metric))
-plotting_performance_df$set <- factor(plotting_performance_df$set,
-                                      levels = c('train','validation','test','shuffle Y','shuffle X','random X'))
-(ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
-    scale_y_continuous(n.breaks = 15)+
-    geom_hline(yintercept = avg_mae,linetype='dashed',color='black',lwd=1)+
-    annotate('text',x=3,y=1.75,size=6,label = 'error from the mean of the data')+
-    xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
-        legend.position = 'none',
-        axis.text.x = element_text(size=16),
-        strip.text = element_text(face = 'bold'),
-        panel.grid.major.y = element_line(linewidth = 1))+
-  stat_compare_means(comparisons = list(c('test','shuffle Y'),
-                                        c('test','shuffle X'),
-                                          c('test','random X')),
-                     method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01,
-                     label.y = c(1.3,1.4,1.5)) +
-  facet_wrap(~metric)) +
-  (ggboxplot(plotting_performance_df %>% filter(metric!='MAE'),x='set',y='value',color = 'set',add='jitter')+
-     scale_y_continuous(breaks = seq(-0.5,1,0.1))+
-     # geom_hline(yintercept = 0,linetype='dashed',color='black',lwd=1)+
-     xlab('')+
-     theme(text = element_text(size=20,family = 'Arial'),
-           legend.position = 'none',
-           axis.text.x = element_text(size=16),
-           strip.text = element_text(face = 'bold'),
-           panel.grid.major.y = element_line(linewidth = 1))+
-     stat_compare_means(comparisons = list(c('test','shuffle Y'),
-                                           c('test','shuffle X'),
-                                           c('test','random X')),
-                        method = 'wilcox',label = 'p.signif',
-                        tip.length = 0.01,
-                        label.y = c(0.75,0.85,0.95)) +
-     facet_wrap(~metric))
-
-ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.png',
-       width = 14,
-       height = 9,
-       units = 'in',
-       dpi = 600)
 
 ### Check different partitions of data based on the average similarity of training and test set
 ### First find similarity distribution of all data
@@ -482,6 +331,7 @@ val_plot <- performance_val %>% gather('phenotype','r',-model,-num_LVs,-max_corr
   mutate(std = ifelse(is.na(std),0,std)) 
 val_plot$max_corr <- factor(val_plot$max_corr,levels = bins_thresh_corr)
 val_plot <- val_plot %>% mutate(max_corr = paste0('max r = ',max_corr))
+val_plot <- val_plot %>% filter(!is.na(mu))
 
 train_plot <- performance_train %>% gather('phenotype','r',-model,-num_LVs,-max_corr,-sample)  %>% 
   # group_by(model,num_LVs,max_corr,sample) %>% mutate(r = mean(r)) %>% select(-phenotype) %>% ungroup() %>%
@@ -491,7 +341,7 @@ train_plot <- performance_train %>% gather('phenotype','r',-model,-num_LVs,-max_
   mutate(std = ifelse(is.na(std),0,std)) 
 train_plot$max_corr <- factor(train_plot$max_corr,levels = bins_thresh_corr)
 train_plot <- train_plot %>% mutate(max_corr = paste0('max r = ',max_corr))
-
+train_plot <- train_plot %>% filter(max_corr %in% val_plot$max_corr)
 performance_plot <- rbind(train_plot %>% mutate(set='train'),
                           val_plot %>% mutate(set='test'))
 
@@ -606,6 +456,158 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multi
        units = 'in',
        dpi=600)
 
+### After selecting 8 LVs as the tuned parameter re-fit with only those
+### But also calculate shuffled and null models performance
+val_mae <- NULL
+train_mae <- NULL
+test_mae <- NULL
+val_r <- NULL
+train_r <- NULL
+test_r <- NULL
+num_folds <- 10
+tuning_df <- data.frame()
+all_models <- NULL
+test_r_shuffle_y <- NULL
+test_mae_shuffle_y <- NULL
+test_r_shuffle_x <- NULL
+test_mae_shuffle_x <- NULL
+test_r_random_x <- NULL
+test_mae_random_x <- NULL
+for (j in 1:num_folds){
+  message(paste0('Begun fold ',j))
+  x_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_train',j,'.rds'))
+  y_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_train',j,'.rds'))
+  x_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_val',j,'.rds'))
+  y_val <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_val',j,'.rds'))
+  
+  plsr_model <- opls(x = x_train, 
+                     y = y_train,
+                     predI = 8,
+                     crossvalI = 1,
+                     scaleC = "center",
+                     fig.pdfC = "none",
+                     info.txtC = "none")
+  y_train_hat <- predict(plsr_model,x_train)
+  y_val_hat <- predict(plsr_model,x_val)
+  y_hat_test <- predict(plsr_model,Xh_test)
+  
+  train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
+  val_r[j] <- mean(diag(cor(y_val_hat,y_val)))
+  test_r[j]<- mean(diag(cor(y_hat_test,Yh_test)))
+  print(paste0('NAS = ',diag(cor(y_hat_test,Yh_test))['NAS'],' , Fibrosis = ',diag(cor(y_hat_test,Yh_test))['fibrosis']))
+  # train_R2[j] <- mean(diag(cor(y_train_hat,y_train)^2))
+  # val_R2[j] <- mean(diag(cor(y_val_hat,y_val)^2))
+  # test_R2[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  val_mae[j] <- mean(abs(y_val_hat-y_val))
+  train_mae[j] <- mean(abs(y_train_hat-y_train))
+  test_mae[j] <- mean(abs(y_hat_test-Yh_test))
+  
+  ### shuffled labels model
+  y_train_shuffled <- y_train[sample.int(nrow(y_train)),]
+  rownames(y_train_shuffled) <- rownames(y_train)
+  plsr_model_shuffle_y <- opls(x = x_train, 
+                               y = y_train_shuffled,
+                               predI = 8,
+                               crossvalI = 1,
+                               scaleC = "center",
+                               fig.pdfC = "none",
+                               info.txtC = "none")
+  y_hat_test <- predict(plsr_model_shuffle_y,Xh_test)
+  test_r_shuffle_y[j]<- mean(diag(cor(y_hat_test,Yh_test)))
+  # test_R2_shuffle_y[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  test_mae_shuffle_y[j] <- mean(abs(y_hat_test-Yh_test))
+  
+  print('Finished shuffled labels model')
+  
+  ### shuffled features model
+  x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
+  colnames(x_train_shuffled) <- colnames(x_train)
+  plsr_model_shuffle_x <- opls(x = x_train_shuffled, 
+                               y = y_train,
+                               predI = 8,
+                               crossvalI = 1,
+                               scaleC = "center",
+                               fig.pdfC = "none",
+                               info.txtC = "none")
+  y_hat_test <- predict(plsr_model_shuffle_x,Xh_test)
+  test_r_shuffle_x[j]<- mean(diag(cor(y_hat_test,Yh_test)))
+  # test_R2_shuffle_x[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  test_mae_shuffle_x[j] <- mean(abs(y_hat_test-Yh_test))
+  
+  print('Finished shuffled features model')
+  
+  ### random features model
+  x_train_random <- matrix(rnorm(n = nrow(x_train)*ncol(x_train)),nrow = nrow(x_train))
+  colnames(x_train_random) <- colnames(x_train)
+  rownames(x_train_random) <- rownames(x_train)
+  plsr_model_random_x <- opls(x = x_train_random, 
+                              y = y_train,
+                              predI = 8,
+                              crossvalI = 1,
+                              scaleC = "center",
+                              fig.pdfC = "none",
+                              info.txtC = "none")
+  y_hat_test <- predict(plsr_model_random_x,Xh_test)
+  test_r_random_x[j]<- mean(diag(cor(y_hat_test,Yh_test)))
+  # test_R2_random_x[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  test_mae_random_x[j] <- mean(abs(y_hat_test-Yh_test))
+  
+  print('Finished random features model')
+}
+performance_df <- rbind(data.frame(set='train',r = train_r,MAE = train_mae,fold = seq(1,num_folds)),
+                        data.frame(set='validation',r = val_r,MAE = val_mae,fold = seq(1,num_folds)),
+                        data.frame(set='test',r = test_r,MAE = test_mae,fold = seq(1,num_folds)),
+                        data.frame(set='shuffle Y',r = test_r_shuffle_y,MAE = test_mae_shuffle_y,fold = seq(1,num_folds)),
+                        data.frame(set='shuffle X',r = test_r_shuffle_x,MAE = test_mae_shuffle_x,fold = seq(1,num_folds)),
+                        data.frame(set='random X',r = test_r_random_x,MAE = test_mae_random_x,fold = seq(1,num_folds)))
+# saveRDS(performance_df,'../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.rds')
+
+avg_mae <- mean(abs(Yh_test-apply(Yh,2,mean)))
+plotting_performance_df <- performance_df %>% 
+  gather('metric','value',-set,-fold) %>%
+  mutate(metric=ifelse(metric=='r','pearson`s r',metric))
+plotting_performance_df$set <- factor(plotting_performance_df$set,
+                                      levels = c('train','validation','test','shuffle Y','shuffle X','random X'))
+(ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
+    scale_y_continuous(n.breaks = 15)+
+    geom_hline(yintercept = avg_mae,linetype='dashed',color='black',lwd=1)+
+    annotate('text',x=3,y=1.75,size=6,label = 'error from the mean of the data')+
+    xlab('')+
+    theme(text = element_text(size=20,family = 'Arial'),
+          legend.position = 'none',
+          axis.text.x = element_text(size=16),
+          strip.text = element_text(face = 'bold'),
+          panel.grid.major.y = element_line(linewidth = 1))+
+    stat_compare_means(comparisons = list(c('test','shuffle Y'),
+                                          c('test','shuffle X'),
+                                          c('test','random X')),
+                       method = 'wilcox',label = 'p.signif',
+                       tip.length = 0.01,
+                       label.y = c(1.3,1.4,1.5)) +
+    facet_wrap(~metric)) +
+  (ggboxplot(plotting_performance_df %>% filter(metric!='MAE'),x='set',y='value',color = 'set',add='jitter')+
+     scale_y_continuous(breaks = seq(-0.5,1,0.1))+
+     # geom_hline(yintercept = 0,linetype='dashed',color='black',lwd=1)+
+     xlab('')+
+     theme(text = element_text(size=20,family = 'Arial'),
+           legend.position = 'none',
+           axis.text.x = element_text(size=16),
+           strip.text = element_text(face = 'bold'),
+           panel.grid.major.y = element_line(linewidth = 1))+
+     stat_compare_means(comparisons = list(c('test','shuffle Y'),
+                                           c('test','shuffle X'),
+                                           c('test','random X')),
+                        method = 'wilcox',label = 'p.signif',
+                        tip.length = 0.01,
+                        label.y = c(0.75,0.85,0.95)) +
+     facet_wrap(~metric))
+
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.png',
+       width = 14,
+       height = 9,
+       units = 'in',
+       dpi = 600)
+
 ### Since we do not overfit to validation now perform cross-validation with this dataset-------------
 ### Where you calculate validation and train performance of:
 ### a) human data PLSR to predict NAS,Fibrosis
@@ -614,9 +616,9 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multi
 ### d) c) back-projected human data PLSR to predict NAS, Fibrosis with optimal direction
 num_folds <- 10
 loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
-num_LVS <- 5
-dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
-ref_dataset <- "Hoang"
+num_LVS <- 8
+dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
+ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
@@ -625,7 +627,7 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
@@ -661,10 +663,10 @@ while((i < trials)){
     if ((sum(flag_nas_all==FALSE)>2) | (sum(flag_fibr_all==FALSE)>2 & i>10)){
       break
     }
-    hist_val_nas <- hist(val_Y[,1],freq = T,breaks = seq(0,6,0.25),plot = F)
-    hist_train_nas <- hist(Yh[ind,1],freq = T,breaks = seq(0,6,0.25),plot = F)
-    hist_val_fibr <- hist(val_Y[,2],freq = T,breaks = seq(0,6,0.25),plot = F)
-    hist_train_fibr <- hist(Yh[ind,2],freq = T,breaks = seq(0,6,0.25),plot = F)
+    hist_val_nas <- hist(val_Y[,1],freq = T,breaks = seq(0,8,0.25),plot = F)
+    hist_train_nas <- hist(Yh[ind,1],freq = T,breaks = seq(0,8,0.25),plot = F)
+    hist_val_fibr <- hist(val_Y[,2],freq = T,breaks = seq(0,8,0.25),plot = F)
+    hist_train_fibr <- hist(Yh[ind,2],freq = T,breaks = seq(0,8,0.25),plot = F)
     mse <- mean(c(MLmetrics::MSE(hist_val_fibr$density,hist_train_nas$density),
                   MLmetrics::MSE(hist_val_fibr$density,hist_train_fibr$density)))
     mse_all[j] <- mse
@@ -846,7 +848,7 @@ performance_6 <- cross_validation_complete_pipeline(Wm,
                                                     file_loc = loc ,
                                                     target_dataset = target_dataset,
                                                     task = 'analytical_optimal',
-                                                    LVs = 9)
+                                                    LVs = num_LVS)
 # saveRDS(performance_6,'../results/performance_df_analytical.rds')
 
 performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
@@ -913,7 +915,7 @@ performance_all_plot$approach <- factor(performance_all_plot$approach,
                                                    'analytical Wopt',
                                                    'shuffle X'))
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train'),x='approach',y='r',color='approach',add='jitter') +
-  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.5,NA))+
+  scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
   xlab('')+
   ggtitle('10-fold Train')+
   theme(text = element_text(size=20,family = 'Arial'),
@@ -931,7 +933,7 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train'),x='approach',
                                         c('Wopt','analytical Wopt')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.67,0.78,0.98,0.98,1,1.02,1.04))
+                     label.y = c(0.5,0.7,0.9,0.9,0.95,0.97,1))
 print(p_train)  
 ggsave('../results/approaches_comparison_training.png',
        plot = p_train,
@@ -973,8 +975,8 @@ ggsave('../results/approaches_comparison_10foldtest.png',
 ### Explore how the evolutionary algorithm VS analytical approach works-------------------------------------
 
 #Load data
-dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver")
-ref_dataset <- "Hoang"
+dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
+ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
@@ -983,7 +985,7 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 rownames(Yh) <- rownames(Xh)
@@ -992,7 +994,7 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
 # Parameters of PLSR
-num_LVS <- 5
+num_LVS <- 8
 
 # Begin iterations
 partitions <- c(1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2)
@@ -1285,5 +1287,146 @@ dev.off()
 
 ### Explore how analytical LVs change by: ----------------------
 ### a) Human data partition
-### b) In-Vitro data partition (LOOCV of PCs perhaps)
-### c) number of LVs used in PLSR of human genes
+### b) number of LVs used in PLSR of human genes
+### c) In-Vitro data partition (LOOCV of PCs perhaps)
+num_folds <- 10
+loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
+num_LVS <- 8
+dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
+ref_dataset <- "Govaere"
+target_dataset <- "Kostrzewski"
+# Load
+data_list <- load_datasets(dataset_names, dir_data = '../data/')
+# Run PCA
+tmp <- process_datasets(data_list, filter_variance = F)
+data_list <- tmp$data_list
+plt_list <- tmp$plt_list
+# Define matrices of interest
+Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+colnames(Yh) <- c('NAS','fibrosis')
+Xh <- data_list[[ref_dataset]]$data_center %>% t()
+rownames(Yh) <- rownames(Xh)
+Xm <- data_list[[target_dataset]]$data_center %>% t()
+# Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
+Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+# a) Human data partition
+# Begin iterations
+partitions <- c(1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2)
+iterations <- 10
+cos_sim_all <- data.frame()
+Wm_opt_all <- NULL
+for (p in partitions){
+  message(paste0('Begun partition:',100*p,'%'))
+  for (i in 1:iterations){
+    Xh_parted <- as.matrix(as.data.frame(Xh) %>% sample_frac(size=p))
+    Yh_parted <- Yh[rownames(Xh_parted),]
+    
+    #### First run human PLSR
+    plsr_model <- suppressMessages(opls(x = Xh_parted, 
+                                        y = Yh_parted,
+                                        predI = num_LVS,
+                                        crossvalI = 1,
+                                        scaleC = "center",
+                                        fig.pdfC = "none",
+                                        info.txtC = "none"))
+    # Get Wh of PLSR
+    Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh_parted))
+    rownames(Wh) <- colnames(Xh_parted)
+    colnames(Wh) <- colnames(plsr_model@weightMN)
+    for (ii in 1:nrow(plsr_model@weightMN)){
+      Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+    }
+    # Get regression coefficients
+    Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+    # Define projection matrices to make more readable
+    Th <- Xh_parted %*% Wh
+    Thm <- Xh_parted %*% Wm %*% t(Wm) %*% Wh
+    
+    ### Run analytical approach
+    phi <- Wh %*% Bh
+    Wm_opt <- analytical_solution_opt(y=Yh_parted,
+                                      W_invitro = Wm,
+                                      phi = phi)
+    colnames(Wm_opt) <- paste0('LVstar',seq(1,ncol(Wm_opt)))
+    # Wm_opt_all <- rbind(Wm_opt_all,
+                        # as.data.frame(Wm_opt) %>% mutate(partition=p) %>% mutate(iteration=i))
+    # Extend latent variables
+    Wm_tot <- cbind(Wm, Wm_opt)
+    
+    # Calculate cosine similarity
+    cos_sim <- lsa::cosine(Wm_tot)
+    cos_sim <- cos_sim[colnames(Wm_opt),]
+    cos_sim <- as.data.frame(cos_sim) %>% rownames_to_column('extra_basis') %>% gather('basis','sim',-extra_basis)
+    cos_sim_all <- rbind(cos_sim_all,
+                         cos_sim %>% mutate(partition = p) %>% mutate(iteration=i))
+    colnames(Wm_opt) <- paste0(colnames(Wm_opt),'_part',p,'_iter',i)
+    Wm_opt_all <- cbind(Wm_opt_all,Wm_opt)
+    print(paste0('Finished iteration ',i,' / ',iterations))
+  }
+  
+  cat(paste0('Average absolute cosine of found LVs for partition ',100*p,'%',
+             '\nLV1-LV2 : ',mean(as.matrix(cos_sim_all %>% filter(partition==p) %>% 
+                                           filter(extra_basis=='LVstar1') %>% filter(basis=='LVstar2') %>% 
+                                           unique() %>% select(sim) %>% mutate(sim = abs(sim)))),
+             '\nLV1 to all PCs : ',mean(as.matrix(cos_sim_all %>% filter(partition==p) %>% 
+                                                  filter(extra_basis=='LVstar1') %>% 
+                                                  filter(!(basis %in% c('LVstar1','LVstar2'))) %>% 
+                                                  unique() %>% select(sim) %>% mutate(sim = abs(sim)))),
+             '\nLV2 to all PCs : ',mean(as.matrix(cos_sim_all %>% filter(partition==p) %>% 
+                                                  filter(extra_basis=='LVstar2') %>% 
+                                                  filter(!(basis %in% c('LVstar1','LVstar2'))) %>% 
+                                                  unique() %>% select(sim) %>% mutate(sim = abs(sim)))),
+             '\n'))
+}
+# saveRDS(Wm_opt_all,'../results/Wm_opt_all_different_partitions.rds')
+# saveRDS(cos_sim_all,'../results/cosine_sim_all_different_partitions.rds')
+
+# Wm_opt_all <- readRDS('../results/Wm_opt_all_different_partitions.rds')
+# cos_sim_all <- readRDS('../results/cosine_sim_all_different_partitions.rds')
+
+cos_optimal <- lsa::cosine(Wm_opt_all)
+dend <- hclust(dist(cos_optimal))
+ordered_matrix <- cos_optimal[dend$order, dend$order]
+
+lv_groups <- ifelse(grepl('LVstar1',colnames(ordered_matrix)),'LV1','LV2')
+partition_groups <- substr(colnames(ordered_matrix),13,15)
+partition_groups[grep('_i',partition_groups)] <- '1'
+partition_groups <- as.numeric(partition_groups)
+groups_col <- data.frame(LV = lv_groups,partition=partition_groups)
+
+partition_groups <- substr(rownames(ordered_matrix),13,15)
+partition_groups[grep('_i',partition_groups)] <- '1'
+partition_groups <- as.numeric(partition_groups)
+lv_groups <- ifelse(grepl('LVstar1',rownames(ordered_matrix)),'LV1','LV2')
+groups_row <- data.frame(LV = lv_groups,partition=partition_groups)
+
+rownames(groups_col) <- colnames(ordered_matrix)
+rownames(groups_row) <- rownames(ordered_matrix)
+# png('../results/similarity_of_optimal_analytical_lvs_for_many_partitions.png',
+#     height = 14,width = 16,units = 'in',res=600)
+pheatmap::pheatmap(ordered_matrix, 
+         color = colorRampPalette(c("blue", "white", "red"))(100), 
+         breaks = seq(-1, 1, length.out = 100),
+         main = "Clustered Cosine Similarity Heatmap",
+         annotation_col = groups_col,
+         annotation_row = groups_row,
+         fontsize = 18,
+         show_colnames = FALSE,  
+         show_rownames = FALSE,
+         filename = '../results/similarity_of_optimal_analytical_lvs_for_many_partitions.png',
+         height = 12,
+         width = 14,
+         units = 'in',
+         res=600
+         )
+# dev.off()
+
+cos_sim_all <- cos_sim_all %>% filter(extra_basis!=basis)
+cos_sim_all <- cos_sim_all %>% filter(grepl('PC',basis))
+ggplot(cos_sim_all,aes(x=sim,fill=extra_basis)) + geom_histogram() +xlab('cosine similarity with in vitro PCs')
+ggsave('../results/cosine_similarity_PC_extra_basis.png',
+       width = 9,
+       height = 9,
+       units = 'in',
+       dpi=600)
+### b) number of LVs used in PLSR of human genes
