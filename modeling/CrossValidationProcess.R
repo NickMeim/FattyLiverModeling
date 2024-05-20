@@ -7,7 +7,7 @@ library(patchwork)
 library(caret)
 library(ropls)
 source("../utils/plotting_functions.R")
-source("functions_translation_jose.R")
+source("functions_translation.R")
 source("CrossValidationUtilFunctions.R")
 
 ### Load in-vitro and in-vivo datasets and plit for Cross-Validation-----------------------------------------

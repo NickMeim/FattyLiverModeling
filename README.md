@@ -1,5 +1,5 @@
 # FattyLiverModeling
-A computational system biology approach for identifying and optimizing in-vitro models that better recapitulate human patients in NAFLD/NASH disease.
+A computational system biology approach for identifying and optimizing in-vitro models that better recapitulate human patients in fatty liver diseases.
 
 ## Folders
 1. data : Folder where you should put your raw data. (Be careful larger files cannot be pushed into GitHub and can potentially crash it)
@@ -7,3 +7,4 @@ A computational system biology approach for identifying and optimizing in-vitro 
 3. modeling : Machine learning and statistical analysis algorithms of the project.
 4. optimization : Scripts for performing in-silico maximization of the human variance captured by the MPS datase and analyzing the results.
 5. results : Storage of the results and figures of the studies.
+6. utils: Auxilary functions used by other scripts in this study.

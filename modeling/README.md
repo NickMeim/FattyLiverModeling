@@ -1,11 +1,8 @@
 ## Machine learning and statistical analysis algorithms of the project
 
 ## Scripts
-1. functions_translation_nikos.R: Functions used for translation, using TransCompR-based models, as modified and used by Nikos.
-2. functions_translation_jose.R : Original functions used in translation provided by Jose.
-3. aux_functions.R : Auxilary functions used in multiple scripts.
-4. multiPhenoModeling.R : TransCompR-based translation using **standard PCA** for multiple human phenotypes from Hoang et al. 2019, Scientific reports.
-5. SparsePCAMultiPheno.R : TransCompR-based translation using **sparse PCA** for multiple human phenotypes from Hoang et al. 2019, Scientific reports.
-6. PCLoadings_analysis.R : Derive insights using the gene loading of **PCs** of interest, as identified from multiPhenoModeling.R.
-7. sparsePCLoadings_analysis.R : Derive insights using the gene loading of **sparse PCs** of interest, as identified from SparsePCAMultiPheno.R.
-8. enrichment_calculations.R : Function for performing Geneset Enrichment Analysis (GSEA) for GO Terms, KEGG pathways or TFs (treated as sets of genes by using the dorothea regulon) using the **fgsea** R library.
+1. functions_translation.R : Contains functions to load and pre-process the raw data (normalize, scale, center, etc), perform PCA, and identify translatable or extra latent components using an evolutionary algorithm. ** Additionally it contains the function to identify extra latent vectors to span the human space, using an analytical solution.**
+2. enrichment_calculations.R : Function for performing Geneset Enrichment Analysis (GSEA) for GO Terms, KEGG pathways or TFs (treated as sets of genes by using the dorothea regulon) using the **fgsea** R library.
+3. vector_space_interpretation.R: Contains functions to infer pathways and TFs activities based on a vector of gene "loadings"/"weights", and visualize the results.
+4. CrossValidationUtilFunctions.R: Contains function to perform cross-fold validation of various approaches.
+5. CrossValidationProcess.R: The script that performs all cross-fold validation and evaluation tests.
