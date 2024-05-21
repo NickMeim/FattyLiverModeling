@@ -6,6 +6,8 @@ library(ggsignif)
 library(ggrepel)
 library(ggbreak) 
 library(patchwork)
+library(ggradar)
+library(ggiraphExtra)
 source('modeling/CrossValidationUtilFunctions.R')
 source('modeling/functions_translation.R')
 source("utils/plotting_functions.R")
@@ -437,7 +439,69 @@ ggsave(paste0('results/pc_loadings_scores_analysis/progenies_only_optimal_loadin
        height = 12,
        dpi = 600)
 
-
+### Visualize pathways in various directions of the new space-----------------------
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+thetas <- seq(0,360,5)
+df <- data.frame()
+for (theta in thetas){
+  u <- c(cos(theta * pi / 180),sin(theta * pi / 180))
+  u <- as.matrix(u)
+  proj <- u %*% t(u) # since it is unit norm vector
+  W_proj <- Wm_opt %*% proj
+  extra_basis_pathway_activity <- pathway_activity_interpretation(W_proj,
+                                                                  Wm,
+                                                                  plotting = FALSE)
+  
+  tmp <- extra_basis_pathway_activity[[2]]
+  tmp <- tmp %>% filter(condition == 'V1') %>% ungroup() %>% 
+    select(Pathway,score) %>% mutate(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1]) %>%
+    mutate(theta = theta)
+  df <- rbind(df,
+              tmp)
+}
+df_plot <- df %>% select(Pathway,theta,score) %>% mutate(score = abs(score)) %>% filter(theta<=90) %>%
+  spread('theta','score')
+df_labels <- data.frame(score = rep(seq(0,6,2),length(unique(df_plot$Pathway))))
+df_paths <- data.frame(Pathway = rep(unique(df_plot$Pathway),4))
+df_paths <- df_paths %>% arrange(Pathway)
+df_labels <- cbind(df_labels,df_paths)
+p1 <- ggRadar(df_plot, aes(group = Pathway), rescale = FALSE, use.label = TRUE,size = 1) +
+  # scale_x_discrete(breaks = seq(0,180,30))+
+  geom_text(data=df_labels,aes(x=17,y=score,label = score),color='black',alpha=0.7)+
+  theme_light() +
+  labs(title = "Pathway activity contribution in each direction of the extra basis")+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank()) +
+  facet_wrap(~Pathway)
+# p + geom_text(aes(label = score), size = 5)
+print(p1)
+ggsave(paste0('results/pc_loadings_scores_analysis/pathways_in_extra_basis_',tolower(target_dataset),'.png'),
+       plot = p1,
+       width = 9,
+       height = 9,
+       units = 'in',
+       dpi =600)
+p2 <- ggplot(df,aes(x=LV_opt_1,y=LV_opt_2,fill=score,colour=score))+
+  # geom_point()+
+  geom_segment(aes(x=0,y=0,xend =LV_opt_1,yend=LV_opt_2),
+               arrow = arrow(length = unit(0.03, "npc")))+
+  scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-8,8))+
+  scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-8,8))+
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~Pathway)+
+  theme_light(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family='Arial'),
+        legend.position = 'right')
+print(p2)
+ggsave(paste0('results/pc_loadings_scores_analysis/pathways_in_extra_basis_arrowplot_',tolower(target_dataset),'.png'),
+       plot = p2,
+       width = 9,
+       height = 9,
+       units = 'in',
+       dpi =600)
 ### Analyze loadings with GSEA on MSIG Hallmarks genesets--------------
 Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
 Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
