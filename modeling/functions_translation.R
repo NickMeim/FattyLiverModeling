@@ -122,6 +122,7 @@ process_datasets <- function(data_list, plt_list = NULL, filter_variance = FALSE
       pca_group <- pca_center(data_grouped, log_cpm = FALSE, center = TRUE)
       # We only need to return the rotation matrix (minus the final PC that has variance zero)
       data_list[[ff]]$Wm_group <- pca_group$pca$rotation[,-length(groups_unique)]
+      data_list[[ff]]$Xm_grouped <- data_grouped
     }
     
   }
