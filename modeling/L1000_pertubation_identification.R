@@ -49,20 +49,47 @@ jaccard_2mats <- function(M1,M2){
   M1p <- 1*(M1==1)
   M2p <- 1*(M2==1)
   intersection_p <- M1p %*% t(M2p)
-  union_p <- apply(as.matrix(rowSums(M1p)),1,'+',as.matrix(rowSums(M2p))) - intersection_p
+  sum1 <- rowSums(M1p)
+  sum2 <- rowSums(M2p)
+  # Create matrices of row sums
+  sum1_matrix <- matrix(sum1, nrow = length(sum1), ncol = length(sum2), byrow = FALSE)
+  sum2_matrix <- matrix(sum2, nrow = length(sum1), ncol = length(sum2), byrow = TRUE)
+  union_p <- sum1_matrix + sum2_matrix - intersection_p
   Jp <- intersection_p/union_p
   
   # Then calculate negatives
   M1n <- 1*(M1==(-1))
   M2n <- 1*(M2==(-1))
   intersection_n <- M1n %*% t(M2n)
-  union_n <- apply(as.matrix(rowSums(M1n)),1,'+',as.matrix(rowSums(M2n))) - intersection_n
+  sum1 <- rowSums(M1n)
+  sum2 <- rowSums(M2n)
+  # Create matrices of row sums
+  sum1_matrix <- matrix(sum1, nrow = length(sum1), ncol = length(sum2), byrow = FALSE)
+  sum2_matrix <- matrix(sum2, nrow = length(sum1), ncol = length(sum2), byrow = TRUE)
+  union_n <- sum1_matrix + sum2_matrix - intersection_n
   Jn <- intersection_n/union_n
   J <- 0.5 * (Jp + Jn)
   return(J)
 }
 
-### Load extra basis and dX from variance optimization and infer TF activity, Hallmark enrichment, KEGG enrichment,GO Terms enrichment------------------------
+cosine_2mats <- function(A, B) {
+  # Normalize rows of A
+  norm_A <- sqrt(rowSums(A^2))
+  A_normalized <- A / norm_A
+  
+  # Normalize rows of B
+  norm_B <- sqrt(rowSums(B^2))
+  B_normalized <- B / norm_B
+  
+  # Compute cosine similarity
+  similarity <- A_normalized %*% t(B_normalized)
+  
+  return(similarity)
+}
+
+
+### Load extra basis and dX from variance optimization and infer:
+### TF activity, Hallmark enrichment, KEGG enrichment,GO Terms enrichment------------------------
 Wm_opt <- readRDS('../results/Wm_kostrzewski_extra.rds')
 dx_lean <- data.table::fread('../results/optimized_mps/dx_lean_govaere_kostrzewski.csv') %>% select(-V1)
 W_all <- cbind(Wm_opt,t(dx_lean))
@@ -189,8 +216,7 @@ df_gos_cc_extra_filt <- df_gos %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>%
 df_gos_cc_extra_filt <- as.matrix(df_gos_cc_extra_filt %>% spread('GO','sig') %>% column_to_rownames('sig_id'))
 df_gos_cc_extra <- as.matrix(df_gos %>% select(LV,GO,NES) %>% spread('GO','NES') %>% column_to_rownames('LV'))
 
-### Load L1000 gex and enrichment data to calculate Jaccard and cosine similarities---------------------
-# Load the L1000 dataset
+### Load the L1000 dataset---------------------------------------------------
 drug_ligand_ex <- readRDS("../data/l1000_drugs_ligands_expression.rds")
 gene_info <- readRDS("../data/l1000_geneInfo.rds")
 print(all(gene_info$gene_id==rownames(drug_ligand_ex)))
@@ -204,8 +230,14 @@ sigInfo <- sigInfo %>% mutate(duplIdentifier = paste0(cmap_name,"_",pert_idose,"
 duplicates <- sigInfo %>% group_by(duplIdentifier) %>% mutate(counts = n()) %>% ungroup() %>% filter(counts>1)
 dupl_sigs <- unique(duplicates$sig_id)
 no_dupl_sigs <- unique(sigInfo$sig_id[!(sigInfo$sig_id %in% dupl_sigs)])
+sameDrugCell <- sigInfo %>% group_by(cmap_name,cell_iname) %>% mutate(counts = n()) %>% ungroup() %>% filter(counts>1)
+sameDrugCell_sigs <- unique(sameDrugCell$sig_id)
+no_sameDrugCell_sigs <- unique(sigInfo$sig_id[!(sigInfo$sig_id %in% dupl_sigs)])
+sameDrug <- sigInfo %>% group_by(cmap_name) %>% mutate(counts = n()) %>% ungroup() %>% filter(counts>1)
+sameDrug_sigs <- unique(sameDrug$sig_id)
+no_sameDrug_sigs <- unique(sigInfo$sig_id[!(sigInfo$sig_id %in% sameDrug_sigs)])
 gc()
-### Run progeny to infer pathway activity and keep only drugs that can affect these pathways in some cell line
+### Run progeny to infer pathway activity and keep only drugs that can affect these pathways in some cell line------------
 ### The pathways of interest are JAK-STAT (or NFKb) at opposite sign as p53
 paths <- c('JAK-STAT','NFkB','p53')
 combined_sign_jakstat <- -1
@@ -237,8 +269,14 @@ minNrOfGenes  <-  5
 TF_activities <- decoupleR::run_viper(drug_ligand_ex, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
 optimals <- NULL
 for (i in 1:30){
-  mat <- t(as.matrix(TF_activities %>% select(condition,source,score) %>% 
-                       filter(condition %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+  # mat <- t(as.matrix(TF_activities %>% select(condition,source,score) %>%
+  #                      filter(condition %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+  #                      spread('source','score') %>% column_to_rownames('condition')))
+  mat <- t(as.matrix(TF_activities %>% select(condition,source,score) %>%
+                       filter(condition %in% unique(c(sameDrugCell_sigs,
+                                                      sample(unique(no_sameDrugCell_sigs),
+                                                             length(sameDrugCell_sigs),
+                                                             replace = FALSE)))) %>%
                        spread('source','score') %>% column_to_rownames('condition')))
   df_tf_cosine <- lsa::cosine(mat)
   df_tf_cosine[lower.tri(df_tf_cosine,diag = T)]<- -100
@@ -279,9 +317,12 @@ TF_activities_sig <- TF_activities %>% mutate(score = ifelse(p_value>=0.01,0,sco
   select(c('sig_id'='condition'),c('TF'='source'),sig)
 optimals <- NULL
 for (i in 1:30){
-  mat <- as.matrix(TF_activities_sig %>% 
-                     filter(sig_id %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
-                     spread('TF','sig') %>% column_to_rownames('sig_id'))
+  mat <- as.matrix(TF_activities_sig %>%
+                     filter(sig_id %in% unique(c(sameDrugCell_sigs,
+                                                    sample(unique(no_sameDrugCell_sigs),
+                                                           length(sameDrugCell_sigs),
+                                                           replace = FALSE)))) %>%
+                       spread('TF','sig') %>% column_to_rownames('sig_id'))
   jaccard_similarity <-  jaccard(mat)
   jaccard_similarity[lower.tri(jaccard_similarity,diag = T)]<- -100
   df_jaccard_tfs <- reshape2::melt(jaccard_similarity)
@@ -311,7 +352,10 @@ l1000_hallmarks <- readRDS('../../../L1000_2021_11_23/GSEA/df_hallmarks_ligand_d
 optimals <- NULL
 for (i in 1:30){
   mat <- t(as.matrix(l1000_hallmarks %>% select(sigID,pathway,NES) %>% 
-                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                   sample(unique(no_sameDrugCell_sigs),
+                                                          length(sameDrugCell_sigs),
+                                                          replace = FALSE)))) %>%
                        spread('pathway','NES') %>% column_to_rownames('sigID')))
   df_hallmark_cosine <- lsa::cosine(mat)
   df_hallmark_cosine[lower.tri(df_hallmark_cosine,diag = T)]<- -100
@@ -346,7 +390,10 @@ hallmarks_sig <- l1000_hallmarks %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>%
 optimals <- NULL
 for (i in 1:30){
   mat <- as.matrix(hallmarks_sig %>% 
-                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                sample(unique(no_sameDrugCell_sigs),
+                                                       length(sameDrugCell_sigs),
+                                                       replace = FALSE)))) %>%
                      spread('pathway','sig') %>% column_to_rownames('sigID'))
   jaccard_similarity <-  jaccard(mat)
   jaccard_similarity[lower.tri(jaccard_similarity,diag = T)]<- -100
@@ -379,7 +426,10 @@ l1000_keggs <- l1000_keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway))
 optimals <- NULL
 for (i in 1:30){
   mat <- t(as.matrix(l1000_keggs %>% select(sigID,pathway,NES) %>% 
-                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                  sample(unique(no_sameDrugCell_sigs),
+                                                         length(sameDrugCell_sigs),
+                                                         replace = FALSE)))) %>%
                        spread('pathway','NES') %>% column_to_rownames('sigID')))
   df_kegg_cosine <- lsa::cosine(mat)
   df_kegg_cosine[lower.tri(df_kegg_cosine,diag = T)]<- -100
@@ -414,7 +464,10 @@ kegg_sig <- l1000_keggs %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>%
 optimals <- NULL
 for (i in 1:30){
   mat <- as.matrix(kegg_sig %>% 
-                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                sample(unique(no_sameDrugCell_sigs),
+                                                       length(sameDrugCell_sigs),
+                                                       replace = FALSE)))) %>%
                      spread('pathway','sig') %>% column_to_rownames('sigID'))
   df_jaccard_keggs <-  jaccard(mat)
   df_jaccard_keggs[lower.tri(df_jaccard_keggs,diag = T)]<- -100
@@ -445,7 +498,10 @@ l1000_gos_bp <- readRDS('../../../L1000_2021_11_23/GSEA/df_gobp_ligand_drugs_10k
 optimals <- NULL
 for (i in 1:30){
   mat <- t(as.matrix(l1000_gos_bp %>% select(sigID,pathway,NES) %>% 
-                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                  sample(unique(no_sameDrugCell_sigs),
+                                                         length(sameDrugCell_sigs),
+                                                         replace = FALSE)))) %>%
                        spread('pathway','NES') %>% column_to_rownames('sigID')))
   df_gos_bp_cosine <- lsa::cosine(mat)
   df_gos_bp_cosine[lower.tri(df_gos_bp_cosine,diag = T)]<- -100
@@ -480,7 +536,10 @@ gos_bp_sig <- l1000_gos_bp %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>%
 optimals <- NULL
 for (i in 1:30){
   mat <- as.matrix(gos_bp_sig %>% 
-                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                sample(unique(no_sameDrugCell_sigs),
+                                                       length(sameDrugCell_sigs),
+                                                       replace = FALSE)))) %>%
                      spread('pathway','sig') %>% column_to_rownames('sigID'))
   df_jaccard_gos_bp <-  jaccard(mat)
   df_jaccard_gos_bp[lower.tri(df_jaccard_gos_bp,diag = T)]<- -100
@@ -512,7 +571,10 @@ l1000_gos_cc <- readRDS('../../../L1000_2021_11_23/GSEA/df_gocc_ligand_drugs_10k
 optimals <- NULL
 for (i in 1:30){
   mat <- t(as.matrix(l1000_gos_cc %>% select(sigID,pathway,NES) %>% 
-                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                  sample(unique(no_sameDrugCell_sigs),
+                                                         length(sameDrugCell_sigs),
+                                                         replace = FALSE)))) %>%
                        spread('pathway','NES') %>% column_to_rownames('sigID')))
   df_gos_bp_cosine <- lsa::cosine(mat)
   df_gos_bp_cosine[lower.tri(df_gos_bp_cosine,diag = T)]<- -100
@@ -547,7 +609,10 @@ gos_cc_sig <- l1000_gos_cc %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>%
 optimals <- NULL
 for (i in 1:30){
   mat <- as.matrix(gos_cc_sig %>% 
-                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     filter(sigID %in% unique(c(sameDrugCell_sigs,
+                                                sample(unique(no_sameDrugCell_sigs),
+                                                       length(sameDrugCell_sigs),
+                                                       replace = FALSE)))) %>%
                      spread('pathway','sig') %>% column_to_rownames('sigID'))
   df_jaccard_gos_cc <-  jaccard(mat)
   df_jaccard_gos_cc[lower.tri(df_jaccard_gos_cc,diag = T)]<- -100
@@ -608,10 +673,73 @@ gc()
 # Remember direction of similarity does not matter !
 # Even reverse down,up elements or cosine -1 are fine for the purpose of this exercise !
 # So the found threshold is for the same exact direction but also:
-# cosine less than -threshold is ok and jaccard similarity can be calculated with the reversed bottom-up elements (will say it negative)
-# in downstream notation after filtering (select everything that is lower than -threshold)
-l1000_keggs <- readRDS('../../archived github/l1000_keggs_filtered.rds')
-l1000_hallmarks <- readRDS('../../archived github/l1000_hallmarks_filtered.rds')
-l1000_gos_bp <- readRDS('../../archived github/l1000_gos_pb_filtered.rds')
-l1000_gos_cc <- readRDS('../../archived github/l1000_gos_cc_filtered.rds')
-TF_activities <- readRDS('../../archived github/TF_activities_filtered.rds')
+# cosine less than -threshold is ok and jaccard similarity can be calculated with the reversed bottom-up elements
+optimal_threshold_cosine_tfs <- readRDS('../results/optimal_threshold_cosine_tfs_l1000.rds')
+optimal_threshold_cosine_keggs <- readRDS('../results/optimal_threshold_cosine_keggs_l1000.rds')
+optimal_threshold_cosine_hallmakrs <- readRDS('../results/optimal_threshold_cosine_hallmakrs_l1000.rds')
+optimal_threshold_cosine_gos_bp <- readRDS('../results/optimal_threshold_cosine_gos_bp_l1000.rds')
+optimal_threshold_cosine_gos_cc <- readRDS('../results/optimal_threshold_cosine_gos_cc_l1000.rds')
+optimal_threshold_jaccard_tfs <- readRDS('../results/optimal_threshold_jaccard_tfs_l1000.rds')
+optimal_threshold_jaccard_keggs <- readRDS('../results/optimal_threshold_jaccard_keggs_l1000.rds')
+optimal_threshold_jaccard_hallmarks <- readRDS('../results/optimal_threshold_jaccard_hallmakrs_l1000.rds')
+optimal_threshold_jaccard_gos_bp <- readRDS('../results/optimal_threshold_jaccard_gos_bp_l1000.rds')
+optimal_threshold_jaccard_gos_cc <- readRDS('../results/optimal_threshold_jaccard_gos_cc_l1000.rds')
+# l1000_keggs <- readRDS('../../archived github/l1000_keggs_filtered.rds')
+# l1000_hallmarks <- readRDS('../../archived github/l1000_hallmarks_filtered.rds')
+# l1000_gos_bp <- readRDS('../../archived github/l1000_gos_pb_filtered.rds')
+# l1000_gos_cc <- readRDS('../../archived github/l1000_gos_cc_filtered.rds')
+# TF_activities <- readRDS('../../archived github/TF_activities_filtered.rds')
+
+### First TF activity similarities
+### Calculate Jaccard similarity
+TF_activities_sig <- TF_activities %>% mutate(score = ifelse(p_value>=0.01,0,score)) %>% 
+  mutate(score = ifelse(abs(score)<=0.5,0,score)) %>% 
+  mutate(sig = ifelse(score<0,-1,
+                      ifelse(score>0,1,0))) %>% 
+  select(c('sig_id'='condition'),c('TF'='source'),sig)
+M_L1000 <- as.matrix(TF_activities_sig %>%  spread('TF','sig') %>% column_to_rownames('sig_id'))
+M2 <- TF_activities_extra_filt[,colnames(M_L1000)]
+print(all(colnames(M_L1000)==colnames(M2)))
+jaccard_sim <- jaccard_2mats(M_L1000,M2)
+jaccard_sim_reversed <- jaccard_2mats(-1*M_L1000,M2)
+jaccard_sim_reversed <- as.data.frame(jaccard_sim_reversed) %>% rownames_to_column('sig_id') %>% gather('LV','jaccard',-sig_id) 
+jaccard_sim <- as.data.frame(jaccard_sim) %>% rownames_to_column('sig_id') %>% gather('LV','jaccard',-sig_id) 
+jaccard_sim <- left_join(jaccard_sim,jaccard_sim_reversed,by=c('sig_id','LV'))
+jaccard_sim <- jaccard_sim %>% group_by(sig_id,LV) %>% mutate(jaccard= max(c(jaccard.x,jaccard.y))) %>% ungroup()
+jaccard_sim <- jaccard_sim %>% select(sig_id,LV,jaccard)
+### Calculate cosine similarity
+M_L1000 <- as.matrix(TF_activities %>% select(condition,source,score) %>% spread('source','score') %>% 
+                       column_to_rownames('condition'))
+M2 <- TF_activities_extra[,colnames(M_L1000)]
+print(all(colnames(M_L1000)==colnames(M2)))
+cos_sim <- cosine_2mats(M_L1000,M2)
+cos_sim <- as.data.frame(cos_sim) %>% rownames_to_column('sig_id') %>% gather('LV','cosine',-sig_id)
+cos_sim <- left_join(cos_sim,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,pert_type))
+
+TF_similarities <- left_join(cos_sim,jaccard_sim,by=c('sig_id','LV'))
+
+### Hallmarks similarities
+### Calculate Jaccard similarity
+hallmarks_sig <- l1000_hallmarks %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>% 
+  mutate(NES = ifelse(abs(NES)<=0.5,0,NES)) %>% 
+  mutate(sig = ifelse(NES<0,-1,
+                      ifelse(NES>0,1,0))) %>% 
+  select(c('sig_id'='sigID'),c('geneset'='pathway'),sig)
+M_L1000 <- as.matrix(hallmarks_sig %>%  spread('geneset','sig') %>% column_to_rownames('sig_id'))
+M2 <- df_msig_extra_filt[,colnames(M_L1000)]
+print(all(colnames(M_L1000)==colnames(M2)))
+jaccard_sim <- jaccard_2mats(M_L1000,M2)
+jaccard_sim_reversed <- jaccard_2mats(-1*M_L1000,M2)
+jaccard_sim_reversed <- as.data.frame(jaccard_sim_reversed) %>% rownames_to_column('sig_id') %>% gather('LV','jaccard',-sig_id) 
+jaccard_sim <- as.data.frame(jaccard_sim) %>% rownames_to_column('sig_id') %>% gather('LV','jaccard',-sig_id) 
+jaccard_sim <- left_join(jaccard_sim,jaccard_sim_reversed,by=c('sig_id','LV'))
+jaccard_sim <- jaccard_sim %>% group_by(sig_id,LV) %>% mutate(jaccard= max(c(jaccard.x,jaccard.y))) %>% ungroup()
+jaccard_sim <- jaccard_sim %>% select(sig_id,LV,jaccard)
+### Calculate cosine similarity
+M_L1000 <- as.matrix(l1000_hallmarks %>% select(sigID,pathway,NES) %>% spread('pathway','NES') %>% 
+                       column_to_rownames('sigID'))
+M2 <- df_msig_extra[,colnames(M_L1000)]
+print(all(colnames(M_L1000)==colnames(M2)))
+cos_sim <- cosine_2mats(M_L1000,M2)
+cos_sim <- as.data.frame(cos_sim) %>% rownames_to_column('sig_id') %>% gather('LV','cosine',-sig_id)
+cos_sim <- left_join(cos_sim,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,pert_type))
