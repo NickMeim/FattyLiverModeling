@@ -201,7 +201,10 @@ sigInfo <- readRDS("../data/l1000_meta_data.rds")
 # sigInfo <- sigInfo %>% filter(cell_iname %in% cell_info$cell_iname)
 drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
 sigInfo <- sigInfo %>% mutate(duplIdentifier = paste0(cmap_name,"_",pert_idose,"_",pert_itime,"_",cell_iname))
-
+duplicates <- sigInfo %>% group_by(duplIdentifier) %>% mutate(counts = n()) %>% ungroup() %>% filter(counts>1)
+dupl_sigs <- unique(duplicates$sig_id)
+no_dupl_sigs <- unique(sigInfo$sig_id[!(sigInfo$sig_id %in% dupl_sigs)])
+gc()
 ### Run progeny to infer pathway activity and keep only drugs that can affect these pathways in some cell line
 ### The pathways of interest are JAK-STAT (or NFKb) at opposite sign as p53
 paths <- c('JAK-STAT','NFkB','p53')
@@ -222,189 +225,393 @@ L1000_progenies_filt <- L1000_progenies_filt %>% filter(condition %in% L1000_pro
 L1000_progenies_filt <- L1000_progenies %>% filter(condition %in% L1000_progenies_filt$condition)
 sigs_selected <- unique(L1000_progenies_filt$condition)
 
-sigInfo <- sigInfo %>% filter(sig_id %in% sigs_selected)
-drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
+# sigInfo <- sigInfo %>% filter(sig_id %in% sigs_selected)
+# drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
 
-### Run viper to infer TF activity
+### Run viper to infer TF activity from L1000 and find threshold to consider neighbors---------------------------------------
 dorotheaData <- read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter <- is.element(dorotheaData$confidence, c('A', 'B'))
 dorotheaData <- dorotheaData[confidenceFilter,]
 colnames(dorotheaData)[1] <- 'source' 
 minNrOfGenes  <-  5
 TF_activities <- decoupleR::run_viper(drug_ligand_ex, dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
-mat <- t(as.matrix(TF_activities %>% select(condition,source,score) %>% 
-                     spread('source','score') %>% column_to_rownames('condition')))
-df_tf_cosine <- lsa::cosine(mat)
-df_tf_cosine[lower.tri(df_tf_cosine,diag = T)]<- -100
-df_tf_cosine <- reshape2::melt(df_tf_cosine)
-df_tf_cosine <- df_tf_cosine %>% filter(value != -100)
-gc()
-df_tf_cosine <- left_join(df_tf_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
-                          by = c("Var1"="sig_id"))
-df_tf_cosine <- left_join(df_tf_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
-                          by = c("Var2"="sig_id"))
-df_tf_cosine <- df_tf_cosine %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
-df_tf_cosine <- df_tf_cosine %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
-df_tf_cosine <- df_tf_cosine %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
-gc()
-# ROC analysis
-roc_object <- roc(df_tf_cosine$is_same_drug_cell, df_tf_cosine$value)
-plot(roc_object)
-optimal_threshold_cosine_tfs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+optimals <- NULL
+for (i in 1:30){
+  mat <- t(as.matrix(TF_activities %>% select(condition,source,score) %>% 
+                       filter(condition %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       spread('source','score') %>% column_to_rownames('condition')))
+  df_tf_cosine <- lsa::cosine(mat)
+  df_tf_cosine[lower.tri(df_tf_cosine,diag = T)]<- -100
+  df_tf_cosine <- reshape2::melt(df_tf_cosine)
+  df_tf_cosine <- df_tf_cosine %>% filter(value != -100)
+  gc()
+  df_tf_cosine <- left_join(df_tf_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                            by = c("Var1"="sig_id"))
+  df_tf_cosine <- left_join(df_tf_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                            by = c("Var2"="sig_id"))
+  df_tf_cosine <- df_tf_cosine %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_tf_cosine <- df_tf_cosine %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_tf_cosine <- df_tf_cosine %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_tf_cosine$is_same_drug_cell, df_tf_cosine$value)
+  optimal_threshold_cosine_tfs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_cosine_tfs$threshold
+  print(paste0('Finished iteration ',i))
+  # y_pred <- 1*(df_tf_cosine$value>optimal_threshold_cosine_tfs$threshold)
+  # y <- df_tf_cosine$is_same_drug_cell
+  # confusion <- confusionMatrix(data=factor(y_pred,levels = c(1,0)),
+  #                              reference = factor(y,levels = c(1,0)))
+  # print(confusion)
+  # ggviolin(df_tf_cosine,x='is_duplicate',y='value',fill = 'is_duplicate',draw_quantiles = TRUE)
+  # ggviolin(df_tf_cosine,x='is_same_drug_cell',y='value',fill = 'is_same_drug_cell',draw_quantiles = TRUE)
+}
 # Print the optimal threshold
+hist(optimals)
+optimal_threshold_cosine_tfs <- mean(optimals)
 print(optimal_threshold_cosine_tfs)
-y_pred <- 1*(df_tf_cosine$value>optimal_threshold_cosine_tfs$threshold)
-y <- df_tf_cosine$is_same_drug_cell
-confusion <- confusionMatrix(data=factor(y_pred,levels = c(1,0)), 
-                             reference = factor(y,levels = c(1,0)))
-print(confusion)
-ggviolin(df_tf_cosine,x='is_duplicate',y='value',fill = 'is_duplicate',draw_quantiles = TRUE)
-ggviolin(df_tf_cosine,x='is_same_drug_cell',y='value',fill = 'is_same_drug_cell',draw_quantiles = TRUE)
+
 # repeat for Jaccard
 TF_activities_sig <- TF_activities %>% mutate(score = ifelse(p_value>=0.01,0,score)) %>% 
   mutate(score = ifelse(abs(score)<=0.5,0,score)) %>% 
   mutate(sig = ifelse(score<0,-1,
                       ifelse(score>0,1,0))) %>% 
   select(c('sig_id'='condition'),c('TF'='source'),sig)
-TF_activities_sig <- as.matrix(TF_activities_sig %>% spread('TF','sig') %>% column_to_rownames('sig_id'))
-jaccard_similarity <-  jaccard(TF_activities_sig)
-jaccard_similarity[lower.tri(jaccard_similarity,diag = T)]<- -100
-df_jaccard_tfs <- reshape2::melt(jaccard_similarity)
-df_jaccard_tfs <- df_jaccard_tfs %>% filter(value != -100)
-gc()
-df_jaccard_tfs <- left_join(df_jaccard_tfs,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
-                            by = c("Var1"="sig_id"))
-df_jaccard_tfs <- left_join(df_jaccard_tfs,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
-                            by = c("Var2"="sig_id"))
-df_jaccard_tfs <- df_jaccard_tfs %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
-df_jaccard_tfs <- df_jaccard_tfs %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
-df_jaccard_tfs <- df_jaccard_tfs %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
-gc()
-# ROC analysis
-roc_object <- roc(df_jaccard_tfs$is_same_drug_cell, df_jaccard_tfs$value)
-plot(roc_object)
-optimal_threshold_jaccard_tfs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
-# Print the optimal threshold
+optimals <- NULL
+for (i in 1:30){
+  mat <- as.matrix(TF_activities_sig %>% 
+                     filter(sig_id %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     spread('TF','sig') %>% column_to_rownames('sig_id'))
+  jaccard_similarity <-  jaccard(mat)
+  jaccard_similarity[lower.tri(jaccard_similarity,diag = T)]<- -100
+  df_jaccard_tfs <- reshape2::melt(jaccard_similarity)
+  df_jaccard_tfs <- df_jaccard_tfs %>% filter(value != -100)
+  gc()
+  df_jaccard_tfs <- left_join(df_jaccard_tfs,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var1"="sig_id"))
+  df_jaccard_tfs <- left_join(df_jaccard_tfs,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var2"="sig_id"))
+  df_jaccard_tfs <- df_jaccard_tfs %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_jaccard_tfs <- df_jaccard_tfs %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_jaccard_tfs <- df_jaccard_tfs %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_jaccard_tfs$is_same_drug_cell, df_jaccard_tfs$value)
+  # plot(roc_object)
+  optimal_threshold_jaccard_tfs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_jaccard_tfs$threshold
+  print(paste0('Finished iteration ',i))
+}
+hist(optimals)
+optimal_threshold_jaccard_tfs <- mean(optimals)
 print(optimal_threshold_jaccard_tfs)
-y_pred <- 1*(df_jaccard_tfs$value>optimal_threshold_jaccard_tfs$threshold)
-y <- df_jaccard_tfs$is_same_drug_cell
-confusion <- confusionMatrix(data=factor(y_pred,levels = c(1,0)), 
-                             reference = factor(y,levels = c(1,0)))
-print(confusion)
-ggviolin(df_jaccard_tfs,x='is_duplicate',y='value',fill = 'is_duplicate',add='jitter')
-ggviolin(df_jaccard_tfs,x='is_same_drug_cell',y='value',fill = 'is_same_drug_cell',add='jitter')
 
-### Load Hallmarks results
+### Load Hallmarks results from L1000 and find threshold to consider neighbors---------------------------------------
+l1000_hallmarks <- readRDS('../../../L1000_2021_11_23/GSEA/df_hallmarks_ligand_drugs_10k_filtered.rds')
+optimals <- NULL
+for (i in 1:30){
+  mat <- t(as.matrix(l1000_hallmarks %>% select(sigID,pathway,NES) %>% 
+                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       spread('pathway','NES') %>% column_to_rownames('sigID')))
+  df_hallmark_cosine <- lsa::cosine(mat)
+  df_hallmark_cosine[lower.tri(df_hallmark_cosine,diag = T)]<- -100
+  df_hallmark_cosine <- reshape2::melt(df_hallmark_cosine)
+  df_hallmark_cosine <- df_hallmark_cosine %>% filter(value != -100)
+  gc()
+  df_hallmark_cosine <- left_join(df_hallmark_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                            by = c("Var1"="sig_id"))
+  df_hallmark_cosine <- left_join(df_hallmark_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                            by = c("Var2"="sig_id"))
+  df_hallmark_cosine <- df_hallmark_cosine %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_hallmark_cosine <- df_hallmark_cosine %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_hallmark_cosine <- df_hallmark_cosine %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_hallmark_cosine$is_same_drug_cell, df_hallmark_cosine$value)
+  optimal_threshold_cosine_hallmakrs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_cosine_hallmakrs$threshold
+  print(paste0('Finished iteration ',i))
+}
+# Print the optimal threshold
+hist(optimals)
+optimal_threshold_cosine_hallmakrs <- mean(optimals)
+print(optimal_threshold_cosine_hallmakrs)
+
+# repeat for Jaccard
+hallmarks_sig <- l1000_hallmarks %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>% 
+  mutate(NES = ifelse(abs(NES)<=0.5,0,NES)) %>% 
+  mutate(sig = ifelse(NES<0,-1,
+                      ifelse(NES>0,1,0))) %>% 
+  select(sigID,pathway,sig)
+optimals <- NULL
+for (i in 1:30){
+  mat <- as.matrix(hallmarks_sig %>% 
+                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     spread('pathway','sig') %>% column_to_rownames('sigID'))
+  jaccard_similarity <-  jaccard(mat)
+  jaccard_similarity[lower.tri(jaccard_similarity,diag = T)]<- -100
+  df_jaccard_hallmarks <- reshape2::melt(jaccard_similarity)
+  df_jaccard_hallmarks <- df_jaccard_hallmarks %>% filter(value != -100)
+  gc()
+  df_jaccard_hallmarks <- left_join(df_jaccard_hallmarks,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var1"="sig_id"))
+  df_jaccard_hallmarks <- left_join(df_jaccard_hallmarks,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var2"="sig_id"))
+  df_jaccard_hallmarks <- df_jaccard_hallmarks %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_jaccard_hallmarks <- df_jaccard_hallmarks %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_jaccard_hallmarks <- df_jaccard_hallmarks %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_jaccard_hallmarks$is_same_drug_cell, df_jaccard_hallmarks$value)
+  # plot(roc_object)
+  optimal_threshold_jaccard_hallmarks <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_jaccard_hallmarks$threshold
+  print(paste0('Finished iteration ',i))
+}
+hist(optimals)
+optimal_threshold_jaccard_hallmarks <- mean(optimals)
+print(optimal_threshold_jaccard_hallmarks)
 
 
-### Load the all the clinilca datasets and generate a distribution similarity scores-----------------------
-### in terms of affected TFs, pathway activities, hallmark genesets, KEGGs, GO Terms
-dataset_names <- c("Govaere",'Hoang' ,"Kostrzewski", "Wang", "Feaver")
-ref_dataset <- "Govaere"
-target_dataset <- "Kostrzewski"
-# Load
-data_list <- load_datasets(dataset_names, dir_data = '../data/')
-# Run PCA
-tmp <- process_datasets(data_list, filter_variance = F)
-data_list <- tmp$data_list
-plt_list <- tmp$plt_list
-# Define matrices of interest
-Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
-colnames(Yh) <- c('NAS','fibrosis')
-Xh <- data_list[[ref_dataset]]$data_center %>% t()
-Xm <- data_list[[target_dataset]]$data_center %>% t()
-# Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
-Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+### Load KEGGS results from L1000 and find threshold to consider neighbors---------------------------------------
+l1000_keggs <- readRDS('../../../L1000_2021_11_23/GSEA/df_gsea_keggs_ligand_drugs_10k_filtered.rds')
+l1000_keggs <- l1000_keggs %>% mutate(pathway=substr(pathway, 9, nchar(pathway)))
+optimals <- NULL
+for (i in 1:30){
+  mat <- t(as.matrix(l1000_keggs %>% select(sigID,pathway,NES) %>% 
+                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       spread('pathway','NES') %>% column_to_rownames('sigID')))
+  df_kegg_cosine <- lsa::cosine(mat)
+  df_kegg_cosine[lower.tri(df_kegg_cosine,diag = T)]<- -100
+  df_kegg_cosine <- reshape2::melt(df_kegg_cosine)
+  df_kegg_cosine <- df_kegg_cosine %>% filter(value != -100)
+  gc()
+  df_kegg_cosine <- left_join(df_kegg_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                  by = c("Var1"="sig_id"))
+  df_kegg_cosine <- left_join(df_kegg_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                  by = c("Var2"="sig_id"))
+  df_kegg_cosine <- df_kegg_cosine %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_kegg_cosine <- df_kegg_cosine %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_kegg_cosine <- df_kegg_cosine %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_kegg_cosine$is_same_drug_cell, df_kegg_cosine$value)
+  optimal_threshold_cosine_keggs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_cosine_keggs$threshold
+  print(paste0('Finished iteration ',i))
+}
+# Print the optimal threshold
+hist(optimals)
+optimal_threshold_cosine_keggs <- mean(optimals)
+print(optimal_threshold_cosine_keggs)
 
-### Identify external perturbations using L1000 data--------------
-Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
-Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
-Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+# repeat for Jaccard
+kegg_sig <- l1000_keggs %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>% 
+  mutate(NES = ifelse(abs(NES)<=0.5,0,NES)) %>% 
+  mutate(sig = ifelse(NES<0,-1,
+                      ifelse(NES>0,1,0))) %>% 
+  select(sigID,pathway,sig)
+optimals <- NULL
+for (i in 1:30){
+  mat <- as.matrix(kegg_sig %>% 
+                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     spread('pathway','sig') %>% column_to_rownames('sigID'))
+  df_jaccard_keggs <-  jaccard(mat)
+  df_jaccard_keggs[lower.tri(df_jaccard_keggs,diag = T)]<- -100
+  df_jaccard_keggs <- reshape2::melt(df_jaccard_keggs)
+  df_jaccard_keggs <- df_jaccard_keggs %>% filter(value != -100)
+  gc()
+  df_jaccard_keggs <- left_join(df_jaccard_keggs,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                    by = c("Var1"="sig_id"))
+  df_jaccard_keggs <- left_join(df_jaccard_keggs,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                    by = c("Var2"="sig_id"))
+  df_jaccard_keggs <- df_jaccard_keggs %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_jaccard_keggs <- df_jaccard_keggs %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_jaccard_keggs <- df_jaccard_keggs %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_jaccard_keggs$is_same_drug_cell, df_jaccard_keggs$value)
+  # plot(roc_object)
+  optimal_threshold_jaccard_keggs <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_jaccard_keggs$threshold
+  print(paste0('Finished iteration ',i))
+}
+hist(optimals)
+optimal_threshold_jaccard_keggs <- mean(optimals)
+print(optimal_threshold_jaccard_keggs)
 
-### Infer pathway activity and keep drugs that affect desired pathways
-paths <- c('JAK-STAT','p53')
-combined_sign <- -1
-net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-L1000_progenies <- decoupleR::run_viper(drug_ligand_ex, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
-L1000_progenies_filt <- L1000_progenies %>% filter(source %in% paths) %>% filter(p_value<=0.05)
-L1000_progenies_filt <- L1000_progenies_filt %>% spread('source','score') %>% mutate(s = sign(`JAK-STAT` * p53)) %>%
-  filter(s ==(-1) | is.na(s)) %>% select(-s,-p_value) %>% gather('pathway','score',-condition)
-L1000_progenies_filt <- L1000_progenies_filt %>% filter(!is.na(score))
-colnames(L1000_progenies_filt)[1] <- 'sig_id'
-L1000_progenies_filt <- left_join(L1000_progenies_filt,sigInfo) %>% 
-  select(sig_id,cmap_name,pert_idose,pert_itime,pert_type,cell_iname,pathway,score) %>% unique()
-L1000_progenies_filt <- L1000_progenies_filt %>% group_by(cmap_name,pert_idose,pert_itime,pathway) %>% 
-  mutate(mu_score = mean(score)) %>% ungroup() %>% spread('pathway','mu_score') %>% mutate(s = sign(`JAK-STAT` * p53)) %>%
-  filter(s ==(-1) | is.na(s)) %>% select(-s) %>% 
-  gather('pathway','mu_score',-sig_id,-cmap_name,-pert_idose,-pert_itime,-pert_type,-cell_iname,-score)
-L1000_progenies_filt <- L1000_progenies_filt %>% filter(abs(mu_score)>1)
-L1000_progenies_filt_liver <- L1000_progenies_filt %>% filter(cell_iname %in% c('HEPG2','HUH7')) %>%
-  select(-cell_iname,-mu_score) %>% unique() %>% group_by(cmap_name,pert_idose,pert_itime,pathway) %>% 
-  mutate(mu_score = mean(score)) %>% ungroup() %>% spread('pathway','mu_score') %>% mutate(s = sign(`JAK-STAT` * p53)) %>%
-  filter(s ==(-1) | is.na(s)) %>% select(-s) %>% 
-  gather('pathway','mu_score',-sig_id,-cmap_name,-pert_idose,-pert_itime,-pert_type,-score)
-L1000_progenies_filt_liver <- L1000_progenies_filt_liver %>% filter(abs(mu_score)>1)
-L1000_progenies_filt <- L1000_progenies_filt %>% filter(cmap_name %in% L1000_progenies_filt_liver$cmap_name)  
-L1000_selected <- L1000_progenies_filt %>% group_by(pathway) %>%
-  slice_max(order_by = abs(mu_score), n = 10) %>% ungroup() %>% 
-  select(cmap_name,pert_idose,pert_itime,pert_type,pathway,mu_score) %>% unique()
-L1000_selected <- L1000_selected %>% group_by(cmap_name) %>% mutate(dose_counts = n_distinct(pert_idose)) %>% 
-  mutate(time_counts = n_distinct(pert_itime)) %>% ungroup()
-# L1000_selected_liver <- L1000_progenies_filt_liver %>% group_by(pathway) %>%
-#   slice_max(order_by = abs(mu_score), n = 10) %>% ungroup() %>% unique()
-## Project L1000 data into extra basis
-# drug_ligand_ex_subset <- drug_ligand_ex[which(rownames(drug_ligand_ex) %in% rownames(Wm_opt)),]
-# Wm_opt_subset <- Wm_opt[which(rownames(Wm_opt) %in% rownames(drug_ligand_ex_subset)),] 
-# drug_ligand_ex_subset <- drug_ligand_ex_subset[rownames(Wm_opt_subset),]
-# Z_l1000 <- as.data.frame(t(drug_ligand_ex_subset) %*% Wm_opt_subset)
-# Z_l1000 <- Z_l1000 %>% rownames_to_column('sample')
-# Zh <- as.data.frame(Xh %*% Wm_opt)
-# Zh$NAS <- Yh[,1]
-# Zh$fibrosis <- Yh[,2]
-# Zh <- Zh %>% rownames_to_column('sample')
-# Z_l1000$NAS <- NA
-# Z_l1000$fibrosis <- NA
-# Z_all <- rbind(Zh,Z_l1000)
-# Z_all <- Z_all %>% mutate(NAS=ifelse(is.na(NAS),'L1000',
-#                                            ifelse(NAS<3,'Not NASH',
-#                                                   ifelse(NAS<=4,'Borderline NASH',
-#                                                          'Definate NASH'))))
-# Z_all <- Z_all %>% mutate(fibrosis=ifelse(is.na(fibrosis),'L1000',fibrosis))
-# (ggplot(Z_all ,aes(x=V1,y=V2,colour=NAS))+
-#     geom_point()+
-#     # scale_color_viridis_d()+
-#     theme_minimal(base_size=20,base_family = 'Arial')+
-#     theme(text= element_text(size=20,family = 'Arial'),
-#           legend.position = 'right')) +
-#   (ggplot(Z_all ,aes(x=V1,y=V2,colour=fibrosis))+
-#      geom_point()+
-#      # scale_color_viridis_d()+
-#      theme_minimal(base_size=20,base_family = 'Arial')+
-#      theme(text= element_text(size=20,family = 'Arial'),
-#            legend.position = 'right'))
-# ggsave(paste0('results/projected_L1000_',
-#               tolower(ref_dataset),
-#               '_samples_on_extra_basis',
-#               tolower(target_dataset),
-#               '.png'),
-#        height = 12,
-#        width = 16,
-#        units = 'in',
-#        dpi=600)
+### Load GO BP results from L1000 and find threshold to consider neighbors---------------------------------------
+l1000_gos_bp <- readRDS('../../../L1000_2021_11_23/GSEA/df_gobp_ligand_drugs_10k_filtered.rds')
+optimals <- NULL
+for (i in 1:30){
+  mat <- t(as.matrix(l1000_gos_bp %>% select(sigID,pathway,NES) %>% 
+                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       spread('pathway','NES') %>% column_to_rownames('sigID')))
+  df_gos_bp_cosine <- lsa::cosine(mat)
+  df_gos_bp_cosine[lower.tri(df_gos_bp_cosine,diag = T)]<- -100
+  df_gos_bp_cosine <- reshape2::melt(df_gos_bp_cosine)
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% filter(value != -100)
+  gc()
+  df_gos_bp_cosine <- left_join(df_gos_bp_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var1"="sig_id"))
+  df_gos_bp_cosine <- left_join(df_gos_bp_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var2"="sig_id"))
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_gos_bp_cosine$is_same_drug_cell, df_gos_bp_cosine$value)
+  optimal_threshold_cosine_gos_bp <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_cosine_gos_bp$threshold
+  print(paste0('Finished iteration ',i))
+}
+# Print the optimal threshold
+hist(optimals)
+optimal_threshold_cosine_gos_bp <- mean(optimals)
+print(optimal_threshold_cosine_gos_bp)
+
+# repeat for Jaccard
+gos_bp_sig <- l1000_gos_bp %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>% 
+  mutate(NES = ifelse(abs(NES)<=0.5,0,NES)) %>% 
+  mutate(sig = ifelse(NES<0,-1,
+                      ifelse(NES>0,1,0))) %>% 
+  select(sigID,pathway,sig)
+optimals <- NULL
+for (i in 1:30){
+  mat <- as.matrix(gos_bp_sig %>% 
+                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     spread('pathway','sig') %>% column_to_rownames('sigID'))
+  df_jaccard_gos_bp <-  jaccard(mat)
+  df_jaccard_gos_bp[lower.tri(df_jaccard_gos_bp,diag = T)]<- -100
+  df_jaccard_gos_bp <- reshape2::melt(df_jaccard_gos_bp)
+  df_jaccard_gos_bp <- df_jaccard_gos_bp %>% filter(value != -100)
+  gc()
+  df_jaccard_gos_bp <- left_join(df_jaccard_gos_bp,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                by = c("Var1"="sig_id"))
+  df_jaccard_gos_bp <- left_join(df_jaccard_gos_bp,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                by = c("Var2"="sig_id"))
+  df_jaccard_gos_bp <- df_jaccard_gos_bp %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_jaccard_gos_bp <- df_jaccard_gos_bp %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_jaccard_gos_bp <- df_jaccard_gos_bp %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_jaccard_gos_bp$is_same_drug_cell, df_jaccard_gos_bp$value)
+  # plot(roc_object)
+  optimal_threshold_jaccard_gos_bp <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_jaccard_gos_bp$threshold
+  print(paste0('Finished iteration ',i))
+}
+hist(optimals)
+optimal_threshold_jaccard_gos_bp <- mean(optimals)
+print(optimal_threshold_jaccard_gos_bp)
+gc()
+
+### Load GO CC results from L1000 and find threshold to consider neighbors---------------------------------------
+l1000_gos_cc <- readRDS('../../../L1000_2021_11_23/GSEA/df_gocc_ligand_drugs_10k_filtered.rds')
+optimals <- NULL
+for (i in 1:30){
+  mat <- t(as.matrix(l1000_gos_cc %>% select(sigID,pathway,NES) %>% 
+                       filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                       spread('pathway','NES') %>% column_to_rownames('sigID')))
+  df_gos_bp_cosine <- lsa::cosine(mat)
+  df_gos_bp_cosine[lower.tri(df_gos_bp_cosine,diag = T)]<- -100
+  df_gos_bp_cosine <- reshape2::melt(df_gos_bp_cosine)
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% filter(value != -100)
+  gc()
+  df_gos_bp_cosine <- left_join(df_gos_bp_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var1"="sig_id"))
+  df_gos_bp_cosine <- left_join(df_gos_bp_cosine,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                              by = c("Var2"="sig_id"))
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_gos_bp_cosine <- df_gos_bp_cosine %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_gos_bp_cosine$is_same_drug_cell, df_gos_bp_cosine$value)
+  optimal_threshold_cosine_gos_cc <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_cosine_gos_cc$threshold
+  print(paste0('Finished iteration ',i))
+}
+# Print the optimal threshold
+hist(optimals)
+optimal_threshold_cosine_gos_cc <- mean(optimals)
+print(optimal_threshold_cosine_gos_cc)
+
+# repeat for Jaccard
+gos_cc_sig <- l1000_gos_cc %>% mutate(NES = ifelse(padj>=0.05,0,NES)) %>% 
+  mutate(NES = ifelse(abs(NES)<=0.5,0,NES)) %>% 
+  mutate(sig = ifelse(NES<0,-1,
+                      ifelse(NES>0,1,0))) %>% 
+  select(sigID,pathway,sig)
+optimals <- NULL
+for (i in 1:30){
+  mat <- as.matrix(gos_cc_sig %>% 
+                     filter(sigID %in% c(dupl_sigs,sample(no_dupl_sigs,length(dupl_sigs)))) %>%
+                     spread('pathway','sig') %>% column_to_rownames('sigID'))
+  df_jaccard_gos_cc <-  jaccard(mat)
+  df_jaccard_gos_cc[lower.tri(df_jaccard_gos_cc,diag = T)]<- -100
+  df_jaccard_gos_cc <- reshape2::melt(df_jaccard_gos_cc)
+  df_jaccard_gos_cc <- df_jaccard_gos_cc %>% filter(value != -100)
+  gc()
+  df_jaccard_gos_cc <- left_join(df_jaccard_gos_cc,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                by = c("Var1"="sig_id"))
+  df_jaccard_gos_cc <- left_join(df_jaccard_gos_cc,sigInfo %>% select(sig_id,cmap_name,cell_iname,pert_idose,pert_itime,duplIdentifier),
+                                by = c("Var2"="sig_id"))
+  df_jaccard_gos_cc <- df_jaccard_gos_cc %>% mutate(is_duplicate = 1*(duplIdentifier.x==duplIdentifier.y))
+  df_jaccard_gos_cc <- df_jaccard_gos_cc %>% mutate(is_same_drug = 1*(cmap_name.x==cmap_name.y))
+  df_jaccard_gos_cc <- df_jaccard_gos_cc %>% mutate(is_same_drug_cell = 1*(cmap_name.x==cmap_name.y)*(cell_iname.x==cell_iname.y))
+  gc()
+  # ROC analysis
+  roc_object <- roc(df_jaccard_gos_cc$is_same_drug_cell, df_jaccard_gos_cc$value)
+  # plot(roc_object)
+  optimal_threshold_jaccard_gos_cc <- coords(roc_object, "best", ret = "threshold", best.method = "youden")
+  optimals[i] <- optimal_threshold_jaccard_gos_cc$threshold
+  print(paste0('Finished iteration ',i))
+}
+hist(optimals)
+optimal_threshold_jaccard_gos_cc <- mean(optimals)
+print(optimal_threshold_jaccard_gos_cc)
+
+### Save all L1000 thresholds--------------
+# saveRDS(optimal_threshold_cosine_tfs,'../results/optimal_threshold_cosine_tfs_l1000.rds')
+# saveRDS(optimal_threshold_cosine_keggs,'../results/optimal_threshold_cosine_keggs_l1000.rds')
+# saveRDS(optimal_threshold_cosine_hallmakrs,'../results/optimal_threshold_cosine_hallmakrs_l1000.rds')
+# saveRDS(optimal_threshold_cosine_gos_bp,'../results/optimal_threshold_cosine_gos_bp_l1000.rds')
+# saveRDS(optimal_threshold_cosine_gos_cc,'../results/optimal_threshold_cosine_gos_cc_l1000.rds')
 # 
-# ## Calculate distances between L1000 and projected human samples
-# mat <- as.matrix(Z_all %>% column_to_rownames('sample') %>% select(V1,V2))
-# distances <- as.matrix(dist(mat, method = "euclidean", diag = TRUE, upper = TRUE))
-# distances <- distances[Z_l1000$sample,Zh$sample]
-# distances <- as.data.frame(distances) %>% rownames_to_column('sig_id') %>% gather('sample','dist',-sig_id)
-# distances <- left_join(distances,Zh %>% select(-V1,-V2) %>% unique())
-# # distances <- distances %>%mutate(NAS=ifelse(NAS<3,'Not NASH',
-# #                                             ifelse(NAS<=4,'Borderline NASH',
-# #                                                    'Definate NASH')))
-# distances_filt_nas <- left_join(distances,sigInfo) %>% select(cmap_name,pert_type,sample,dist,NAS,fibrosis) %>% unique()
-# distances_filt_nas <- distances_filt_nas %>% group_by(cmap_name,NAS) %>% mutate(per_sig_mean_nas_dist = mean(dist)) %>%
-#   ungroup() %>% group_by(cmap_name) %>% mutate(min_nas_dist = min(per_sig_mean_nas_dist)) %>% ungroup() %>%
-#   filter(per_sig_mean_nas_dist==min_nas_dist) %>% select(cmap_name,pert_type,NAS,per_sig_mean_nas_dist) %>% unique()
-# # distances_filt_nas <- distances_filt_nas %>% group_by(NAS) %>% mutate(counts = n_distinct(sig_id)) %>% ungroup()
-# distances_filt_nas <- distances_filt_nas %>% group_by(NAS) %>%
-#   slice_max(order_by = per_sig_mean_nas_dist, n = 25)
+# saveRDS(optimal_threshold_jaccard_tfs,'../results/optimal_threshold_jaccard_tfs_l1000.rds')
+# saveRDS(optimal_threshold_jaccard_keggs,'../results/optimal_threshold_jaccard_keggs_l1000.rds')
+# saveRDS(optimal_threshold_jaccard_hallmarks,'../results/optimal_threshold_jaccard_hallmakrs_l1000.rds')
+# saveRDS(optimal_threshold_jaccard_gos_bp,'../results/optimal_threshold_jaccard_gos_bp_l1000.rds')
+# saveRDS(optimal_threshold_jaccard_gos_cc,'../results/optimal_threshold_jaccard_gos_cc_l1000.rds')
+
+### Get L1000 hits-----------------
+sigInfo <- sigInfo %>% filter(sig_id %in% sigs_selected)
+drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
+
+## keep only data from L1000 perturbations that affect these pathways
+l1000_keggs <- l1000_keggs %>% filter(sigID %in% sigs_selected)
+l1000_hallmarks <- l1000_hallmarks %>% filter(sigID %in% sigs_selected)
+l1000_gos_bp <- l1000_gos_bp %>% filter(sigID %in% sigs_selected)
+l1000_gos_cc <- l1000_gos_cc %>% filter(sigID %in% sigs_selected)
+TF_activities <- TF_activities %>% filter(condition %in% sigs_selected)
+gc()
+
+# saveRDS(l1000_keggs,'../../archived github/l1000_keggs_filtered.rds')
+# saveRDS(l1000_hallmarks,'../../archived github/l1000_hallmarks_filtered.rds')
+# saveRDS(l1000_gos_bp,'../../archived github/l1000_gos_pb_filtered.rds')
+# saveRDS(l1000_gos_cc,'../../archived github/l1000_gos_cc_filtered.rds')
+# saveRDS(TF_activities,'../../archived github/TF_activities_filtered.rds')
+
+# Calculate similarity with extra basis and optimized variance
+# Remember direction of similarity does not matter !
+# Even reverse down,up elements or cosine -1 are fine for the purpose of this exercise !
+# So the found threshold is for the same exact direction but also:
+# cosine less than -threshold is ok and jaccard similarity can be calculated with the reversed bottom-up elements (will say it negative)
+# in downstream notation after filtering (select everything that is lower than -threshold)
+l1000_keggs <- readRDS('../../archived github/l1000_keggs_filtered.rds')
+l1000_hallmarks <- readRDS('../../archived github/l1000_hallmarks_filtered.rds')
+l1000_gos_bp <- readRDS('../../archived github/l1000_gos_pb_filtered.rds')
+l1000_gos_cc <- readRDS('../../archived github/l1000_gos_cc_filtered.rds')
+TF_activities <- readRDS('../../archived github/TF_activities_filtered.rds')
