@@ -306,10 +306,14 @@ ggsave(paste0('results/pc_loadings_scores_analysis/',tolower(target_dataset),'_t
 rownames(Wm_tot) <- rownames(Wm)
 rownames(Wm_opt) <- rownames(Wm)
 rownames(Wm_combo) <- rownames(Wm)
+rownames(Wh) <- rownames(Wm)
 
 # saveRDS(Wm_tot,paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
 # saveRDS(Wm_opt,paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
 # saveRDS(Wm_combo,paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+# data.table::fwrite(as.data.frame(Wh),paste0('results/Wh_',tolower(ref_dataset),'.csv'),row.names = TRUE)
+# data.table::fwrite(as.data.frame(Wm_opt),paste0('results/Wm_',tolower(target_dataset),'_extra.csv'),row.names = TRUE)
+
 
 ### Visualize activites in the new dimension
 path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)

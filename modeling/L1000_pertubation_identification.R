@@ -260,6 +260,63 @@ sigs_selected <- unique(L1000_progenies_filt$condition)
 # sigInfo <- sigInfo %>% filter(sig_id %in% sigs_selected)
 # drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
 
+### Repeat with IFNA,G VS E2F targets,G2M checkpoint hallmarks---------------------------------------
+halls <- c('G2M_CHECKPOINT','E2F_TARGETS','INTERFERON_ALPHA_RESPONSE','INTERFERON_GAMMA_RESPONSE')
+l1000_hallmarks <- readRDS('../../../L1000_2021_11_23/GSEA/df_hallmarks_ligand_drugs_10k_filtered.rds')
+l1000_hallmarks <- l1000_hallmarks %>% filter(sigID %in% sigs_selected) %>% filter(pathway %in% halls)
+l1000_hallmarks_filt <- l1000_hallmarks %>% group_by(sigID) %>% mutate(min_p = min(padj)) %>%
+  ungroup() %>% filter(min_p<=0.05) %>% select(-min_p)
+l1000_hallmarks_filt_IFN <- l1000_hallmarks_filt %>% filter(pathway %in% halls[3:4]) %>% 
+  select(-padj) %>% spread('pathway','NES') %>%
+  group_by(sigID) %>% mutate(s = sign(INTERFERON_ALPHA_RESPONSE * INTERFERON_GAMMA_RESPONSE)) %>% ungroup() %>%
+  gather('pathway','NES',-sigID,-s) %>% filter(s>0)
+l1000_hallmarks_filt_E2FG2M <- l1000_hallmarks_filt %>% filter(pathway %in% halls[1:2]) %>% 
+  select(-padj) %>% spread('pathway','NES') %>%
+  group_by(sigID) %>% mutate(s = sign(E2F_TARGETS * G2M_CHECKPOINT)) %>% ungroup() %>%
+  gather('pathway','NES',-sigID,-s) %>% filter(s>0)
+l1000_hallmarks_filt <- l1000_hallmarks_filt %>%
+  filter((sigID %in% l1000_hallmarks_filt_IFN$sigID) & (sigID %in% l1000_hallmarks_filt_E2FG2M$sigID)) %>%
+  filter(pathway %in% c('E2F_TARGETS','INTERFERON_ALPHA_RESPONSE')) %>%
+  select(-padj) %>% spread('pathway','NES') %>%
+  group_by(sigID) %>% mutate(s = sign(E2F_TARGETS * INTERFERON_ALPHA_RESPONSE)) %>% ungroup() %>%
+  gather('pathway','NES',-sigID,-s) %>% filter(s<0)
+l1000_hallmarks_filt <- l1000_hallmarks %>% filter(sigID %in% l1000_hallmarks_filt$sigID)
+sigs_selected <- unique(l1000_hallmarks_filt$sigID)
+
+### save selected L1000 enrichments combined with extra basis
+l1000_hallmarks <- readRDS('../../../L1000_2021_11_23/GSEA/df_hallmarks_ligand_drugs_10k_filtered.rds')
+l1000_gos <- readRDS('../../../L1000_2021_11_23/GSEA/df_gobp_ligand_drugs_10k_filtered.rds')
+l1000_keggs <- readRDS('../../../L1000_2021_11_23/GSEA/df_gsea_keggs_ligand_drugs_10k_filtered.rds')
+dorotheaData <- read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
+confidenceFilter <- is.element(dorotheaData$confidence, c('A', 'B'))
+dorotheaData <- dorotheaData[confidenceFilter,]
+colnames(dorotheaData)[1] <- 'source' 
+minNrOfGenes  <-  5
+TF_activities <- decoupleR::run_viper(drug_ligand_ex[,sigs_selected], dorotheaData,minsize = minNrOfGenes,verbose = FALSE)
+TF_activities <- TF_activities %>% select(source,condition,score)%>% spread('condition','score') %>% 
+  filter(source %in% colnames(TF_activities_extra)) %>% column_to_rownames('source')
+l1000_hallmarks <- l1000_hallmarks %>% filter(sigID %in% sigs_selected) %>% select(-padj) %>% spread('sigID','NES') %>% 
+  filter(pathway %in% colnames(df_msig_extra)) %>% column_to_rownames('pathway')
+l1000_gos <- l1000_gos %>% filter(sigID %in% sigs_selected)%>% select(-padj) %>% spread('sigID','NES') %>% 
+  filter(pathway %in% colnames(df_gos_bp_extra)) %>% column_to_rownames('pathway')
+l1000_keggs <- l1000_keggs %>% filter(sigID %in% sigs_selected)%>% select(-padj) %>% spread('sigID','NES') %>% 
+  mutate(pathway=substr(pathway, 9, nchar(pathway)))%>% 
+  filter(pathway %in% colnames(df_kegg_extra)) %>% column_to_rownames('pathway')
+
+all(rownames(t(df_msig_extra)[rownames(l1000_hallmarks),])==rownames(l1000_hallmarks))
+all(rownames(t(df_gos_bp_extra)[rownames(l1000_gos),])==rownames(l1000_gos))
+all(rownames(t(df_kegg_extra)[rownames(l1000_keggs),])==rownames(l1000_keggs))
+all(rownames(t(TF_activities_extra)[rownames(TF_activities),])==rownames(TF_activities))
+
+combo_hallmarks <- as.matrix(cbind(t(df_msig_extra)[rownames(l1000_hallmarks),],l1000_hallmarks))
+combo_gos <- as.matrix(cbind(t(df_gos_bp_extra)[rownames(l1000_gos),],l1000_gos))
+combo_keggs <- as.matrix(cbind(t(df_kegg_extra)[rownames(l1000_keggs),],l1000_keggs))
+combo_tfs <- as.matrix(cbind(t(TF_activities_extra)[rownames(TF_activities),],TF_activities))
+# saveRDS(combo_hallmarks,'../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_hallmarks.rds')
+# saveRDS(combo_gos,'../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_gos.rds')
+# saveRDS(combo_keggs,'../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_keggs.rds')
+# saveRDS(combo_tfs,'../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_tfs.rds')
+
 ### Run viper to infer TF activity from L1000 and find threshold to consider neighbors---------------------------------------
 dorotheaData <- read.table('../data/dorothea.tsv', sep = "\t", header=TRUE)
 confidenceFilter <- is.element(dorotheaData$confidence, c('A', 'B'))
