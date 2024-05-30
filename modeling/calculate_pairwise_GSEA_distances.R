@@ -1,6 +1,7 @@
 library(tidyverse)
 source('distance_scores.R')
 library(doFuture)
+library(doRNG)
 # parallel: set number of workers
 cores <- 8
 registerDoFuture()
@@ -10,7 +11,7 @@ plan(multisession,workers = cores)
 # Access command-line arguments
 # args <- commandArgs(trailingOnly = TRUE)
 # args <- as.numeric(args)
-args <- 4
+args <- 1
 
 list_types <- c('hallmarks','keggs','gobp','tfs')
 print(paste0('Feature selected : ',list_types[args[1]]))
@@ -49,7 +50,7 @@ l1000_feature_matrix <- as.matrix(l1000_feature_matrix %>% select(sigID,pathway,
 dist_all_dupls <- NULL
 print('Begin calculating GSEA distance...')
 ### calculate distances
-dist_all_dupls  <- foreach(thres = thresholds) %dopar% {
+dist_all_dupls  <- foreach(thres = thresholds) %dorng% {
   distance_scores(num_table = l1000_feature_matrix ,threshold_count = thres,names = colnames(l1000_feature_matrix))
 }
 print('Finished calculating GSEA distance')

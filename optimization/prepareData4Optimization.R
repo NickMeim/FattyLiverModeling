@@ -15,6 +15,29 @@ ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
+# Manually load also the other clinical datasets I have from ARCHS4
+geo <- 'GSE162694' # only this one has multiple NAS and fibrosis scores
+meta_data <- read.delim('../data/ARCHS4/FattyLiver_meta_data.tsv',row.names = 1)
+meta_data <- meta_data %>% filter(series_id==geo)
+old_cols <- colnames(meta_data)
+meta_data <- meta_data %>% separate_rows(characteristics_ch1, sep = ",") %>%
+  separate(characteristics_ch1, into = c("key", "value"), sep = ":") %>%
+  mutate(key = str_trim(key), value = str_trim(value)) %>%
+  spread(key, value)
+new_cols <- colnames(meta_data)
+new_cols <- new_cols[which(!(new_cols %in% old_cols))]
+meta_data <- meta_data %>%
+  mutate_at(vars(new_cols), ~ ifelse(grepl("\\d", .), as.numeric(.), .))
+meta_data <- meta_data %>% filter(!(is.na(`nas score`) & is.na(`fibrosis stage`))) %>%
+  mutate(`nas score`=ifelse(`nas score`=='NA',NA,`nas score`)) %>% 
+  mutate(`fibrosis stage`=ifelse(`fibrosis stage`=='normal liver histology',0,`fibrosis stage`))
+meta_data <- meta_data %>% filter(!is.na(`nas score`)) %>% filter(!is.na(`fibrosis stage`)) %>%
+  filter(`nas score`!='NA') %>% filter(`fibrosis stage`!='NA')
+expression_matrix <- readRDS('../data/ARCHS4/FattyLiver_expression_matrix.rds')
+expression_matrix <- expression_matrix[,meta_data$sample]
+data_list[['Pantano']] <- list(counts = expression_matrix,
+                               metadata = meta_data,
+                               genes = rownames(expression_matrix))
 
 ### Run PCA----------------------------------------------------------
 tmp <- process_datasets(data_list, filter_variance = F)
@@ -36,6 +59,12 @@ Xm_grouped <- as.data.frame(Xm_grouped)
 data.table::fwrite(Xm_grouped,paste0('X_',target_dataset,'_grouped.csv'),row.names = TRUE)
 data.table::fwrite(as.data.frame(Xh),paste0('X_',ref_dataset,'.csv'),row.names = TRUE)
 data.table::fwrite(as.data.frame(Yh),paste0('Y_',ref_dataset,'.csv'),row.names = TRUE)
+
+# Save also the other 2 clinical datasets
+data.table::fwrite(as.data.frame(data_list[['Pantano']]$data_center %>% t()),
+                   paste0('X_Pantano.csv'),row.names = TRUE)
+data.table::fwrite(as.data.frame(data_list[['Hoang']]$data_center %>% t()),
+                   paste0('X_Hoang.csv'),row.names = TRUE)
 
 ### Calculate percentage variance of each pair of conditions-------
 
