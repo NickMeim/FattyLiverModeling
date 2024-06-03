@@ -153,6 +153,48 @@ ggsave(paste0('../results/optimized_mps/perturbed_pathway_activity_',
        height = 9,
        dpi = 600)
 
+### Hallmarks GSEA using dX--------------------------------
+entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(dex_data), column = "ENTREZID", keytype = "SYMBOL")
+entrez_ids <- unname(entrez_ids)
+inds <- which(!is.na(entrez_ids))
+entrez_ids <- entrez_ids[inds]
+meas <- as.matrix(dex_data[inds,])
+rownames(meas) <- entrez_ids
+msig <- fastenrichment(colnames(meas),
+                       entrez_ids,
+                       meas,
+                       enrichment_space = 'msig_db_h',
+                       n_permutations = 10000,
+                       order_columns=F)
+msig_nes <- as.data.frame(msig$NES$`NES MSIG Hallmark`) %>% rownames_to_column('Hallmark')  #%>% gather('PC','NES',-Hallmark)
+colnames(msig_nes) <- c('Hallmark','NES')
+msig_pval <- as.data.frame(msig$Pval$`Pval MSIG Hallmark`) %>% rownames_to_column('Hallmark')#%>% gather('PC','padj',-Hallmark)
+colnames(msig_pval) <- c('Hallmark','padj')
+df_msig <- left_join(msig_nes,msig_pval)
+df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
+df_msig <- df_msig %>% mutate(Hallmark = str_replace_all(Hallmark,'_'," "))
+p1 <- (ggplot(df_msig %>% arrange(NES),aes(x=NES,y=reorder(Hallmark,-NES),fill=padj))+ 
+         geom_bar(stat = 'identity',color='black',size=1.5) +
+         scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+         xlab('Normalized Enrichment Score') + ylab('Hallmark')+
+         theme_pubr(base_family = 'Arial',base_size = 15)+
+         theme(text = element_text(family = 'Arial',size=15),
+               axis.text.y = element_text(size=10),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'right',
+               legend.justification = "center"))
+print(p1)
+ggsave(paste0('../results/optimized_mps/hallmarks_',
+              tolower(ref_dataset),'_',
+              tolower(target_dataset),
+              '_max_var.png'),
+       plot=p1,
+       width=16,
+       height=9,
+       units = 'in',
+       dpi = 600)
+
 # use limma with lean transformed data-------------------------------------
 genes_var <- apply(X_all,2,var)
 inds <- which(genes_var>1e-6)

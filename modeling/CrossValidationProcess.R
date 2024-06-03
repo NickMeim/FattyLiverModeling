@@ -914,7 +914,8 @@ performance_all_plot$approach <- factor(performance_all_plot$approach,
                                                    'Wopt',
                                                    'analytical Wopt',
                                                    'shuffle X'))
-p_train <- ggboxplot(performance_all_plot %>% filter(set=='train'),x='approach',y='r',color='approach',add='jitter') +
+p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
+                     x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
   xlab('')+
   ggtitle('10-fold Train')+
@@ -928,12 +929,11 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train'),x='approach',
                                         c('backprojected','backprojected retrained'),
                                         c('PLSR','backprojected'),
                                         c('analytical Wopt','backprojected'),
-                                        c('PLSR','Wopt'),
-                                        c('PLSR','analytical Wopt'),
-                                        c('Wopt','analytical Wopt')),
+                                        # c('PLSR','Wopt'),
+                                        c('PLSR','analytical Wopt')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.5,0.7,0.9,0.9,0.95,0.97,1))
+                     label.y = c(0.5,0.7,0.9,0.9,0.95))
 print(p_train)  
 ggsave('../results/approaches_comparison_training.png',
        plot = p_train,
@@ -942,7 +942,8 @@ ggsave('../results/approaches_comparison_training.png',
        units = 'in',
        dpi=600)
 
-p_test <- ggboxplot(performance_all_plot %>% filter(set=='test'),x='approach',y='r',color='approach',add='jitter') +
+p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(approach!='Wopt'),
+                    x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(-0.5,1,0.1))+
   xlab('')+
   ggtitle('10-fold Test')+
@@ -956,12 +957,11 @@ p_test <- ggboxplot(performance_all_plot %>% filter(set=='test'),x='approach',y=
                                         c('backprojected','backprojected retrained'),
                                         c('PLSR','backprojected'),
                                         c('analytical Wopt','backprojected'),
-                                        c('PLSR','Wopt'),
-                                        c('PLSR','analytical Wopt'),
-                                        c('Wopt','analytical Wopt')),
+                                        # c('PLSR','Wopt'),
+                                        c('PLSR','analytical Wopt')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.75,0.8,0.85,0.85,0.9,0.95,0.95))
+                     label.y = c(0.75,0.8,0.85,0.85,0.95))
 print(p_test)  
 ggsave('../results/approaches_comparison_10foldtest.png',
        plot = p_test,
@@ -971,6 +971,289 @@ ggsave('../results/approaches_comparison_10foldtest.png',
        dpi=600)
 
 
+
+
+### See how training performance converges
+### when including incrementally the extra basis--------------------------------------------------------------------
+train_r <- NULL
+train_r_translatables <- NULL
+train_r_basis_1 <- NULL
+train_r_all_extra_bases <- NULL
+
+test_r <- NULL
+test_r_shuffled <- NULL
+test_r_translatables <- NULL
+test_r_basis_1 <- NULL
+test_r_all_extra_bases <- NULL
+
+df_scatterPlot <- data.frame()
+
+for (j in 1:num_folds){
+  print(paste0('Begun fold ',j))
+  x_train <- readRDS(paste0(loc,'Xh_train',j,'.rds'))
+  y_train <- readRDS(paste0(loc,'Yh_train',j,'.rds'))
+  x_val <- readRDS(paste0(loc,'Xh_val',j,'.rds'))
+  y_val <- readRDS(paste0(loc,'Yh_val',j,'.rds'))
+  
+  plsr_model <- opls(x = x_train, 
+                     y = y_train,
+                     predI = num_LVS,
+                     crossvalI = 1,
+                     scaleC = "center",
+                     fig.pdfC = "none",
+                     info.txtC = "none")
+  y_train_hat <- predict(plsr_model,x_train)
+  y_val_hat <- predict(plsr_model,x_val)
+  train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
+  test_r[j] <- mean(diag(cor(y_val_hat,y_val)))
+  
+  df_scatterPlot <- rbind(df_scatterPlot,
+                          left_join(data.frame(y_val) %>% 
+                                      mutate(id = seq(1,nrow(y_val))) %>% 
+                                      gather('phenotype','true',-id),
+                                    data.frame(y_val_hat) %>% 
+                                      mutate(id = seq(1,nrow(y_val_hat))) %>% 
+                                      gather('phenotype','prediction',-id)) %>%
+                            select(-id))
+
+  # Get Wh of PLSR
+  Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
+  rownames(Wh) <- colnames(x_train)
+  colnames(Wh) <- colnames(plsr_model@weightMN)
+  for (ii in 1:nrow(plsr_model@weightMN)){
+    Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+  }
+  # Get regression coefficients
+  # Bh <- matrix(lm(y_train ~ x_train %*% Wh) %>% coef(), ncol = 2)
+  Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+  
+  # Define projection matrices to make more readable
+  Th_train <- x_train %*% Wh
+  Thm_train <- x_train %*% Wm %*% t(Wm) %*% Wh
+  Th_val<- x_val %*% Wh
+  Thm_val <- x_val %*% Wm %*% t(Wm) %*% Wh
+  
+  ### shuffled features model
+  x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
+  colnames(x_train_shuffled) <- colnames(x_train)
+  plsr_model_shuffle_x <- opls(x = x_train_shuffled, 
+                               y = y_train,
+                               predI = num_LVS,
+                               crossvalI = 1,
+                               scaleC = "center",
+                               fig.pdfC = "none",
+                               info.txtC = "none")
+  y_hat_val <- predict(plsr_model_shuffle_x,x_val)
+  test_r_shuffled[j]<- mean(diag(cor(y_hat_val,y_val)))
+  
+  message('Finished running initial PLSR for humans')
+  
+  ### Get linear combinaiton of translatable LVs
+  Wm_new <- get_translatable_LV(x_train, y_train, Wh, Wm,
+                                rbind(apply(y_train,2,mean),Bh),
+                                find_extra = FALSE)
+  Wm_new <- Wm_new$Wm_new
+  colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
+  y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
+  train_r_translatables[j] <- mean(diag(cor(y_hat_train,y_train)))
+  y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
+  test_r_translatables[j] <- mean(diag(cor(y_hat_test,y_val)))
+  
+  message('Finished linear combination of translatable components')
+  
+  ## Start analytical solution for optimal extra basis
+  phi <- Wh %*% Bh
+  # phi <- phi/sqrt(apply(phi^2,2,sum))
+  Wm_opt <- analytical_solution_opt(y=y_train,
+                                    W_invitro = Wm,
+                                    phi = phi)
+  # Extend latent variables
+  Wm_tot_1 <- cbind(Wm, Wm_opt[,1])
+  Wm_tot <- cbind(Wm, Wm_opt)
+  # predict with one extra basis vectors
+  y_hat_train <- cbind(1, x_train %*% Wm_tot_1 %*% t(Wm_tot_1) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
+  train_r_basis_1[j] <- mean(diag(cor(y_hat_train,y_train)))
+  y_hat_test <- cbind(1, x_val %*% Wm_tot_1 %*% t(Wm_tot_1) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
+  test_r_basis_1[j] <- mean(diag(cor(y_hat_test,y_val)))
+  message('Finished analytical solution performance with 1 extra vector')
+  # predict with one extra basis vectors
+  y_hat_train <- cbind(1, x_train %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
+  train_r_all_extra_bases[j] <- mean(diag(cor(y_hat_train,y_train)))
+  y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
+  test_r_all_extra_bases[j] <- mean(diag(cor(y_hat_test,y_val)))
+  message('Finished analytical solution performance with 2 extra vectors')
+}
+
+## First plot scatter plots of prediction VS ground truth
+# Calculate correlation coefficients
+cor_results <- df_scatterPlot %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value))
+ggplot(df_scatterPlot,aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05) + 
+  geom_abline(slope=1,intercept = 0)+
+  geom_text(data = cor_results, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 6, family = 'Arial') +
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=20)+
+  theme(text = element_text(family = 'Arial',size=20),
+        panel.grid.major = element_line())
+ggsave('../results/10foldTest_Scatterplot_human_plsr.png',
+          height = 6,
+          width=9,
+          units = 'in',
+          dpi=600)
+
+## scatter plot for using all the data
+plsr_model <- opls(x = Xh, 
+                   y = Yh,
+                   predI = num_LVS,
+                   crossvalI = 1,
+                   scaleC = "center",
+                   fig.pdfC = "none",
+                   info.txtC = "none")
+Y_pred <- predict(plsr_model,Xh)
+all_scatter_plot <- left_join(data.frame(Yh) %>% 
+                                mutate(id = seq(1,nrow(Yh))) %>% 
+                                gather('phenotype','true',-id),
+                              data.frame(Y_pred) %>% 
+                                mutate(id = seq(1,nrow(Y_pred))) %>% 
+                                gather('phenotype','prediction',-id)) %>%
+  select(-id)
+all_cor_results <- all_scatter_plot %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value))
+ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05) + 
+  geom_abline(slope=1,intercept = 0)+
+  geom_text(data = all_cor_results, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 6, family = 'Arial') +
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=20)+
+  theme(text = element_text(family = 'Arial',size=20),
+        panel.grid.major = element_line())
+ggsave('../results/AllData_Scatterplot_human_plsr.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
+
+### Now see convergence of performance
+train_performance_res <- rbind(data.frame(r = train_r,
+                                          fold = seq(1,length(train_r)),
+                                          model = rep('PLSR',length(train_r))),
+                               data.frame(r = train_r_translatables,
+                                          fold = seq(1,length(train_r_translatables)),
+                                          model = rep('translatable LVs',length(train_r_translatables))),
+                               data.frame(r = train_r_basis_1,
+                                          fold = seq(1,length(train_r_basis_1)),
+                                          model = rep('PCs + extra LV1',length(train_r_basis_1))),
+                               data.frame(r = train_r_all_extra_bases,
+                                          fold = seq(1,length(train_r_all_extra_bases)),
+                                          model = rep('PCs + extra LV1 + extra LV2',length(train_r_all_extra_bases))))
+train_performance_res <- train_performance_res %>% group_by(model) %>% 
+  mutate(mu = mean(r)) %>% mutate(std = sd(r)) %>%
+  mutate(min_r = min(r)) %>% mutate(max_r = max(r))%>%
+  ungroup() %>% mutate(set='train')
+mu_plsr_train <- mean(train_r)
+sd_plsr_train <- sd(train_r)
+test_performance_res <- rbind(data.frame(r = test_r,
+                                          fold = seq(1,length(test_r)),
+                                          model = rep('PLSR',length(test_r))),
+                               data.frame(r = test_r_translatables,
+                                          fold = seq(1,length(test_r_translatables)),
+                                          model = rep('translatable LVs',length(test_r_translatables))),
+                               data.frame(r = test_r_basis_1,
+                                          fold = seq(1,length(test_r_basis_1)),
+                                          model = rep('PCs + extra LV1',length(test_r_basis_1))),
+                               data.frame(r = test_r_all_extra_bases,
+                                          fold = seq(1,length(test_r_all_extra_bases)),
+                                          model = rep('PCs + extra LV1 + extra LV2',length(test_r_all_extra_bases))))
+test_performance_res <- test_performance_res %>% group_by(model) %>% 
+  mutate(mu = mean(r)) %>% mutate(std = sd(r)) %>%
+  mutate(min_r = min(r)) %>% mutate(max_r = max(r))%>%
+  ungroup() %>% mutate(set='test')
+mu_plsr_test <- mean(test_r)
+sd_plsr_test <- sd(test_r)
+all_performance_res <- rbind(train_performance_res,
+                             test_performance_res)
+all_performance_res$model <- factor(all_performance_res$model,
+                                    levels = c('PLSR',
+                                               'translatable LVs',
+                                               'PCs + extra LV1',
+                                               'PCs + extra LV1 + extra LV2'))
+
+ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
+       aes(x=model,y=mu,color = set , group =set))+
+  geom_point(size=1.5)+
+  geom_line(lwd = 0.75)+
+  geom_errorbar(aes(ymax = mu + std/sqrt(num_folds),ymin = mu - std/sqrt(num_folds)),
+                width = 0.05,size=0.75)+
+  ylim(NA,1) +
+  ylab('pearson`s correlation')+
+  ### train performance shaded area
+  geom_ribbon(inherit.aes = FALSE,
+              xmin=1,xmax=3,
+              aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
+                  ymin = mu_plsr_train - sd_plsr_train/sqrt(num_folds), 
+                  ymax = mu_plsr_train + sd_plsr_train/sqrt(num_folds)), 
+              fill = "#01B8BB", alpha = 0.25) +  # Shaded area
+  annotate("segment", x = 1, xend = 3, y = mu_plsr_train, 
+           yend = mu_plsr_train, 
+           color = "#01B8BB", linewidth = 1,linetype='dashed') +
+  annotate('text',x=1,
+           y=mu_plsr_train + 0.03,
+           label="human PLSR train performance", 
+           hjust = 0 , 
+           size=7)+
+  ### test performance shaded area
+  geom_ribbon(inherit.aes = FALSE,
+              xmin=1,xmax=3,
+              aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
+                  ymin = mu_plsr_test - sd_plsr_test/sqrt(num_folds), 
+                  ymax = mu_plsr_test + sd_plsr_test/sqrt(num_folds)), 
+              fill = "#E0766D", alpha = 0.25) +  # Shaded area
+  annotate("segment", x = 1, xend = 3, y = mu_plsr_test, 
+           yend = mu_plsr_test, 
+           color = "#E0766D", linewidth = 1,linetype='dashed') +
+  annotate('text',x=1,
+           y=mu_plsr_test + 0.03,
+           label="human PLSR test performance", 
+           hjust = 0 , 
+           size=7)+
+  ### random performance shaded area
+  geom_ribbon(inherit.aes = FALSE,
+              xmin=1,xmax=3,
+              aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
+                  ymin = mean(test_r_shuffled) - sd(test_r_shuffled)/sqrt(num_folds), 
+                  ymax = mean(test_r_shuffled) + sd(test_r_shuffled)/sqrt(num_folds)), 
+              fill = "#F564E3", alpha = 0.25) +  # Shaded area
+  annotate("segment", x = 1, xend = 3, y = mean(test_r_shuffled), 
+           yend = mean(test_r_shuffled), 
+           color = "#F564E3", linewidth = 1,linetype='dashed') +
+  annotate('text',x=1,
+           y=mean(test_r_shuffled) + 0.03,
+           label="shuffled model performance", 
+           hjust = 0 , 
+           size=7)+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 20)+
+  theme(text = element_text(family = 'Arial',size = 20),
+        axis.title.x = element_blank(),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line())
+ggsave('../results/required_extra_basis_to_retrieve_performance.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
 
 ### Explore how the evolutionary algorithm VS analytical approach works-------------------------------------
 

@@ -158,7 +158,7 @@ p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>%
   geom_point()+
   geom_hline(yintercept = 0) +
   scale_y_continuous(breaks = seq(-1,1,0.25))+
-  scale_x_continuous(breaks = seq(0,360,15))+
+  scale_x_continuous(breaks = seq(0,360,30))+
   xlab(expression(theta*" (\u00B0)"))+
   theme_minimal(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size=20,family='Arial'),
@@ -186,15 +186,15 @@ ggsave(paste0('results/pc_loadings_scores_analysis/',
        units = 'in',
        dpi=600)
 
-(ggplot(Zh ,aes(x=V1,y=V2,colour=NAS))+
-    geom_point()+
-    scale_color_viridis_c()+
+(ggplot(Zh ,aes(x=V1,y=V2,fill=NAS))+
+    geom_point(size=3,shape=21,stroke=1.3)+
+    scale_fill_viridis_c()+
     theme_minimal(base_size=20,base_family = 'Arial')+
     theme(text= element_text(size=20,family = 'Arial'),
           legend.position = 'right')) +
-  (ggplot(Zh ,aes(x=V1,y=V2,colour=fibrosis))+
-     geom_point()+
-     scale_color_viridis_c()+
+  (ggplot(Zh ,aes(x=V1,y=V2,fill=fibrosis))+
+     geom_point(size=3,shape=21,stroke=1.3)+
+     scale_fill_viridis_c()+
      theme_minimal(base_size=20,base_family = 'Arial')+
      theme(text= element_text(size=20,family = 'Arial'),
            legend.position = 'right'))

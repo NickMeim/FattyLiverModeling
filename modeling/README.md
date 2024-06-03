@@ -6,3 +6,7 @@
 3. vector_space_interpretation.R: Contains functions to infer pathways and TFs activities based on a vector of gene "loadings"/"weights", and visualize the results.
 4. CrossValidationUtilFunctions.R: Contains function to perform cross-fold validation of various approaches.
 5. CrossValidationProcess.R: The script that performs all cross-fold validation and evaluation tests.
+6. calculate_pairwise_GSEA_distances.R: Code to calculate all pairswise GSEA-based distances on the hallmark, TFs, KEGGS and GO Terms levels.
+7. distance_scores.R: The function used to calculate GSEA-based distance between to list of molecular signatures.
+8. Validate the performance in predicting fibrosis and NAS in two external clinical datasets, using the extra basis found with the Govaere clinical dataset and the Kostrzewski MPS liver model.
+9. L1000_pertubation_identification.R: Identify potential perturbations from the L1000 dataset.
