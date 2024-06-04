@@ -44,9 +44,81 @@ Doing a more stringent threshold to keep variable genes in all datasets. COuld r
 genes in at least one datasets, but this allows for faster execution for testing
 
 
+```{r}
+dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Govaere")
+ref_dataset <- "Hoang"
+target_dataset <- "Kostrzewski"
+# Load
+data_list <- load_datasets(dataset_names, dir_data = dir_data)
+# Run PCA
+tmp <- process_datasets(data_list, filter_variance = F)
+data_list <- tmp$data_list
+plt_list <- tmp$plt_list
+# Define matrices of interest
+Yh <- data_list$Hoang$metadata$nafld_activity_score #data_list$Hoang$metadata$Fibrosis_stage# 
+Xh <- data_list[[ref_dataset]]$data_center %>% t()
+Xm <- data_list[[target_dataset]]$data_center %>% t()
+exp_factors <- exp_factors <- c("NPC", "Background", "TGF", "LPS",  "Cholesterol", "Fructose") # TO DO: Add to dataset itself for MPS
+```
+
+# Build PLSR model
+
+Number of latent variables is selected internally based on 10-fold CV as the point where the 
+Q2Y metric is maximal
+
+```{r}
+### Load idx for CV splits
+#idx_train_CV <- createFolds(Yh, k = 10, returnTrain = T)
+#save(idx_train_CV, file = paste0(dir_data,"idx_train_CV_NAFLD.RData"))
+load(paste0(dir_data,"idx_train_CV_NAFLD.RData"))
+
+### Train PLSR - lots of internal CV, so it is slow - try to make parallel
+#plsr_mod <- train_plsr(Xh, Yh, idx_train_CV)
+#save(plsr_mod, file = paste0(dir_data,"temp_PLSR_mod.RData"))
+load(file = paste0(dir_data,"temp_PLSR_mod.RData"))
+# Model coefficients (including intercept) - TO DO: get rid of intercept by centering Y
+Wh <- plsr_mod$Wf
+
+#### Skipping for now to move quickly
+#plsr_mod <- opls(x = Xh, 
+#                 y = Yh,
+#                 predI = 3,
+#                 crossvalI = 5,
+#                 fig.pdfC = "none",
+#                 info.txtC = "none")
+
+#Wh <- matrix(data = 0, ncol = ncol(plsr_mod@weightMN), nrow = ncol(Xh))
+#rownames(Wh) <- colnames(Xh)
+#colnames(Wh) <- colnames(plsr_mod@weightMN)
+#for (ii in 1:nrow(plsr_mod@weightMN)){
+#  Wh[rownames(plsr_mod@weightMN)[ii], ] <- plsr_mod@weightMN[ii,]
+#}
+######
+# Get regression coefficients
+Bh <- matrix(lm(Yh ~ Xh %*% Wh) %>% coef(), ncol = 1)
+
+# Get variances in LVs
+plsr_var_plsr <- colVars(Xh %*% Wh)
+plsr_per_var_plsr <- round(100*plsr_var_plsr/sum(data_list$Hoang$pca$sdev^2),2)
+
+### Visualize
+# Plot predictions in full training
+plt_PLSR_mod <- plot_scatter(x = Yh, y = cbind(1, Xh %*% Wh) %*% Bh, 
+                                        xlab = "NAS Measured", ylab = "NAS Predicted", xjitter = T) +
+                            geom_abline(slope = 1, intercept = 0, color = "indianred",
+                                        linetype="dotted", size = size_line)
 
 
 
+
+plt_PLSR_score <- plot_scatter(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2],
+                         xlab = paste0("LV1 (", plsr_per_var_plsr[1],"%)"),
+                         ylab = paste0("LV2 (", plsr_per_var_plsr[2],"%)"),
+                         args_extra = data.frame(color = Yh),
+                         aes_extra = aes(color = color)) +
+            scale_color_viridis_c() + labs(color = "NAS")
+
+```
 
 
 # Check information preservation
@@ -103,7 +175,7 @@ plt_mod_project <- add_theme(plt_mod_project)# Plot pathway scores in PC loading
 Calculate prediction error (square norm) using each MPS PC - retraining to potentially compensate loss in performance
 
 ```{r}
-Wm_rank <- rank_LV_MPS(Xh, Yh, Wh, Bm, Wm, retrain = F)
+Wm_rank <- rank_LV_MPS(Xh, Yh, Wh, Bh, Wm, retrain = F)
 plt_rank <- data.frame(rank = factor(Wm_rank$E_top), R2Y = 100*Wm_rank$E_rem_out/Wm_rank$E_ref) %>%
             ggplot(aes(x = reorder(rank, -R2Y), y = R2Y)) +
               geom_col(fill = "steelblue") +
@@ -202,7 +274,7 @@ while (d_Ey > 1){
   ii <- ii + 1
   # Find optimal weights to combine these vectors
   res_opt <- optim_function_evolutionary(X = Xh, Wh = Wh, Wm = Wm_new_basis, 
-                                       theta = theta, mod_coefs = Bm)
+                                       theta = theta, mod_coefs = Bh)
 
   # Extract optimal new direction
   Wm_opt <- res_opt$Wopt
@@ -212,7 +284,7 @@ while (d_Ey > 1){
   Wm_new_basis <- cbind(Wm_new_basis, Wm_opt)
   
   # Calculate correlation with new predictions
-  Ypred <- cbind(1, Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %*% Bm
+  Ypred <- cbind(1, Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %*% Bh
   Ey[ii] <- sum((Ypred - Yh)^2)
   d_Ey <- ifelse(ii == 1, Ey[ii], 100*abs(Ey[ii] - Ey[ii-1])/Ey[ii])
   
@@ -226,8 +298,8 @@ colnames(Wm_new_basis) <- paste0("LV_opt",1:ncol(Wm_new_basis))
 rownames(Wm_new_basis) <- rownames(Wm)
 
 # Plot Yh predicted with this reduced space vs the larger MPS space
-Ypred1 <- cbind(1, Xh %*% Wm %*% t(Wm) %*% Wh) %*% Bm
-Ypred2 <- cbind(1, Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %*% Bm
+Ypred1 <- cbind(1, Xh %*% Wm %*% t(Wm) %*% Wh) %*% Bh
+Ypred2 <- cbind(1, Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %*% Bh
 
 plt_new_basis <- plot_scatter(x = Ypred1, y = Ypred2, 
                               xlab = "NAS full MPS space", ylab = "NAS reduced space") +
@@ -271,6 +343,7 @@ Number of additional vectors could be obtained with cross validation
 # Find set of candidate vectors (new basis)
 L <- 1:ncol(data_list$Kostrzewski$pca$rotation) #1:data_list$Kostrzewski$pca$nPC #
 Wh <- plsr_mod$Wf
+Bm <- Bh
 Wm_new <- data_list$Kostrzewski$pca$rotation[,L]
 theta <- find_extra_basis(Wh, Wm_new, Xh, ncomp = ncol(Wh))
 theta <- theta$theta
@@ -286,8 +359,8 @@ Ypred1 <- cbind(1, Xh %*% cbind(Wm_new_basis, Wm_opt) %*% t(cbind(Wm_new_basis, 
 Ypred2 <- cbind(1, Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %*% Bm
 
 # Retrain
-Ypred1 <- lm(Yh ~ Xh %*% cbind(Wm_new_basis, Wm_opt) %*% t(cbind(Wm_new_basis, Wm_opt)) %*% Wh) %>% predict()
-Ypred2 <- lm(Yh ~ Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %>% predict()
+#Ypred1 <- lm(Yh ~ Xh %*% cbind(Wm_new_basis, Wm_opt) %*% t(cbind(Wm_new_basis, Wm_opt)) %*% Wh) %>% predict()
+#Ypred2 <- lm(Yh ~ Xh %*% Wm_new_basis %*% t(Wm_new_basis) %*% Wh) %>% predict()
 
 df <- rbind(data.frame(x = Yh, y = Ypred2, Basis = "MPS"),
            data.frame(x = Yh, y = Ypred1, Basis = "Expanded"))
@@ -315,8 +388,8 @@ plt_dummy <- plot_scatter(x = Xm %*% Wm_new_basis,
              scale_color_brewer(palette = "Dark2") +
              labs(x = "MPS LV1", y = "MPS LV extra")
 
-plt_dummy <- plot_scatter(x = Xh %*% Wm_opt, 
-                           y = Yh, 
+plt_dummy <- plot_scatter(x = Xh %*% Wm_new_basis, 
+                           y = Xh %*% Wm_opt, 
                            aes_extra = aes(color = NAS), 
                            args_extra = list(NAS = Yh),
                           ) +

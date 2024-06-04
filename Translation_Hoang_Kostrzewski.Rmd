@@ -42,7 +42,7 @@ genes in at least one datasets, but this allows for faster execution for testing
 ```{r}
 dataset_names <- c("Hoang", "Kostrzewski", "Wang", "Feaver") #, "Feaver", "Wang", "Nilsson", "Govaere") #, "Wang", "Govaere")
 ref_dataset <- "Hoang"
-target_dataset <- "Feaver"
+target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = dir_data)
 # Run PCA
