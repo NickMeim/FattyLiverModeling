@@ -76,7 +76,7 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE){
           aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
       scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
       scale_x_continuous(n.breaks = 8,limits = c(-8,8))+
-      ggtitle('Extra LV1')+
+      ggtitle('Extra basis 1')+
       ylab('Pathway')+
       geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
                                    ifelse(p_value <= 0.001,"***",
@@ -95,7 +95,7 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE){
     (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
               filter (condition=='V2'),
             aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
-       ggtitle('Extra LV2')+
+       ggtitle('Extra basis 2')+
        ylab('Pathway')+
        scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
        scale_x_continuous(n.breaks = 8,limits = c(-8,8))+
@@ -144,7 +144,7 @@ TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE){
           geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
           scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
           scale_y_continuous(n.breaks = 6,limits = c(-6,6))+
-          ggtitle('Extra LV1')+
+          ggtitle('Extra basis 1')+
           xlab('TF')+
           theme_pubr(base_size = 20,base_family = 'Arial')+
           theme(text = element_text(size = 20,family = 'Arial'),
@@ -157,7 +157,7 @@ TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE){
        geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
        scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
        scale_y_continuous(n.breaks = 6,limits = c(-6,6))+
-       ggtitle('Extra LV2')+
+       ggtitle('Extra basis 2')+
        xlab('TF')+
        theme_pubr(base_size = 20,base_family = 'Arial')+
        theme(text = element_text(size = 20,family = 'Arial'),
@@ -198,7 +198,7 @@ perturnation_activity_inference <- function(W,metadata_human,regulon,perturbatio
                                                                  significant))
   
   p <- (ggplot(pert_activity %>% filter(condition=='V1'),aes(x=reorder(perturbation,activity),y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
-          geom_text_repel(aes(label=significant,color=`p-value`),size=5,max.overlaps=60,box.padding = 0.7)+
+          geom_text_repel(aes(label=significant,color=`p-value`),size=7,max.overlaps=60,box.padding = 0.7)+
           xlab('perturbations') + ylab('inferred activity')+
           scale_fill_gradient(trans='log10',low = "red",high = "white",
                               limits = c(min(pert_activity$`p-value`),1),
@@ -206,15 +206,16 @@ perturnation_activity_inference <- function(W,metadata_human,regulon,perturbatio
           scale_color_gradient(trans='log10',low = "red",high = "#f96464",
                                limits = c(min(pert_activity$`p-value`),0.05)) +
           guides(color = "none")+
-          ggtitle('Extra LV1')+
-          theme_pubr(base_family = 'Arial',base_size = 20)+
-          theme(text = element_text(family = 'Arial',size=20),
+          ggtitle('Extra basis 1')+
+          theme_pubr(base_family = 'Arial',base_size = 22)+
+          theme(text = element_text(family = 'Arial',size=22),
                 axis.ticks.x = element_blank(),
                 axis.text.x = element_blank(),
                 legend.position = 'right',
+                legend.text = element_text(size=14),
                 plot.title = element_text(hjust=0.5))) + 
     (ggplot(pert_activity %>% filter(condition=='V2'),aes(x=reorder(perturbation,activity),y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
-       geom_text_repel(aes(label=significant,color=`p-value`),size=5,max.overlaps=60,box.padding = 0.7)+
+       geom_text_repel(aes(label=significant,color=`p-value`),size=7,max.overlaps=60,box.padding = 0.7)+
        xlab('perturbations') + ylab('inferred activity')+
        scale_fill_gradient(trans='log10',low = "red",high = "white",
                            limits = c(min(pert_activity$`p-value`),1),
@@ -222,13 +223,14 @@ perturnation_activity_inference <- function(W,metadata_human,regulon,perturbatio
        scale_color_gradient(trans='log10',low = "red",high = "#f96464",
                             limits = c(min(pert_activity$`p-value`),0.05)) +
        guides(color = "none")+
-       ggtitle('Extra LV2')+
-       theme_pubr(base_family = 'Arial',base_size = 20)+
-       theme(text = element_text(family = 'Arial',size=20),
+       ggtitle('Extra basis 2')+
+       theme_pubr(base_family = 'Arial',base_size = 22)+
+       theme(text = element_text(family = 'Arial',size=22),
              axis.ticks.x = element_blank(),
              axis.title.y = element_blank(),
              axis.text.x = element_blank(),
              legend.position = 'right',
+             legend.text = element_text(size=14),
              plot.title = element_text(hjust=0.5)))
   if (plotting==TRUE){
     print(p)

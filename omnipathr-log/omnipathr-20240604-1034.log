@@ -1,0 +1,610 @@
+[2024-06-04 10:34:26] [INFO]    [OmnipathR] Welcome to OmnipathR!
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] Reading JSON from `C:\Users\nmeim\AppData\Local\cache\OmnipathR/cache.json` (encoding: UTF-8).
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:26] [INFO]    [OmnipathR] Initialized cache: `C:\Users\nmeim\AppData\Local\cache\OmnipathR`.
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/db/db_def.json` (encoding: UTF-8).
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/magic_bytes.json` (encoding: UTF-8).
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/urls.json` (encoding: UTF-8).
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] Reading JSON from `C:/Users/nmeim/Documents/R/win-library/4.1/OmnipathR/internal/id_types.json` (encoding: UTF-8).
+[2024-06-04 10:34:26] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:39] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:34:39] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:39] [INFO]    [OmnipathR] Loading database `Ensembl and OMA organism names`.
+[2024-06-04 10:34:39] [INFO]    [OmnipathR] Looking up in cache `https://www.ensembl.org/info/about/species.html`: key=7332486db7400730697234bad76ca0c8e4d00799, latest version=1.
+[2024-06-04 10:34:39] [TRACE]   [OmnipathR] Cache file path: C:\Users\nmeim\AppData\Local\cache\OmnipathR/7332486db7400730697234bad76ca0c8e4d00799-1.html
+[2024-06-04 10:34:39] [TRACE]   [OmnipathR] Looking up in cache: `https://omabrowser.org/All/oma-species.txt`.
+[2024-06-04 10:34:39] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/30e690cbb55dfc63b5903ab337f34ffc2f4be397-1.rds`.
+[2024-06-04 10:34:39] [INFO]    [OmnipathR] Loaded database `Ensembl and OMA organism names`.
+[2024-06-04 10:34:40] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:34:40] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:34:40] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:34:41] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:34:41] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:34:41] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:54:54] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:54:54] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:54:54] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:54:54] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:54:54] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:54:56] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:54:56] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:54:56] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:54:59] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:54:59] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:54:59] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:54:59] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:54:59] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:00] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:00] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:00] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:03] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:03] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:03] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:03] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:03] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:04] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:04] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:04] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:06] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:06] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:07] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:07] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:07] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:07] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:07] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:08] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:10] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:10] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:10] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:10] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:10] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:12] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:12] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:12] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:14] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:14] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:15] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:15] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:15] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:15] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:15] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:15] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:18] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:18] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:18] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:18] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:18] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:19] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:19] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:19] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:22] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:22] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:22] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:22] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:22] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:22] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:25] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:25] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:25] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:25] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:25] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:26] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:26] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:26] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:29] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:29] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:29] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:29] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:29] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:30] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:30] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:30] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:33] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:33] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:34] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:34] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:34] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:34] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:34] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:34] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:37] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:37] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:38] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:38] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:38] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:38] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:38] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:38] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:41] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:41] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:42] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:42] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:42] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:42] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:42] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:42] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:45] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:45] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:46] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:46] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:46] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:46] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:46] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:46] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:49] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:49] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:49] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:49] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:49] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:50] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:50] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:50] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:53] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:53] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:53] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:53] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:53] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:54] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:54] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:54] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:55:57] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:57] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:57] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:55:57] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:55:57] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:58] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:55:58] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:55:58] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:01] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:01] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:01] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:01] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:01] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:02] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:02] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:02] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:04] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:04] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:05] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:05] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:05] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:06] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:06] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:06] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:08] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:08] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:08] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:08] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:08] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:09] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:09] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:09] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:12] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:12] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:12] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:12] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:12] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:13] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:13] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:13] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:16] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:16] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:16] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:16] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:16] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:17] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:17] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:17] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:20] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:20] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:20] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:20] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:20] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:21] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:21] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:21] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:24] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:24] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:24] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:24] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:24] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:25] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:25] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:25] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:27] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:27] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:28] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:28] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:28] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:28] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:28] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:28] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:31] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:31] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:31] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:31] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:31] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:32] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:32] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:32] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:35] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:35] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:35] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:35] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:35] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:36] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:37] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:37] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:39] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:39] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:39] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:39] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:39] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:40] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:40] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:40] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:43] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:43] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:43] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:43] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:43] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:44] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:44] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:44] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:47] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:47] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:47] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:48] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:48] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:48] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:50] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:50] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:50] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:50] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:50] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:51] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:51] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:51] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:54] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:54] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:54] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:54] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:54] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:55] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:55] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:55] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:56:57] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:57] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:58] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:56:58] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:56:58] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:58] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:56:58] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:56:58] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:01] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:01] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:02] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:02] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:02] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:02] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:02] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:02] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:05] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:05] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:06] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:06] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:06] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:07] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:07] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:07] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:09] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:09] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:10] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:10] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:10] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:11] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:11] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:11] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:13] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:13] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:14] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:14] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:14] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:14] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:14] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:14] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:17] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:17] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:17] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:17] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:17] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:18] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:18] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:18] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:21] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:21] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:21] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:21] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:24] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:24] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:24] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:24] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:24] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:25] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:25] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:25] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:28] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:28] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:28] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:28] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:28] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:29] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:29] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:29] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:32] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:32] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:32] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:32] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:32] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:33] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:33] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:33] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:36] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:36] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:36] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:36] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:36] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:37] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:37] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:37] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:39] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:39] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:40] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:40] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:40] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:41] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:41] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:41] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:43] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:43] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:43] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:43] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:43] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:45] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:45] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:45] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:47] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:47] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:47] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:48] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:48] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:48] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:51] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:51] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:51] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:51] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:51] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:52] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:52] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:52] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:55] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:55] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:55] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:55] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:55] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:56] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:56] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:56] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:57:58] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:58] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:58] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:57:58] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:57:58] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:59] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:57:59] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:57:59] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:02] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:02] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:02] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:02] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:02] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:03] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:03] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:03] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:06] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:06] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:06] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:06] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:06] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:07] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:07] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:07] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:09] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:09] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:10] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:10] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:10] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:11] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:11] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:11] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:13] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:13] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:14] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:14] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:14] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:15] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:15] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:15] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:18] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:18] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:18] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:18] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:18] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:19] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:19] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:19] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:21] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:22] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:22] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:22] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:25] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:25] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:25] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:25] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:25] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:26] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:26] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:26] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:28] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:28] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:29] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:29] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:29] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:30] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:30] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:30] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:32] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:32] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:32] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:32] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:32] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:33] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:33] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:33] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:36] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:36] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:36] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:36] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:36] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:37] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:37] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:37] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:40] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:40] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:40] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:40] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:40] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:41] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:41] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:41] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:43] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:43] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:44] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:44] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:44] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:45] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:45] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:45] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:47] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:47] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:48] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:48] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:48] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:49] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:49] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:49] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:51] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:51] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:52] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:52] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:52] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:54] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:54] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:54] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:58:57] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:57] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:57] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:58:57] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:58:57] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:58] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:58:58] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:58:58] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:01] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:01] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:02] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:02] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:02] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:03] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:03] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:03] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:05] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:05] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:06] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:06] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:06] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:06] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:06] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:06] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:09] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:09] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:09] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:09] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:09] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:11] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:11] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:11] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:13] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:13] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:13] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:13] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:13] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:14] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:14] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:14] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:17] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:17] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:17] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:17] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:17] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:18] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:18] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:18] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:21] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:21] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:21] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:22] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:22] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:22] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:25] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:25] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:25] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:25] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:25] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:26] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:26] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:26] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:28] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:28] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:28] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:28] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:29] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:30] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:30] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:30] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.
+[2024-06-04 10:59:32] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:32] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:32] [TRACE]   [OmnipathR] Reading JSON from `https://omnipathdb.org/resources` (encoding: UTF-8).
+[2024-06-04 10:59:32] [TRACE]   [OmnipathR] JSON validation successful: TRUE
+[2024-06-04 10:59:32] [TRACE]   [OmnipathR] Looking up in cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:33] [TRACE]   [OmnipathR] Loaded data from RDS `C:\Users\nmeim\AppData\Local\cache\OmnipathR/3492392585ba05414edfae46801492076437d7e7-1.rds`.
+[2024-06-04 10:59:33] [INFO]    [OmnipathR] Loaded from cache: `https://omnipathdb.org/annotations?resources=PROGENy&license=academic`
+[2024-06-04 10:59:33] [SUCCESS] [OmnipathR] Loaded 700239 annotation records from cache.

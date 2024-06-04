@@ -701,11 +701,11 @@ performance_1 <- cross_validation_complete_pipeline(Wm,
 performance_1 <- performance_1 %>% mutate(type = ifelse(type=='model',set,type))
 performance_1$type <- factor(performance_1$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
 ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.75,1,0.25))+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1))+
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('test','shuffle Y'),
@@ -713,7 +713,8 @@ ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
                                         c('test','random X')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     label.y = c(0.82, 0.87, 0.92))
+                     label.y = c(0.75, 0.8, 0.85),
+                     size=6)
 ggsave('../results/performance_df_just_human_plsr.png',
        height = 9,
        width = 12,
@@ -732,10 +733,10 @@ performance_2$type <- factor(performance_2$type ,levels=c('model','shuffle W','s
 performance_2$set <- factor(performance_2$set ,levels=c('train','test'))
 ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
@@ -743,7 +744,8 @@ ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
                                         c('model','shuffle Bh')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     step.increase = 0.04)
+                     step.increase = 0.04,
+                     size=6)
 ggsave('../results/performance_df_just_human_backprojected.png',
        height = 9,
        width = 12,
@@ -763,16 +765,17 @@ performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W'))
 performance_3$set <- factor(performance_3$set ,levels=c('train','test'))
 ggboxplot(performance_3,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle W')),
                      method = 'wilcox',#label = 'p.signif',
-                     tip.length = 0.01)
+                     tip.length = 0.01,
+                     size=6)
 ggsave('../results/performance_df_just_human_backprojected_retrained.png',
        height = 9,
        width = 12,
@@ -792,10 +795,10 @@ performance_4$type <- factor(performance_4$type ,levels=c('model','shuffle W','s
 performance_4$set <- factor(performance_4$set ,levels=c('train','test'))
 ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
@@ -803,7 +806,8 @@ ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
                                         c('model','shuffle Bh')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     step.increase = 0.04)
+                     step.increase = 0.04,
+                     size=6)
 ggsave('../results/performance_df_translatable_lvs.png',
        height = 9,
        width = 12,
@@ -824,18 +828,19 @@ performance_5$set <- factor(performance_5$set ,levels=c('train','test'))
 ggboxplot(performance_5,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(round(min(performance_5$r),1),1,0.1),
                      limits = c(NA,1.15))+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle Wopt'),
                                         c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
+                     method = 'wilcox',
                      tip.length = 0.01,
-                     step.increase = 0.04)
+                     step.increase = 0.04,
+                     size=6)
 
 ggsave('../results/performance_df_optimal_direction.png',
        height = 9,
@@ -856,17 +861,17 @@ performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
 ggboxplot(performance_6,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(round(min(performance_6$r),1),1,0.1),
                      limits = c(NA,1.15))+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle Wopt'),
                                         c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01)# ,label.y = c(0.82, 0.87, 0.92)
+                     method = 'wilcox',
+                     tip.length = 0.01,size=6)# ,label.y = c(0.82, 0.87, 0.92)
 
 ggsave('../results/performance_df_analytical.png',
        height = 9,
@@ -917,12 +922,12 @@ performance_all_plot$approach <- factor(performance_all_plot$approach,
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
-  xlab('')+
+  xlab('')+ ylab('pearson`s correlation') +
   ggtitle('10-fold Train')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
         plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(size=16,angle = 25),
+        axis.text.x = element_text(size=18,angle = 25),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
@@ -933,7 +938,8 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(ap
                                         c('PLSR','analytical Wopt')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.5,0.7,0.9,0.9,0.95))
+                     label.y = c(0.5,0.7,0.9,0.9,0.95),
+                     size = 6)
 print(p_train)  
 ggsave('../results/approaches_comparison_training.png',
        plot = p_train,
@@ -945,12 +951,12 @@ ggsave('../results/approaches_comparison_training.png',
 p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(approach!='Wopt'),
                     x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(-0.5,1,0.1))+
-  xlab('')+
+  xlab('')+ylab('pearson`s correlation') +
   ggtitle('10-fold Test')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
         plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(size=16,angle = 25),
+        axis.text.x = element_text(size=18,angle = 25),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
@@ -961,7 +967,8 @@ p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(appro
                                         c('PLSR','analytical Wopt')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.75,0.8,0.85,0.85,0.95))
+                     label.y = c(0.75,0.8,0.85,0.85,0.95),
+                     size = 6)
 print(p_test)  
 ggsave('../results/approaches_comparison_10foldtest.png',
        plot = p_test,

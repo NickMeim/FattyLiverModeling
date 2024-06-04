@@ -160,6 +160,7 @@ p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>%
   scale_y_continuous(breaks = seq(-1,1,0.25))+
   scale_x_continuous(breaks = seq(0,360,30))+
   xlab(expression(theta*" (\u00B0)"))+
+  ylab('correlation') +
   theme_minimal(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size=20,family='Arial'),
         legend.position = 'top')
@@ -169,11 +170,14 @@ p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
                arrow = arrow(length = unit(0.03, "npc")))+
   scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
   scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
+  xlab('extra basis 1') + ylab('extra basis 2') +
+  labs(fill = 'correlation',colour='correlation')+
   geom_hline(yintercept = 0) +
   geom_vline(xintercept = 0) +
   facet_wrap(~phenotype)+
   theme_minimal(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size=20,family='Arial'),
+        strip.text=element_text(size=20),
         legend.position = 'right')
 p1 / p2
 ggsave(paste0('results/pc_loadings_scores_analysis/',
@@ -473,18 +477,19 @@ df_paths <- df_paths %>% arrange(Pathway)
 df_labels <- cbind(df_labels,df_paths)
 p1 <- ggRadar(df_plot, aes(group = Pathway), rescale = FALSE, use.label = TRUE,size = 1) +
   # scale_x_discrete(breaks = seq(0,180,30))+
-  geom_text(data=df_labels,aes(x=17,y=score,label = score),color='black',alpha=0.7)+
+  geom_text(data=df_labels,aes(x=17,y=score,label = score),color='black',alpha=0.7,size=5)+
   theme_light() +
-  labs(title = "Pathway activity contribution in each direction of the extra basis")+
-  theme(plot.title = element_text(hjust = 0.5),
+  labs(title = "Pathway activity along each direction of the extra basis space")+
+  theme(text = element_text(family = 'Arial',size=17),
+        plot.title = element_text(hjust = 0.5),
         axis.text.y = element_blank()) +
   facet_wrap(~Pathway)
 # p + geom_text(aes(label = score), size = 5)
 print(p1)
 ggsave(paste0('results/pc_loadings_scores_analysis/pathways_in_extra_basis_',tolower(target_dataset),'.png'),
        plot = p1,
-       width = 9,
-       height = 9,
+       width = 10,
+       height = 10,
        units = 'in',
        dpi =600)
 p2 <- ggplot(df,aes(x=LV_opt_1,y=LV_opt_2,fill=score,colour=score))+
@@ -495,6 +500,8 @@ p2 <- ggplot(df,aes(x=LV_opt_1,y=LV_opt_2,fill=score,colour=score))+
   scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-8,8))+
   geom_hline(yintercept = 0) +
   geom_vline(xintercept = 0) +
+  xlab('extra basis 1') + ylab('extra basis 2')+
+  labs(fill = 'activity',color = 'activity')+
   facet_wrap(~Pathway)+
   theme_light(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size=20,family='Arial'),
@@ -528,15 +535,16 @@ msig_pval <- as.data.frame(msig$Pval$`Pval MSIG Hallmark`) %>% rownames_to_colum
 msig_pval <- msig_pval %>% gather('LV','padj',-Hallmark)
 df_msig <- left_join(msig_nes,msig_pval)
 df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
+df_msig <- df_msig %>% mutate(Hallmark=str_replace_all(Hallmark,'_',' '))
 
 p1 <- (ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES),aes(x=NES,y=reorder(Hallmark,-NES),fill=padj))+ 
          geom_bar(stat = 'identity',color='black',size=1.5) +
          scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
          xlab('Normalized Enrichment Score') + ylab('Hallmark')+
          ggtitle('Hallmarks enriched in extra basis 1')+
-         theme_pubr(base_family = 'Arial',base_size = 15)+
-         theme(text = element_text(family = 'Arial',size=15),
-               axis.text.y = element_text(size=10),
+         theme_pubr(base_family = 'Arial',base_size = 16)+
+         theme(text = element_text(family = 'Arial',size=16),
+               axis.text.y = element_text(size=14),
                plot.title = element_text(hjust = 0.5),
                legend.key.size = unit(1.5, "lines"),
                legend.position = 'right',
@@ -546,9 +554,9 @@ p1 <- (ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES),aes(x=NES,y=reorder(
      scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
      xlab('Normalized Enrichment Score') +ylab('Hallmark')+
      ggtitle('Hallmarks enriched in extra basis 2')+
-     theme_pubr(base_family = 'Arial',base_size = 15)+
-     theme(text = element_text(family = 'Arial',size=15),
-           axis.text.y = element_text(size=10),
+     theme_pubr(base_family = 'Arial',base_size = 16)+
+     theme(text = element_text(family = 'Arial',size=16),
+           axis.text.y = element_text(size=14),
            plot.title = element_text(hjust = 0.5),
            legend.key.size = unit(1.5, "lines"),
            legend.position = 'right',
@@ -559,8 +567,8 @@ ggsave(paste0('results/pc_loadings_scores_analysis/hallmark_',
               tolower(target_dataset),
               'on_optimal_loadings.png'),
        plot=p1,
-       width=16,
-       height=9,
+       width=18,
+       height=10,
        units = 'in',
        dpi = 600)
 ### Analyze loadings with GSEA on KEGG Pathways genesets--------------
