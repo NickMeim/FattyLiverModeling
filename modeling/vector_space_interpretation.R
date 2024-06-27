@@ -196,8 +196,8 @@ perturnation_activity_inference <- function(W,metadata_human,regulon,perturbatio
   pert_activity <- pert_activity %>% mutate(significant = ifelse(Chemical_Compound=='Ifna',
                                                                  perturbation,
                                                                  significant))
-  
-  p <- (ggplot(pert_activity %>% filter(condition=='V1'),aes(x=reorder(perturbation,activity),y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
+
+    p <- (ggplot(pert_activity %>% filter(condition=='V1'),aes(x=reorder(perturbation,activity),y=activity,fill = `p-value`)) + geom_point(shape=21,size=2) +
           geom_text_repel(aes(label=significant,color=`p-value`),size=5,max.overlaps=60,box.padding = 0.7)+
           xlab('perturbations') + ylab('inferred activity')+
           scale_fill_gradient(trans='log10',low = "red",high = "white",

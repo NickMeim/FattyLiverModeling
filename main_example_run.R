@@ -1,6 +1,6 @@
 library(tidyverse)
 library(ggfortify)
-library(ggplot2)
+#library(ggplot2)
 library(ggpubr)
 library(ggsignif)
 library(ggrepel)
@@ -24,7 +24,8 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+#Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- data_list$Govaere$metadata[,c("nas_score", "Fibrosis_stage")] %>% as.matrix()
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()

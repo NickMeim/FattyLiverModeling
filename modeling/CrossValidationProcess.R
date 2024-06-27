@@ -28,6 +28,67 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
+# Plot metadata of Govaere dataset to show cohort composition
+plt_metadata_Govaere <- data_list$Govaere$metadata %>%
+                        ggplot(aes(x = as.numeric(nas_score), y = as.numeric(Fibrosis_stage))) +
+                          geom_point(color = "steelblue", size = 2*size_dot, alpha = 0.1) +
+                          labs(x = "NAFLD score (NAS)", y = "Fibrosis stage")
+
+plt_metadata_Govaere <- add_theme(plt_metadata_Govaere)
+plt_metadata_Govaere <- ggExtra::ggMarginal(plt_metadata_Govaere, type = "histogram", fill = "steelblue")
+ggsave('../results/plot_files/plt_metadata_Govaere.png', plot = plt_metadata_Govaere,
+       device = "png",
+       height = 6,
+       width=6,
+       units = 'cm')
+
+# Plot PCA scores for MPS dataset
+plt_PCA_MPS <- data_list[[target_dataset]]$pca$x %>%
+                ggplot(aes(x = PC1, y = PC2)) +
+                geom_point(color = "indianred", size = size_dot) +
+                labs(x = paste0("MPS PC1 (", round(data_list[[target_dataset]]$pca$var_per[1],1), "%)"),
+                     y = paste0("MPS PC2 (", round(data_list[[target_dataset]]$pca$var_per[2],1), "%)"))
+
+plt_PCA_MPS <- add_theme(plt_PCA_MPS)
+ggsave('../results/plot_files/plt_PCA_MPS.png', plot = plt_PCA_MPS,
+       device = "png",
+       height = 4,
+       width=5,
+       units = 'cm')
+
+# Project human data on MPS PCs, save plot. Also save backprojected
+plt_PCA_human_project <- rbind(data.frame(x = Xh %*% Wm[,1], y = Xh %*% Wm[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
+                               data.frame(x = Xh %*% Wm[,1], y = Xh %*% Wm[,2], phenotype = "NAS", Score = Yh[,1])) %>%
+                          ggplot(aes(x = x, y = y, color = Score)) +
+                          geom_point(size = size_dot) +
+                          labs(x = "MPS PC1", y = "MPS PC2") +
+                          scale_color_viridis_c() +
+                          facet_wrap(~factor(phenotype), nrow = 1)
+
+plt_PCA_human_project <- add_theme(plt_PCA_human_project)
+
+ggsave('../results/plot_files/plt_PCA_human_project.png', plot = plt_PCA_human_project,
+       device = "png",
+       height = 6,
+       width=9,
+       units = 'cm')
+
+plt_PCA_human_backproject <- rbind(data.frame(x = Xh %*% Wm %*% t(Wm) %*% Wh[,1], y = Xh %*% Wm %*% t(Wm) %*% Wh[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
+                               data.frame(x = Xh %*% Wm %*% t(Wm) %*% Wh[,1], y = Xh %*% Wm %*% t(Wm) %*% Wh[,2], phenotype = "NAS", Score = Yh[,1])) %>%
+  ggplot(aes(x = x, y = y, color = Score)) +
+  geom_point(size = size_dot) +
+  labs(x = "Human LV1", y = "Human LV2") +
+  scale_color_viridis_c() +
+  facet_wrap(~factor(phenotype), nrow = 1)
+
+plt_PCA_human_backproject <- add_theme(plt_PCA_human_backproject)
+
+ggsave('../results/plot_files/plt_PCA_human_backproject.png', plot = plt_PCA_human_backproject,
+       device = "png",
+       height = 6,
+       width=9,
+       units = 'cm')
+                          
 
 ### Step 1: Determine number of LVs to keep for PLSR modeling--------------------------------------------
 ### Split into Train - Validation -Test
@@ -971,7 +1032,25 @@ ggsave('../results/approaches_comparison_10foldtest.png',
        dpi=600)
 
 
+# Jose's rewrite of plot for conference
 
+p_test2 <- ggboxplot(performance_all_plot %>% filter(set=='test') %>% filter(approach %in% c("PLSR", "shuffle X")),
+                    x='approach',y='r',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.5,1,0.1))+
+  labs(x = NULL, y = "Mean Pearson correlation") +
+  stat_compare_means(comparisons = list(c('PLSR','shuffle X')),
+                     method = 'wilcox',
+                     tip.length = 0.01,
+                     label.y = c(0.95),
+                     size = size_annotation) +
+  ylim(c(-0.7, 1.1))
+
+p_test2 <- add_theme(p_test2)
+ggsave('../results/plot_files/plt_CV_plsr_test_all.png', plot = p_test2,
+       device = "png",
+       height = 6,
+       width=5,
+       units = 'cm')
 
 ### See how training performance converges
 ### when including incrementally the extra basis--------------------------------------------------------------------
@@ -1091,6 +1170,7 @@ cor_results <- df_scatterPlot %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
+
 ggplot(df_scatterPlot,aes(x = true,y=prediction)) +
   geom_jitter(width = 0.05) + 
   geom_abline(slope=1,intercept = 0)+
@@ -1128,21 +1208,97 @@ all_cor_results <- all_scatter_plot %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
-ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05) + 
-  geom_abline(slope=1,intercept = 0)+
-  geom_text(data = all_cor_results, 
-            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 6, family = 'Arial') +
-  facet_wrap(~phenotype,scales = 'free')+
-  theme_pubr(base_family = 'Arial',base_size=20)+
-  theme(text = element_text(family = 'Arial',size=20),
-        panel.grid.major = element_line())
+
+
+plt_plsr_scatter_all <- all_scatter_plot %>% 
+                        ggplot(aes(x = true,y=prediction)) +
+                        geom_jitter(width = 0.05, color = "steelblue", size = size_dot) + 
+                        geom_abline(slope=1,intercept = 0, linetype = 2)+
+                        geom_text(data = all_cor_results, 
+                                  aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+                                  hjust = 0, vjust =  1.5, size = size_annotation) +
+                        facet_wrap(~phenotype,scales = 'free', labeller = labeller(phenotype = c(fibrosis = "Fibrosis stage", NAS = "NAS"))) +
+                        labs(x = "Measured", y = "Prediction")
+
+plt_plsr_scatter_all <- add_theme(plt_plsr_scatter_all)
+
+
 ggsave('../results/AllData_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
        units = 'in',
        dpi=600)
+
+ggsave('../results/plot_files/plt_plsr_scatter_all.pdf', plot = plt_plsr_scatter_all,
+       device = "pdf",
+       height = 6,
+       width=9,
+       units = 'cm')
+
+ggsave('../results/plot_files/plt_plsr_scatter_all.png', plot = plt_plsr_scatter_all,
+       device = "png",
+       height = 6,
+       width=9,
+       units = 'cm')
+
+# Plot scores on latent variables colored by phenotype
+plt_plsr_scores_all <- rbind(data.frame(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
+                             data.frame(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2], phenotype = "NAS", Score = Yh[,1])) %>%
+                        ggplot(aes(x = x, y = y, color = Score)) +
+                          geom_point(size = size_dot) +
+                          labs(x = "Human LV1", y = "Human LV2") +
+                          scale_color_viridis_c() +
+                          facet_wrap(~factor(phenotype), nrow = 1)
+
+plt_plsr_scores_all <- add_theme(plt_plsr_scores_all)
+
+ggsave('../results/plot_files/plt_plsr_scores_all.png', 
+       plot = plt_plsr_scores_all,
+       device = "png",
+       height = 6,
+       width=9,
+       units = 'cm')
+
+
+# Plot training data after projection-backprojection
+Y_pred_back <- predict(plsr_model, Xh %*% Wm %*% t(Wm))
+
+all_scatter_plot_back <- left_join(data.frame(Yh) %>% 
+                                mutate(id = seq(1,nrow(Yh))) %>% 
+                                gather('phenotype','true',-id),
+                              data.frame(Y_pred_back) %>% 
+                                mutate(id = seq(1,nrow(Y_pred_back))) %>% 
+                                gather('phenotype','prediction',-id)) %>%
+                                select(-id)
+
+all_cor_results_back <- all_scatter_plot_back %>%
+                        group_by(phenotype) %>%
+                        summarise(cor_test = list(cor.test(true, prediction))) %>%
+                        mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+                                p_value = map_dbl(cor_test, ~ .x$p.value))
+  
+plt_plsr_scatter_all_backproject <- all_scatter_plot_back %>% 
+                                      ggplot(aes(x = true,y=prediction)) +
+                                      geom_jitter(width = 0.05, color = "steelblue", size = size_dot) + 
+                                      geom_abline(slope=1,intercept = 0, linetype = 2)+
+                                      geom_text(data = all_cor_results_back, 
+                                                aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+                                                hjust = 0, vjust =  1.5, size = size_annotation) +
+                                      facet_wrap(~phenotype,scales = 'free', labeller = labeller(phenotype = c(fibrosis = "Fibrosis stage", NAS = "NAS"))) +
+                                      labs(x = "Measured", y = "Prediction") +
+                                      ggh4x::facetted_pos_scales(y = list(scale_y_continuous(limits = c(0, 4)),
+                                                                          scale_y_continuous(limits = c(0, 8))))
+                                         
+
+plt_plsr_scatter_all_backproject <- add_theme(plt_plsr_scatter_all_backproject)
+
+ggsave('../results/plot_files/plt_plsr_scatter_all_backproject.png', 
+       plot = plt_plsr_scatter_all_backproject,
+       device = "png",
+       height = 6,
+       width=9,
+       units = 'cm')                        
+
 
 ### Now see convergence of performance
 train_performance_res <- rbind(data.frame(r = train_r,
