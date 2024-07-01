@@ -703,9 +703,9 @@ performance_1$type <- factor(performance_1$type ,levels=c('train','test','shuffl
 ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1))+
   xlab('')+ylab('pearson`s correlation')+
-  theme(text = element_text(size=22,family = 'Arial'),
+  theme(text = element_text(size=28,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=18),
+        axis.text.x = element_text(size=22),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('test','shuffle Y'),
@@ -714,7 +714,7 @@ ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
                      label.y = c(0.75, 0.8, 0.85),
-                     size=6)
+                     size=7)
 ggsave('../results/performance_df_just_human_plsr.png',
        height = 9,
        width = 12,
@@ -896,55 +896,73 @@ performance_all <- rbind(performance_1,
                          performance_5,
                          performance_6)
 ### Select what to show in the figure
+# performance_all_plot <- performance_all %>% 
+#   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
+#                      ifelse(type=='model',TRUE,FALSE))) %>% 
+#   filter(keep==TRUE) %>% select(-keep) %>%
+#   mutate(approach = ifelse(task=='human_plsr','PLSR',
+#                         ifelse(task=='human_backprojected','backprojected',
+#                                ifelse(task=='human_backprojected_retrained','backprojected retrained',
+#                                       ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
+#                                              ifelse(task=='analytical_optimal','analytical Wopt',
+#                                              'Wopt')))))) %>%
+#   mutate(approach = ifelse(approach=='PLSR',
+#                            ifelse(type=='model',approach,type),
+#                            approach)) %>%
+#   select(-type,-task)
 performance_all_plot <- performance_all %>% 
   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
                      ifelse(type=='model',TRUE,FALSE))) %>% 
   filter(keep==TRUE) %>% select(-keep) %>%
-  mutate(approach = ifelse(task=='human_plsr','PLSR',
-                        ifelse(task=='human_backprojected','backprojected',
-                               ifelse(task=='human_backprojected_retrained','backprojected retrained',
-                                      ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
-                                             ifelse(task=='analytical_optimal','analytical Wopt',
-                                             'Wopt')))))) %>%
-  mutate(approach = ifelse(approach=='PLSR',
+  mutate(approach = ifelse(task=='human_plsr','human genes',
+                           ifelse(task=='human_backprojected','back-projected',
+                                  ifelse(task=='human_backprojected_retrained','back-projected re-trained',
+                                         ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
+                                                ifelse(task=='analytical_optimal','optimized MPS',
+                                                       'Wopt')))))) %>%
+  mutate(approach = ifelse(approach=='human genes',
                            ifelse(type=='model',approach,type),
                            approach)) %>%
   select(-type,-task)
+performance_all_plot <- performance_all_plot %>%
+  filter(approach %in% c('human genes','back-projected','optimized MPS','shuffle X'))
 
+# performance_all_plot$approach <- factor(performance_all_plot$approach,
+#                                         levels = c('PLSR',
+#                                                    'backprojected',
+#                                                    'backprojected retrained',
+#                                                    'translatable LVs',
+#                                                    'Wopt',
+#                                                    'analytical Wopt',
+#                                                    'shuffle X'))
 performance_all_plot$approach <- factor(performance_all_plot$approach,
-                                        levels = c('PLSR',
-                                                   'backprojected',
-                                                   'backprojected retrained',
-                                                   'translatable LVs',
-                                                   'Wopt',
-                                                   'analytical Wopt',
+                                        levels = c('human genes',
+                                                   'back-projected',
+                                                   'optimized MPS',
                                                    'shuffle X'))
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
   xlab('')+ ylab('pearson`s correlation') +
-  ggtitle('10-fold Train')+
-  theme(text = element_text(size=22,family = 'Arial'),
+  ggtitle('10-fold train performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
         plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(size=18,angle = 25),
+        axis.text.x = element_text(size=26), #angle = 25
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
-                                        c('backprojected','backprojected retrained'),
-                                        c('PLSR','backprojected'),
-                                        c('analytical Wopt','backprojected'),
-                                        # c('PLSR','Wopt'),
-                                        c('PLSR','analytical Wopt')),
+  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+                                        c('human genes','back-projected'),
+                                        c('optimized MPS','back-projected')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.5,0.7,0.9,0.9,0.95),
-                     size = 6)
+                     label.y = c(1,0.9,0.9),
+                     size = 8)
 print(p_train)  
-ggsave('../results/approaches_comparison_training.png',
+ggsave('../figures/approaches_comparison_training.png',
        plot = p_train,
        height = 9,
-       width = 12,
+       width = 11,
        units = 'in',
        dpi=600)
 
@@ -952,31 +970,35 @@ p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(appro
                     x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(-0.5,1,0.1))+
   xlab('')+ylab('pearson`s correlation') +
-  ggtitle('10-fold Test')+
-  theme(text = element_text(size=22,family = 'Arial'),
+  ggtitle('10-fold test performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
         plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(size=18,angle = 25),
+        axis.text.x = element_text(size=24), #angle = 25
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
-                                        c('backprojected','backprojected retrained'),
-                                        c('PLSR','backprojected'),
-                                        c('analytical Wopt','backprojected'),
-                                        # c('PLSR','Wopt'),
-                                        c('PLSR','analytical Wopt')),
+  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+                                        c('human genes','back-projected'),
+                                        c('optimized MPS','back-projected'),
+                                        c('optimized MPS','shuffle X')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.75,0.8,0.85,0.85,0.95),
-                     size = 6)
+                     label.y = c(0.9,0.8,0.8,0.8),
+                     size = 8)
 print(p_test)  
-ggsave('../results/approaches_comparison_10foldtest.png',
+ggsave('../figures/approaches_comparison_10foldtest.png',
        plot = p_test,
        height = 9,
-       width = 12,
+       width = 11,
        units = 'in',
        dpi=600)
-
+ggsave('../figures/approaches_comparison_10foldtest.eps',
+       plot = p_test,
+       device = cairo_ps,
+       height = 9,
+       width = 11,
+       units = 'in',
+       dpi=600)
 
 
 
@@ -994,6 +1016,7 @@ test_r_basis_1 <- NULL
 test_r_all_extra_bases <- NULL
 
 df_scatterPlot <- data.frame()
+df_scatterPlot_backproj <- data.frame()
 
 for (j in 1:num_folds){
   print(paste0('Begun fold ',j))
@@ -1039,6 +1062,17 @@ for (j in 1:num_folds){
   Thm_train <- x_train %*% Wm %*% t(Wm) %*% Wh
   Th_val<- x_val %*% Wh
   Thm_val <- x_val %*% Wm %*% t(Wm) %*% Wh
+  
+  ## backprojecting
+  y_hat_test_backproj <- cbind(1, Thm_val)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+  df_scatterPlot_backproj <- rbind(df_scatterPlot_backproj,
+                                   left_join(data.frame(y_val) %>% 
+                                               mutate(id = seq(1,nrow(y_val))) %>% 
+                                               gather('phenotype','true',-id),
+                                             data.frame(y_hat_test_backproj) %>% 
+                                               mutate(id = seq(1,nrow(y_hat_test_backproj))) %>% 
+                                               gather('phenotype','prediction',-id)) %>%
+                                     select(-id))
   
   ### shuffled features model
   x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
@@ -1103,16 +1137,38 @@ ggplot(df_scatterPlot,aes(x = true,y=prediction)) +
   geom_abline(slope=1,intercept = 0)+
   geom_text(data = cor_results, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-              hjust = 0, vjust =  1.5, size = 6, family = 'Arial') +
+              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
   facet_wrap(~phenotype,scales = 'free')+
-  theme_pubr(base_family = 'Arial',base_size=20)+
-  theme(text = element_text(family = 'Arial',size=20),
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
         panel.grid.major = element_line())
-ggsave('../results/10foldTest_Scatterplot_human_plsr.png',
+ggsave('../figures/10foldTest_Scatterplot_human_plsr.png',
           height = 6,
           width=9,
           units = 'in',
           dpi=600)
+
+# repreat for backprojection
+cor_resultst_backproj <- df_scatterPlot_backproj %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value))
+ggplot(df_scatterPlot_backproj,aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05) + 
+  geom_abline(slope=1,intercept = 0)+
+  geom_text(data = cor_resultst_backproj, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
+        panel.grid.major = element_line())
+ggsave('../figures/10foldTest_Scatterplot_backprojecting.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
 
 ## scatter plot for using all the data
 plsr_model <- opls(x = Xh, 
@@ -1140,12 +1196,62 @@ ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
   geom_abline(slope=1,intercept = 0)+
   geom_text(data = all_cor_results, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 6, family = 'Arial') +
+            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
   facet_wrap(~phenotype,scales = 'free')+
-  theme_pubr(base_family = 'Arial',base_size=20)+
-  theme(text = element_text(family = 'Arial',size=20),
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
         panel.grid.major = element_line())
-ggsave('../results/AllData_Scatterplot_human_plsr.png',
+ggsave('../figures/AllData_Scatterplot_human_plsr.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
+
+# repeat for backprojection
+# Get Wh of PLSR
+Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
+rownames(Wh) <- colnames(Xh)
+colnames(Wh) <- colnames(plsr_model@weightMN)
+for (ii in 1:nrow(plsr_model@weightMN)){
+  Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+}
+Th <- Xh %*% Wm %*% t(Wm) %*% Wh
+Y_pred_backproj <- cbind(1, Th)  %*% rbind(apply(Yh,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+all_scatter_plot_backproj <- left_join(data.frame(Yh) %>% 
+                                mutate(id = seq(1,nrow(Yh))) %>% 
+                                gather('phenotype','true',-id),
+                              data.frame(Y_pred_backproj) %>% 
+                                mutate(id = seq(1,nrow(Y_pred_backproj))) %>% 
+                                gather('phenotype','prediction',-id)) %>%
+  select(-id)
+all_cor_results_backproj <- all_scatter_plot_backproj %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value))
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='fibrosis'),aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05) + 
+  geom_abline(slope=1,intercept = 0)+
+  geom_text(data = all_cor_results_backproj%>% filter(phenotype=='fibrosis'), 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+  ylim(c(0,4))+
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
+        panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='fibrosis'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05) + 
+     geom_abline(slope=1,intercept = 0)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='fibrosis'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=25)+
+     theme(text = element_text(family = 'Arial',size=25),
+           panel.grid.major = element_line()))
+ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
        units = 'in',
@@ -1157,7 +1263,7 @@ train_performance_res <- rbind(data.frame(r = train_r,
                                           model = rep('PLSR',length(train_r))),
                                data.frame(r = train_r_translatables,
                                           fold = seq(1,length(train_r_translatables)),
-                                          model = rep('translatable LVs',length(train_r_translatables))),
+                                          model = rep('translatable PCs',length(train_r_translatables))),
                                data.frame(r = train_r_basis_1,
                                           fold = seq(1,length(train_r_basis_1)),
                                           model = rep('PCs + extra LV1',length(train_r_basis_1))),
@@ -1175,7 +1281,7 @@ test_performance_res <- rbind(data.frame(r = test_r,
                                           model = rep('PLSR',length(test_r))),
                                data.frame(r = test_r_translatables,
                                           fold = seq(1,length(test_r_translatables)),
-                                          model = rep('translatable LVs',length(test_r_translatables))),
+                                          model = rep('translatable PCs',length(test_r_translatables))),
                                data.frame(r = test_r_basis_1,
                                           fold = seq(1,length(test_r_basis_1)),
                                           model = rep('PCs + extra LV1',length(test_r_basis_1))),
@@ -1192,7 +1298,7 @@ all_performance_res <- rbind(train_performance_res,
                              test_performance_res)
 all_performance_res$model <- factor(all_performance_res$model,
                                     levels = c('PLSR',
-                                               'translatable LVs',
+                                               'translatable PCs',
                                                'PCs + extra LV1',
                                                'PCs + extra LV1 + extra LV2'))
 
@@ -1218,7 +1324,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mu_plsr_train + 0.03,
            label="human PLSR train performance", 
            hjust = 0 , 
-           size=7)+
+           size=9)+
   ### test performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1233,7 +1339,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mu_plsr_test + 0.03,
            label="human PLSR test performance", 
            hjust = 0 , 
-           size=7)+
+           size=9)+
   ### random performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1248,17 +1354,23 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mean(test_r_shuffled) + 0.03,
            label="shuffled model performance", 
            hjust = 0 , 
-           size=7)+
+           size=9)+
   geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
-  theme_pubr(base_family = 'Arial',base_size = 20)+
-  theme(text = element_text(family = 'Arial',size = 20),
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
         axis.title.x = element_blank(),
         axis.line.x = element_blank(),
         axis.line.y = element_line(linewidth = 0.75),
         panel.grid.major = element_line())
-ggsave('../results/required_extra_basis_to_retrieve_performance.png',
-       width = 12,
-       height = 9,
+ggsave('../figures/required_extra_basis_to_retrieve_performance.png',
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/required_extra_basis_to_retrieve_performance.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
        units = 'in',
        dpi = 600)
 

@@ -45,3 +45,6 @@ preprocessing/XA4Feaver.csv
 preprocessing/XA4Wang.csv
 preprocessing/X_feaver.csv
 preprocessing/X_wang.csv
+figures/*.eps
+figures/*.png
+figures/*.ai

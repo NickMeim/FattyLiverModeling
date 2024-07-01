@@ -126,12 +126,13 @@ net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
 path_activities = decoupleR::run_viper(dex_data, net_prog,minsize = 1)
 # path_activities <- pathway_activity_interpretation(dex_data,
 #                                                    Wm,
-#                                                    plotting = FALSE)
+#                                                    plotting = TRUE)
 # path_activities <- path_activities[[2]]
-ggplot(path_activities %>% select(c('activity'='score'),source,p_value) ,
-       aes(x=activity,y=reorder(source,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
+ggplot(path_activities %>% select(c('activity'='score'),Pathway,p_value) ,
+       aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
   scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
   ylab('Pathway')+
+  ggtitle('Maximize total human variance captured')+
   geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
                                ifelse(p_value <= 0.001,"***",
                                       ifelse(p_value<=0.01,"**",
@@ -142,15 +143,15 @@ ggplot(path_activities %>% select(c('activity'='score'),source,p_value) ,
             size = 6,
             color = 'black',
             angle=90) +                                   
-  theme_pubr(base_size = 18,base_family = 'Arial')+
-  theme(text = element_text(size = 18,family = 'Arial'),
-        legend.position = 'right',
-        plot.title = element_text(hjust = 0.5))
+  theme_pubr(base_size = 24,base_family = 'Arial')+
+  theme(text = element_text(size = 24,family = 'Arial'),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 1))
 ggsave(paste0('../results/optimized_mps/perturbed_pathway_activity_',
               tolower(target_dataset),
               '_barplot.png'),
-       width = 12,
-       height = 9,
+       width = 8,
+       height = 12,
        dpi = 600)
 
 ### Hallmarks GSEA using dX--------------------------------

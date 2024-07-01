@@ -26,7 +26,7 @@ color_palette = "Set2" # Palette to be used. Choose from the Color Brewer palett
 # ==========================================================================
 # Function 0 - Simply add style to an existing plot. Useful when
 # interfacing with plots produced by other packages
-add_theme <- function(plt){
+add_theme <- function(plt,size_text=9){
   plt <- plt +
         theme_bw() +
         theme(text = element_text(size = size_text),

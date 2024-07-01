@@ -135,31 +135,48 @@ for (dataset in external_clinical_datasets){
   df_results <- rbind(df_results,tmp_train,tmp_val)
 }
 df_results <- df_results %>% gather('model','r',-dataset,-set)
-df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','extra basis',
-                                                   ifelse(model!='PLSR','in-vitro PCs','original PLSR')))
-df_results$model <- factor(df_results$model,levels = c('original PLSR','extra basis','in-vitro PCs'))
+# df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','extra basis',
+#                                                    ifelse(model!='PLSR','in-vitro PCs','original PLSR')))
+df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','optimized MPS',
+                                                   ifelse(model!='PLSR','back-projected','human genes')))
+# df_results$model <- factor(df_results$model,levels = c('original PLSR','extra basis','in-vitro PCs'))
+df_results$model <- factor(df_results$model,levels = c('human genes','optimized MPS','back-projected'))
 
 
 ### Visualize 
+# model_comparisons <- list(
+#   c('original PLSR', 'extra basis'),
+#   c('extra basis', 'in-vitro PCs')
+# )
 model_comparisons <- list(
-  c('original PLSR', 'extra basis'),
-  c('extra basis', 'in-vitro PCs')
+  c('human genes', 'optimized MPS'),
+  c('optimized MPS', 'back-projected')
 )
 p <- ggboxplot(df_results,x='set',y='r',color = 'model',add='jitter') +
   scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
-  xlab('')+
+  xlab('')+ ylab('pearson`s correlation')+
+  ggtitle('Performance in predicting phenotype in other in-vivo human datasets')+
   theme(text = element_text(size = 20,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
         panel.grid.major.y = element_line(linewidth = 1),
-        panel.grid.minor.y = element_line(linewidth = 0.5))+
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'bottom')+
   facet_wrap(~dataset)+
-  stat_compare_means(comparisons = list(c('original PLSR','extra basis'),
-                                        c('extra basis','in-vitro PCs')),
+  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+                                        c('optimized MPS','back-projected')),
                      method = 'wilcox')
 print(p)
-ggsave('../results/inter_clinical_dataset_performance.png',
+ggsave('../figures/inter_clinical_dataset_performance.png',
        plot=p,
-       width = 12,
-       height = 9,
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/inter_clinical_dataset_performance.eps',
+       plot=p,
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
        units = 'in',
        dpi = 600)
 
