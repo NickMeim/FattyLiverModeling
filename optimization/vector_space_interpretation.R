@@ -20,18 +20,8 @@ library(topGO)
 library(GO.db)
 library(OmnipathR)
 library(EGSEAdata)
-dir = getwd()
-if (rev.Vector(strsplit(dir,split = '/')[[1]])[1] == "FattyLiverModeling"){
-  source("utils/plotting_functions.R")
-  source("modeling/functions_translation.R")
-  source("modeling/CrossValidationUtilFunctions.R")
-  source('modeling/enrichment_calculations.R')
-}else{
-  source("../utils/plotting_functions.R")
-  source("functions_translation.R")
-  source("CrossValidationUtilFunctions.R")
-  source('enrichment_calculations.R')
-}
+source('../modeling/enrichment_calculations.R')
+source("../utils/plotting_functions.R")
 
 plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE){
   # n_lvs <- ncol(loadings)
@@ -131,35 +121,46 @@ TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE,lim=6){
     mutate(p.adj = p_value*length(unique(extra_basis_tfs$TF))) %>%
     mutate(p.adj = ifelse(p.adj>1,1,p.adj))
   extra_basis_tfs$significant <- NA  
-  extra_basis_tfs <- extra_basis_tfs %>% mutate(significant = ifelse(p_value<0.1,
+  extra_basis_tfs <- extra_basis_tfs %>% mutate(significant = ifelse(p_value<0.05,
                                                                      TF,
                                                                      significant))
   
   p <- (ggplot(extra_basis_tfs %>% select(c('activity'='score'),TF,p_value,condition,significant) %>% 
                  filter (condition=='V1'),
-               aes(x=as.numeric(reorder(TF,activity)),y=activity,fill=p_value)) + geom_point(shape=21,size=2) +
-          geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
-          scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
+               aes(x=as.numeric(reorder(TF,activity)),y=activity)) + #fill=p_value 
+          geom_point(size=2,color = '#CD5C5C')  +
+          geom_text_repel(aes(label=significant),size=8,max.overlaps=60,box.padding = 1.25)+
+          # scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
           scale_y_continuous(n.breaks = 6,limits = c(-lim,lim))+
           ggtitle('LV extra 1')+
           xlab('Rank')+
-          theme_pubr(base_size = 20,base_family = 'Arial')+
-          theme(text = element_text(size = 20,family = 'Arial'),
-                legend.position = 'right',
-                plot.title = element_text(hjust = 0.5))) +
+          theme_pubr(base_family = 'Arial',base_size = 24)+
+          theme(text = element_text(family = 'Arial',size=24),
+                panel.grid.major =  element_line(),
+                # axis.ticks.x = element_blank(),
+                # axis.title.y = element_blank(),
+                # axis.text.x = element_blank(),
+                # legend.position = 'right',
+                # legend.text = element_text(size=14),
+                plot.title = element_text(hjust=0.5))) +
     (ggplot(extra_basis_tfs %>% select(c('activity'='score'),TF,p_value,condition,significant) %>% 
               filter (condition=='V2'),
-            aes(x=as.numeric(reorder(TF,activity)),y=activity,fill=p_value)) + geom_point(shape=21,size=2) +
-       geom_text_repel(aes(label=significant),size=5,max.overlaps=60,box.padding = 0.7)+
-       scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
+            aes(x=as.numeric(reorder(TF,activity)),y=activity)) + # fill=p_value 
+       geom_point(size=2,color = '#CD5C5C')  +
+       geom_text_repel(aes(label=significant),size=8,max.overlaps=60,box.padding = 1.25)+
+       # scale_fill_gradient(low='red',high = 'white',trans = 'log',breaks = c(0.01,0.05,0.1,0.5),limits = c(0.01,1))+
        scale_y_continuous(n.breaks = 6,limits = c(-lim,lim))+
        ggtitle('LV extra 2')+
        xlab('Rank')+
-       theme_pubr(base_size = 20,base_family = 'Arial')+
-       theme(text = element_text(size = 20,family = 'Arial'),
-             legend.position = 'right',
-             plot.title = element_text(hjust = 0.5),
-             axis.title.y = element_blank())) 
+       theme_pubr(base_family = 'Arial',base_size = 24)+
+       theme(text = element_text(family = 'Arial',size=24),
+             panel.grid.major =  element_line(),
+             # axis.ticks.x = element_blank(),
+             # axis.title.y = element_blank(),
+             # axis.text.x = element_blank(),
+             # legend.position = 'right',
+             # legend.text = element_text(size=14),
+             plot.title = element_text(hjust=0.5))) 
   if (plotting==TRUE){
     print(p)
   }
