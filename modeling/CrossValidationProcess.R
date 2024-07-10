@@ -10,7 +10,7 @@ source("../utils/plotting_functions.R")
 source("functions_translation.R")
 source("CrossValidationUtilFunctions.R")
 
-### Load in-vitro and in-vivo datasets and plit for Cross-Validation-----------------------------------------
+### Load in-vitro and in-vivo datasets and split for Cross-Validation-----------------------------------------
 dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver","Govaere")
 ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
@@ -1133,8 +1133,8 @@ cor_results <- df_scatterPlot %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
 ggplot(df_scatterPlot,aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05) + 
-  geom_abline(slope=1,intercept = 0)+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = cor_results, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
@@ -1155,8 +1155,8 @@ cor_resultst_backproj <- df_scatterPlot_backproj %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
 ggplot(df_scatterPlot_backproj,aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05) + 
-  geom_abline(slope=1,intercept = 0)+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = cor_resultst_backproj, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
             hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
@@ -1185,25 +1185,49 @@ all_scatter_plot <- left_join(data.frame(Yh) %>%
                               data.frame(Y_pred) %>% 
                                 mutate(id = seq(1,nrow(Y_pred))) %>% 
                                 gather('phenotype','prediction',-id)) %>%
-  select(-id)
+  select(-id)%>% 
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 all_cor_results <- all_scatter_plot %>%
   group_by(phenotype) %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
-         p_value = map_dbl(cor_test, ~ .x$p.value))
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05) + 
-  geom_abline(slope=1,intercept = 0)+
+  ylab('Predicted') + xlab('Measured')+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = all_cor_results, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+            hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
   facet_wrap(~phenotype,scales = 'free')+
-  theme_pubr(base_family = 'Arial',base_size=25)+
-  theme(text = element_text(family = 'Arial',size=25),
+  theme_pubr(base_family = 'Arial',base_size=28)+
+  theme(text = element_text(family = 'Arial',size=28),
         panel.grid.major = element_line())
 ggsave('../figures/AllData_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
+       units = 'in',
+       dpi=600)
+ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
+  ylab('Predicted') + xlab('Measured')+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+  geom_text(data = all_cor_results, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+  ggtitle('Original human data')+
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=28)+
+  theme(text = element_text(family = 'Arial',size=28),
+        plot.title = element_text(hjust = 0.5,face = 'bold'),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(face='bold'),
+        panel.grid.major = element_line())
+ggsave('../figures/AllData_Scatterplot_human_plsr.eps',
+       device = cairo_ps,
+       height = 6,
+       width=12,
        units = 'in',
        dpi=600)
 
@@ -1223,37 +1247,88 @@ all_scatter_plot_backproj <- left_join(data.frame(Yh) %>%
                               data.frame(Y_pred_backproj) %>% 
                                 mutate(id = seq(1,nrow(Y_pred_backproj))) %>% 
                                 gather('phenotype','prediction',-id)) %>%
-  select(-id)
+  select(-id) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 all_cor_results_backproj <- all_scatter_plot_backproj %>%
   group_by(phenotype) %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
-         p_value = map_dbl(cor_test, ~ .x$p.value))
-(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='fibrosis'),aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05) + 
-  geom_abline(slope=1,intercept = 0)+
-  geom_text(data = all_cor_results_backproj%>% filter(phenotype=='fibrosis'), 
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+  geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
             hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+  ylab('Predicted') + xlab('Measured')+
   ylim(c(0,4))+
   facet_wrap(~phenotype,scales = 'free')+
   theme_pubr(base_family = 'Arial',base_size=25)+
   theme(text = element_text(family = 'Arial',size=25),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(face='bold'),
         panel.grid.major = element_line()))+
-  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='fibrosis'),aes(x = true,y=prediction)) +
-     geom_jitter(width = 0.05) + 
-     geom_abline(slope=1,intercept = 0)+
-     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='fibrosis'), 
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
                aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
                hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
      ylim(c(0,8))+
      facet_wrap(~phenotype,scales = 'free')+
      theme_pubr(base_family = 'Arial',base_size=25)+
      theme(text = element_text(family = 'Arial',size=25),
-           panel.grid.major = element_line()))
+           axis.title.x = element_text(hjust = -0.6,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = "Truncated human data",
+    theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
+  )
 ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
+       units = 'in',
+       dpi=600)
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+    geom_jitter(width = 0.05,color='#4682B4') + 
+    geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+    geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
+              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+    ylab('Predicted') + xlab('Measured')+
+    ylim(c(0,4))+
+    facet_wrap(~phenotype,scales = 'free')+
+    theme_pubr(base_family = 'Arial',base_size=28)+
+    theme(text = element_text(family = 'Arial',size=28),
+          plot.title = element_text(hjust = 0.5,face = 'bold'),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(face='bold'),
+          panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=28)+
+     theme(text = element_text(family = 'Arial',size=28),
+           axis.title.x = element_text(hjust = -0.4,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = "Truncated human data",
+    theme = theme(plot.title = element_text(size = 28, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.eps',
+       device = cairo_ps,
+       height = 6,
+       width=12,
        units = 'in',
        dpi=600)
 

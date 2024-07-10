@@ -33,8 +33,25 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
-
-
+### Project in-vitro data to their group-derived PC space
+Zm <- Xm %*% Wm
+pc1_var <- round(100 * var(Zm[,c('PC1')])/sum(apply(Xm,2,var)),2) 
+pc2_var <- round(100 * var(Zm[,c('PC2')])/sum(apply(Xm,2,var)),2) 
+invitro_pca <- as.data.frame(Zm[,c('PC1','PC2')])
+ggplot(invitro_pca,aes(x=PC1,y=PC2)) +
+  geom_point(color='#FD0714',size=5)+
+  ggtitle('All MPS samples')+
+  xlab(paste0('MPS PC1 (',pc1_var,'%)')) + ylab(paste0('MPS PC2 (',pc2_var,'%)')) +
+  theme_pubr(base_size = 30,base_family = 'Arial')+
+  theme(text = element_text(size=30,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_line(linewidth = 4))
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invitro_pca.eps'),
+       device = cairo_ps,
+       height = 5,
+       width = 5,
+       units = 'in',
+       dpi = 600)
 
 
 ### Check current TF and pathway activity in the data------------------------------
@@ -306,6 +323,151 @@ rownames(Wh) <- rownames(Wm)
 # saveRDS(Wm_combo,paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 # data.table::fwrite(as.data.frame(Wh),paste0('results/Wh_',tolower(ref_dataset),'.csv'),row.names = TRUE)
 # data.table::fwrite(as.data.frame(Wm_opt),paste0('results/Wm_',tolower(target_dataset),'_extra.csv'),row.names = TRUE)
+## Project into translatable latent variables
+Wm_combo <- readRDS("results/Wm_kostrzewski_combo.rds")
+# Project human data on these components
+df_tc <- rbind(data.frame(x = Xh %*% Wm_combo[,1], y = Xh %*% Wm_combo[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
+               data.frame(x = Xh %*% Wm_combo[,1], y = Xh %*% Wm_combo[,2], phenotype = "NAS", Score = Yh[,1]))
+ptc <- (ggplot(df_tc %>% filter(phenotype!='NAS'),aes(x=x,y=y,fill=Score))+
+          geom_point(size=2.8,shape=21,stroke=1.2)+
+          scale_fill_viridis_c()+
+          xlab('MPS TC1')+ylab('MPS TC2')+  
+          labs(fill='Fibrosis stage')+
+          theme_bw(base_size=28,base_family = 'Arial')+
+          theme(text= element_text(size=28,family = 'Arial'),
+                axis.title.x = element_blank(),
+                legend.position = 'top')) +
+  (ggplot(df_tc%>% filter(phenotype =='NAS') ,aes(x=x,y=y,fill=Score))+
+     geom_point(size=2.8,shape=21,stroke=1.2)+
+     scale_fill_viridis_c()+
+     labs(fill='NAS') +
+     xlab('MPS TC1')+ylab('MPS TC2')+  
+     theme_bw(base_size=28,base_family = 'Arial')+
+     theme(text= element_text(size=28,family = 'Arial'),
+           axis.title.y = element_blank(),
+           axis.title.x = element_text(hjust = -0.8),
+           legend.position = 'top'))
+print(ptc)
+ggsave('figures/AllData_TCs_Scatterplot_human.eps',
+       plot = ptc,
+       device = cairo_ps,
+       height = 6,
+       width=12,
+       units = 'in',
+       dpi=600)
+# take a look also at invitro separation in the TCs
+df_tc_mps <- data.frame(x = Xm %*% Wm_combo[,1], y = Xm %*% Wm_combo[,2], TGF = data_list[[target_dataset]]$metadata$TGF)
+ptc_mps <- ggplot(df_tc_mps,aes(x=x,y=y,fill=TGF))+
+          geom_point(size=2.8,shape=21,stroke=1.2)+
+          ggtitle('All MPS Samples')+
+          scale_fill_manual(values = c('#66C2A5','#FC8D62'))+
+          xlab('MPS TC1')+ylab('MPS TC2')+  
+          theme_bw(base_size=28,base_family = 'Arial')+
+          theme(text= element_text(size=28,family = 'Arial'),
+                plot.title = element_text(hjust = 0.5,face='bold'),
+                legend.position = 'right')
+print(ptc_mps)
+ggsave('figures/AllData_TCs_Scatterplot_MPS.eps',
+       plot = ptc_mps,
+       device = cairo_ps,
+       height = 6,
+       width=12,
+       units = 'in',
+       dpi=600)
+
+## take a look also at performance of back-projection through the TCs
+Th <- Xh %*% Wm_combo %*% t(Wm_combo) %*% Wh
+Y_pred_backproj <- cbind(1, Th)  %*% rbind(apply(Yh,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+all_scatter_plot_backproj <- left_join(data.frame(Yh) %>% 
+                                         mutate(id = seq(1,nrow(Yh))) %>% 
+                                         gather('phenotype','true',-id),
+                                       data.frame(Y_pred_backproj) %>% 
+                                         mutate(id = seq(1,nrow(Y_pred_backproj))) %>% 
+                                         gather('phenotype','prediction',-id)) %>%
+  select(-id) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+all_cor_results_backproj <- all_scatter_plot_backproj %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+    geom_jitter(width = 0.05,color='#4682B4') + 
+    geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+    geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
+              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+    ylab('Predicted') + xlab('Measured')+
+    ylim(c(0,4))+
+    facet_wrap(~phenotype,scales = 'free')+
+    theme_pubr(base_family = 'Arial',base_size=25)+
+    theme(text = element_text(family = 'Arial',size=25),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(face='bold'),
+          panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=25)+
+     theme(text = element_text(family = 'Arial',size=25),
+           axis.title.x = element_text(hjust = -0.6,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = "Truncated human data through the TCs",
+    theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+    geom_jitter(width = 0.05,color='#4682B4') + 
+    geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+    geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
+              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+    ylab('Predicted') + xlab('Measured')+
+    ylim(c(0,4))+
+    facet_wrap(~phenotype,scales = 'free')+
+    theme_pubr(base_family = 'Arial',base_size=28)+
+    theme(text = element_text(family = 'Arial',size=28),
+          plot.title = element_text(hjust = 0.5,face = 'bold'),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(face='bold'),
+          panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=28)+
+     theme(text = element_text(family = 'Arial',size=28),
+           axis.title.x = element_text(hjust = -0.4,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = "Truncated human data through the TCs",
+    theme = theme(plot.title = element_text(size = 28, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.eps',
+       device = cairo_ps,
+       height = 6,
+       width=12,
+       units = 'in',
+       dpi=600)
 
 ### Analyze gene loadings----------------------------------
 Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
