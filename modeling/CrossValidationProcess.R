@@ -1870,6 +1870,8 @@ partition_groups <- substr(colnames(ordered_matrix),13,15)
 partition_groups[grep('_i',partition_groups)] <- '1'
 partition_groups <- as.numeric(partition_groups)
 groups_col <- data.frame(LV = lv_groups,partition=partition_groups)
+iteration_groups_cols <- str_split_fixed(colnames(ordered_matrix),'iter',2)
+iteration_groups_cols <- as.numeric(iteration_groups_cols[,2])
 
 partition_groups <- substr(rownames(ordered_matrix),13,15)
 partition_groups[grep('_i',partition_groups)] <- '1'
@@ -1906,4 +1908,60 @@ ggsave('../results/cosine_similarity_PC_extra_basis.png',
        height = 9,
        units = 'in',
        dpi=600)
+
+groups_col <- groups_col %>% mutate(iteration_groups = iteration_groups_cols)
+groups_col <- groups_col %>% rownames_to_column('var') %>% select(var,partition,iteration_groups,LV)
+iteration_groups <- str_split_fixed(rownames(ordered_matrix),'iter',2)
+iteration_groups <- as.numeric(iteration_groups[,2])
+plot_df <- as.data.frame(ordered_matrix) %>%
+  mutate(partition = partition_groups) %>% mutate(LV = lv_groups) %>% mutate(iteration_groups=iteration_groups) %>%
+  gather('var','sim',-partition,-LV,-iteration_groups)
+plot_df <- left_join(plot_df,groups_col,by='var')
+plot_df <- plot_df %>% 
+  mutate(keep = ifelse(partition.x==partition.y & iteration_groups.x==iteration_groups.y & LV.x==LV.y,
+                       FALSE,TRUE)) %>% filter(keep == TRUE) %>%
+  select(-keep) %>% mutate(comparison = paste0(LV.x,'/',LV.y)) %>%
+  mutate(keep = ifelse(LV.x!=LV.y & partition.x==partition.y & iteration_groups.x==iteration_groups.y,
+                       ifelse(LV.x=='LV1',TRUE,FALSE),
+                       TRUE)) %>% filter(keep == TRUE) %>%
+  select(-keep) %>% filter(partition.x==partition.y) %>%
+  select(comparison,partition.x,iteration_groups.x,sim) %>%
+  mutate(comparison = ifelse(comparison=="LV2/LV1","LV1/LV2",comparison)) %>%
+  unique()
+colnames(plot_df) <- c('comparison','partition','iteration','sim')
+# cos_sim_all <- cos_sim_all %>% 
+#   mutate(comparison = ifelse(grepl('star1',extra_basis),'LV1/PCs','LV2/PCs')) %>%
+#   select(comparison,partition,iteration,sim) 
+# plot_df <- rbind(plot_df,cos_sim_all)
+plot_df <- plot_df %>% group_by(comparison,partition) %>% 
+  mutate(abs_mu = mean(abs(sim))) %>% mutate(abs_se = sd(abs(sim))/sqrt(max(iteration_groups))) %>%
+  mutate(mu = mean(sim)) %>% mutate(se = sd(sim)/sqrt(max(iteration_groups))) %>%
+  ungroup()
+ggplot(plot_df %>% select(comparison,partition,mu,se) %>% unique(),
+       aes(x = partition,y = mu,color = comparison)) +
+  scale_x_continuous(breaks = seq(0,1,0.2))+
+  scale_y_continuous(breaks = seq(0,1,0.1))+
+  geom_point(size=1.5)+
+  geom_line(lwd = 0.75)+
+  geom_errorbar(aes(ymax = mu + se,ymin = mu - se),
+                width = 0.05,size=0.75)+
+  xlab('data partition (%)')+
+  ylab('cosine similarity')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line())
+ggsave('../figures/cosine_similarity_PC_extra_basis_convergence_plot.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/cosine_similarity_PC_extra_basis_convergence_plot.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
 ### b) number of LVs used in PLSR of human genes
