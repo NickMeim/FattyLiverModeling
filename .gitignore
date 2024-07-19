@@ -15,6 +15,8 @@ data/ARCHS4
 data/ARCHS4/*
 data/l1000_*
 preprocessing/all_invitro_data.rds
+results/MLresults
+results/MLresults/*
 results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds
 results/pc_loadings_scores_analysis/TF_activities_plot_frame.rds
 results/pc_loadings_scores_analysis/random_progeny_loadings.rds

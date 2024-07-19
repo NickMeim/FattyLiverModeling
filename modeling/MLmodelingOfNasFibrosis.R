@@ -8,7 +8,6 @@ library(caret)
 source("../utils/plotting_functions.R")
 source("functions_translation.R")
 source("CrossValidationUtilFunctions.R")
-memory.limit(size = 32000)
 
 ### Load datasets and learned extra basis---------------------
 dataset_names <- c("Govaere", "Kostrzewski","Wang", "Feaver",'Hoang')
@@ -58,11 +57,13 @@ Wm_opt <- readRDS(paste0('../results/Wm_',target_dataset,'_extra.rds'))
 Wm_tot <- readRDS(paste0('../results/Wm_',target_dataset,'_total.rds'))
 
 ### Train ML models different from PLSR------------------------
-models <- c('knn','lasso','ridge','elasticnet','lm',
+models <- c('knn',
             'svmRadial','svmPoly','svmLinear',
+            'lasso','ridge','elasticnet','lm',
             'gaussprRadial','gaussprPoly','gaussprLinear',
             'xgbTree','rf','neuralnet')
-mdl_results <- GeneralMLCompletePipeLineCrossVal(model = 'lm',
+md <- 'lasso'
+mdl_results <- GeneralMLCompletePipeLineCrossVal(model = md,
                                                  cv_location='../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/',
                                                  external_datasets=c("Hoang","Pantano"),
                                                  data_list_all=data_list,
@@ -72,3 +73,6 @@ mdl_results <- GeneralMLCompletePipeLineCrossVal(model = 'lm',
                                                  num_folds=10,
                                                  shuffling = NULL # can be only one of NULL,'X','Y'
                                                  )
+saveRDS(mdl_results,paste0('../results/MLresults/',md,'.rds'))
+
+df_res_cv <- mdl_results$cv_resuls
