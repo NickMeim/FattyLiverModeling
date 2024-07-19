@@ -62,13 +62,13 @@ models <- c('knn','lasso','ridge','elasticnet','lm',
             'svmRadial','svmPoly','svmLinear',
             'gaussprRadial','gaussprPoly','gaussprLinear',
             'xgbTree','rf','neuralnet')
-mdl_results <- GeneralMLCompletePipeLineCrossVal(model = 'knn',
+mdl_results <- GeneralMLCompletePipeLineCrossVal(model = 'lm',
                                                  cv_location='../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/',
                                                  external_datasets=c("Hoang","Pantano"),
                                                  data_list_all=data_list,
                                                  Wm=Wm,
                                                  Wtot=Wm_tot,
                                                  pheno = 'NAS', # can be 'NAS' or 'fibrosis' (or both for ANN)
-                                                 num_folds=3,
+                                                 num_folds=10,
                                                  shuffling = NULL # can be only one of NULL,'X','Y'
                                                  )
