@@ -15,6 +15,7 @@ data/ARCHS4
 data/ARCHS4/*
 data/l1000_*
 preprocessing/all_invitro_data.rds
+preprocessing/TrainingValidationData/external_clinical_data
 results/MLresults
 results/MLresults/*
 results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds
