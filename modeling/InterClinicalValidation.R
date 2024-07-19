@@ -180,21 +180,116 @@ ggsave('../figures/inter_clinical_dataset_performance.eps',
        units = 'in',
        dpi = 600)
 
+### Check generalization of the PLSR model itself-----------------------------
+external_clinical_datasets <- c("Hoang","Pantano")
+df_results <- data.frame()
+num_folds <- 10
+num_LVs <- 8
+val_r_shuffle_y <- matrix(0,nrow = 10,ncol = 2)
+val_r_shuffle_x <- matrix(0,nrow = 10,ncol = 2)
+val_r <- matrix(0,nrow = 10,ncol = 2)
+for (i in 1:num_folds){
+  x_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Xh_train',i,'.rds'))
+  y_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Yh_train',i,'.rds'))
+  
+  plsr_model <- opls(x = x_train,
+                     y = y_train,
+                     predI = num_LVs,
+                     crossvalI = 1,
+                     scaleC = "center",
+                     fig.pdfC = "none",
+                     info.txtC = "none")
+  
+  ### shuffled labels model
+  y_train_shuffled <- y_train[sample.int(nrow(y_train)),]
+  rownames(y_train_shuffled) <- rownames(y_train)
+  plsr_model_shuffle_y <- opls(x = x_train, 
+                               y = y_train_shuffled,
+                               predI = num_LVs,
+                               crossvalI = 1,
+                               scaleC = "center",
+                               fig.pdfC = "none",
+                               info.txtC = "none")
+  
+  ### shuffled features model
+  x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
+  colnames(x_train_shuffled) <- colnames(x_train)
+  plsr_model_shuffle_x <- opls(x = x_train_shuffled, 
+                               y = y_train,
+                               predI = num_LVs,
+                               crossvalI = 1,
+                               scaleC = "center",
+                               fig.pdfC = "none",
+                               info.txtC = "none")
+  
+  j <- 1
+  for (dataset in external_clinical_datasets){
+    message(paste0('Begun ',dataset ,' dataset'))
+    X <- data_list[[dataset]]$data_center %>% t()
+    if (dataset == 'Hoang'){
+      Y <- as.matrix(data_list[[dataset]]$metadata  %>% select(nafld_activity_score,Fibrosis_stage))
+      
+    }else if (dataset == 'Pantano'){
+      Y <- as.matrix(data_list[[dataset]]$metadata  %>% select(`nas score`,`fibrosis stage`))
+      Y <- apply(Y,c(1,2),as.numeric)
+    }
+    colnames(Y) <- c('NAS','fibrosis')
+    
+    ## PLSR original
+    y_val_hat <- predict(plsr_model,X)
+    val_r[i,j] <- mean(diag(cor(y_val_hat,Y)))
+    
+    ## Shuffled labels
+    y_hat_val <- predict(plsr_model_shuffle_y,X)
+    val_r_shuffle_y[i,j]<- mean(diag(cor(y_hat_val,Y)))
+    
+    ## Shuffled features
+    y_hat_val <- predict(plsr_model_shuffle_x,X)
+    val_r_shuffle_x[i,j]<- mean(diag(cor(y_hat_val,Y)))
+    
+    j <- j+1
+  }
+  
+  print(paste0('Finished ',i,' fold out of ',num_folds))
+}
+colnames(val_r) <- external_clinical_datasets
+colnames(val_r_shuffle_x) <- external_clinical_datasets
+colnames(val_r_shuffle_y) <- external_clinical_datasets
+df_results <- rbind(as.data.frame(val_r) %>% mutate(model = 'PLSR'),
+                    as.data.frame(val_r_shuffle_x) %>% mutate(model = 'shuffled features'),
+                    as.data.frame(val_r_shuffle_y) %>% mutate(model = 'shuffled labels'))
+df_results <- df_results %>% gather('dataset','r',-model)
+df_results$model <- factor(df_results$model,levels = c('PLSR','shuffled labels','shuffled features'))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+model_comparisons <- list(
+  c('PLSR', 'shuffled labels'),
+  c('PLSR', 'shuffled features')
+)
+p <- ggboxplot(df_results,x='model',y='r',color = 'model',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.2,1,0.1),limits = c(-0.25,1))+
+  xlab('')+ ylab('pearson`s correlation')+
+  ggtitle('PLSR generalization in other in-vivo human datasets')+
+  theme(text = element_text(size = 24,family = 'Arial'),
+        axis.text.x = element_text(size = 22),
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major.y = element_line(linewidth = 1),
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'none')+
+  facet_wrap(~dataset)+
+  stat_compare_means(comparisons = model_comparisons,
+                     method = 'wilcox',
+                     size=9)
+print(p)
+ggsave('../figures/inter_clinical_PLSR_performance.png',
+       plot=p,
+       width = 16,
+       height = 10,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/inter_clinical_PLSR_performance.eps',
+       plot=p,
+       device = cairo_ps,
+       width = 16,
+       height = 10,
+       units = 'in',
+       dpi = 600)

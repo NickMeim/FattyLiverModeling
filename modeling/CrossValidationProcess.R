@@ -1765,7 +1765,6 @@ dev.off()
 ### Explore how analytical LVs change by: ----------------------
 ### a) Human data partition
 ### b) number of LVs used in PLSR of human genes
-### c) In-Vitro data partition (LOOCV of PCs perhaps)
 num_folds <- 10
 loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
 num_LVS <- 8
