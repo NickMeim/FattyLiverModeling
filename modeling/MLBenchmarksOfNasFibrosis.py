@@ -59,7 +59,7 @@ def L2Regularization(deepLearningModel, L2):
 
 ### Initialize the parsed arguments
 parser = argparse.ArgumentParser(description='Run different ML models')
-parser.add_argument('model_types', metavar='N', type=str, nargs='*', help='models to train',default=['knn' ,'svmLinear','svmRBF','svmPoly','lasso','ridge','elasticNet','neuralNet','xgboost','rf'])
+parser.add_argument('--model_types', metavar='N', type=str, nargs='*', help='models to train',default=['knn' ,'svmLinear','svmRBF','svmPoly','lasso','ridge','elasticNet','neuralNet','xgboost','rf'])
 parser.add_argument('--cv_files_location', action='store',help='location of files used in CV training of originalPLSR model',default='../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/')
 parser.add_argument('--clinical_files_location', action='store',help='location of external clinical files',default='../preprocessing/TrainingValidationData/external_clinical_data/')
 parser.add_argument('--clinical_datasets', metavar='N', type=str, nargs='*', help='names of the external clinical datasets',default=['Hoang','Pantano'])
@@ -146,7 +146,7 @@ for mdl in model_types:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model = 'define the ANN just before it is trained'
         epochs = 100
-        l2_reg  = 0.01
+        l2_reg  = 0.001
         bs = 15
         criterion = torch.nn.MSELoss(reduction='mean')
     models.append(model)
@@ -229,7 +229,7 @@ for model in models:
                 val_r_extrl_extra[i][j] = pair_pearsonr(Y.to_numpy(), yhat_val_extra, axis=0).mean()
         else:
             Wm_gpu = torch.tensor(Wm,dtype=torch.double).to(device)
-            Wm_total_gpu = torch.tensor(Wm_total_gpu,dtype=torch.double).to(device)
+            Wm_total_gpu = torch.tensor(Wm_total,dtype=torch.double).to(device)
             model = torch.nn.Sequential(torch.nn.Dropout(0.5),
                                         torch.nn.Linear(Wm.shape[0],1024,bias=True,dtype=torch.double),
                                         torch.nn.BatchNorm1d(num_features=1024, momentum=0.2,dtype = torch.double),
@@ -310,7 +310,7 @@ for model in models:
 
                 # prediction after backprojection
                 X2 = X @  Wm_gpu @ Wm_gpu.T
-                yhat_val_backproj = model.predict(X2)
+                yhat_val_backproj = model(X2)
                 val_r_extrl_backproj[i][j] = pearson_r(Y, yhat_val_backproj).mean().item()
                 
                 # prediction after backprojection with Wm_total
