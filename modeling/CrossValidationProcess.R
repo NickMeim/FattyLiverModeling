@@ -69,10 +69,10 @@ Yh_test <- Yh[-best_sample,]
 Xh_test <- Xh[-best_sample,]
 Yh <- Yh[best_sample,]
 Xh <- Xh[best_sample,]
-saveRDS(Xh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
-saveRDS(Yh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
-saveRDS(Xh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
-saveRDS(Yh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
+# saveRDS(Xh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
+# saveRDS(Yh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
+# saveRDS(Xh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
+# saveRDS(Yh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
 
 ### Perform 10-fold-cross-validation to tune the number of LVs of PLSR
 ### Take the best # of LVs on average across all validation sets
@@ -699,14 +699,16 @@ performance_1 <- cross_validation_complete_pipeline(Wm,
 # saveRDS(performance_1,'../results/performance_df_human_plsr.rds')
 #Plot
 performance_1 <- performance_1 %>% mutate(type = ifelse(type=='model',set,type))
+performance_1 <- performance_1 %>% filter(metric=='r') %>% select(-metric)
 performance_1$type <- factor(performance_1$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
-ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
+performance_1 <- performance_1 %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+ggboxplot(performance_1,x='type',y='value',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1))+
   xlab('')+ylab('pearson`s correlation')+
   theme(text = element_text(size=28,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=22),
-        strip.text = element_text(face = 'bold'),
+        # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('test','shuffle Y'),
                                         c('test','shuffle X'),
@@ -714,8 +716,15 @@ ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
                      label.y = c(0.75, 0.8, 0.85),
-                     size=7)
-ggsave('../results/performance_df_just_human_plsr.png',
+                     size=7)+
+  facet_wrap(~phenotype,nrow = 2)
+ggsave('../figures/performance_df_just_human_plsr.png',
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/performance_df_just_human_plsr.eps',
+       device = cairo_ps,
        height = 9,
        width = 12,
        units = 'in',
@@ -731,6 +740,8 @@ performance_2 <- cross_validation_complete_pipeline(Wm,
 # saveRDS(performance_2,'../results/performance_df_human_backprojected.rds')
 performance_2$type <- factor(performance_2$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
 performance_2$set <- factor(performance_2$set ,levels=c('train','test'))
+performance_2 <- performance_2 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
   xlab('')+ylab('pearson`s correlation')+
@@ -763,6 +774,8 @@ performance_3 <- cross_validation_complete_pipeline(Wm,
 #Plot
 performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W'))
 performance_3$set <- factor(performance_3$set ,levels=c('train','test'))
+performance_3 <- performance_3 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_3,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
   xlab('')+ylab('pearson`s correlation')+
@@ -793,6 +806,8 @@ performance_4 <- cross_validation_complete_pipeline(Wm,
 #Plot
 performance_4$type <- factor(performance_4$type ,levels=c('model','shuffle W','shuffle Bh'))
 performance_4$set <- factor(performance_4$set ,levels=c('train','test'))
+performance_4 <- performance_4 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
   xlab('')+ylab('pearson`s correlation')+
@@ -825,6 +840,8 @@ performance_5 <- cross_validation_complete_pipeline(Wm,
 #plot
 performance_5$type <- factor(performance_5$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_5$set <- factor(performance_5$set ,levels=c('train','test'))
+performance_5 <- performance_5 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_5,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(round(min(performance_5$r),1),1,0.1),
                      limits = c(NA,1.15))+
@@ -858,6 +875,8 @@ performance_6 <- cross_validation_complete_pipeline(Wm,
 
 performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
+performance_6 <- performance_6 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_6,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(round(min(performance_6$r),1),1,0.1),
                      limits = c(NA,1.15))+
@@ -910,7 +929,7 @@ performance_all <- rbind(performance_1,
 #                            ifelse(type=='model',approach,type),
 #                            approach)) %>%
 #   select(-type,-task)
-performance_all_plot <- performance_all %>% 
+performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-metric) %>% mutate(r=value) %>% select(-value)%>%
   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
                      ifelse(type=='model',TRUE,FALSE))) %>% 
   filter(keep==TRUE) %>% select(-keep) %>%
@@ -940,6 +959,11 @@ performance_all_plot$approach <- factor(performance_all_plot$approach,
                                                    'back-projected',
                                                    'optimized MPS',
                                                    'shuffle X'))
+performance_all_plot <- performance_all_plot %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+# performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,levels = c('NAS','Fibrosis stage'))
+performance_all_plot$phenotype <- factor(performance_all_plot$phenotype)
+performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,
+                                         levels = rev(levels(performance_all_plot$phenotype)))
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
@@ -949,15 +973,16 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(ap
         legend.position = 'none',
         plot.title = element_text(hjust = 0.5),
         axis.text.x = element_text(size=26), #angle = 25
-        strip.text = element_text(face = 'bold'),
+        # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
                                         c('human genes','back-projected'),
                                         c('optimized MPS','back-projected')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(1,0.9,0.9),
-                     size = 8)
+                     label.y = c(1,0.95,0.95),
+                     size = 8)+
+  facet_wrap(~phenotype,nrow = 2)
 print(p_train)  
 ggsave('../figures/approaches_comparison_training.png',
        plot = p_train,
@@ -968,14 +993,16 @@ ggsave('../figures/approaches_comparison_training.png',
 
 p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(approach!='Wopt'),
                     x='approach',y='r',color='approach',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.5,1,0.1))+
+  scale_y_continuous(breaks = seq(-0.5,1,0.15),limits = c(NA,1.05))+
   xlab('')+ylab('pearson`s correlation') +
-  ggtitle('10-fold test performance in predicting phenotype')+
+  # ggtitle('10-fold test performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
-        plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_text(size=22),
+        # plot.title = element_text(hjust = 0.5),
         axis.text.x = element_text(size=24), #angle = 25
-        strip.text = element_text(face = 'bold'),
+        # strip.text = element_text(face = 'bold'),
+        panel.spacing = unit(0, "lines"),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
                                         c('human genes','back-projected'),
@@ -984,7 +1011,8 @@ p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(appro
                      method = 'wilcox',
                      tip.length = 0.01,
                      label.y = c(0.9,0.8,0.8,0.8),
-                     size = 8)
+                     size = 8)+
+  facet_wrap(~phenotype,nrow = 2)
 print(p_test)  
 ggsave('../figures/approaches_comparison_10foldtest.png',
        plot = p_test,

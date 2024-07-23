@@ -10,6 +10,7 @@ library(ggforce)
 library(ggradar)
 library(ggiraphExtra)
 library(grid)
+library(ggExtra)
 source('modeling/CrossValidationUtilFunctions.R')
 source('modeling/functions_translation.R')
 source("utils/plotting_functions.R")
@@ -109,6 +110,32 @@ ggscatter(left_join(path_acitivity,
   # scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
   theme(text = element_text(size=20,family='Arial'))+
   facet_wrap(~PC)
+
+### Repeat for Wm_combo
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+colnames(Wm_combo) <- c('TC1','TC2')
+path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
+path_acitivity <- path_acitivity %>% select(c('Pathway'='source'),condition,score,p_value)
+path_acitivity <- left_join(path_acitivity,
+                            data_list$Kostrzewski$metadata %>% select(sampleName,treatment,TGF,LPS,Cholesterol,Fructose),
+                            by=c('condition'='sampleName'))
+path_acitivity <- left_join(path_acitivity,
+                            as.data.frame(Xm %*% Wm_combo) %>% select(TC1,TC2) %>% rownames_to_column('condition'))
+ggscatter(path_acitivity %>% mutate(p=ifelse(p_value<0.0001,'<0.0001',
+                                             ifelse(p_value<0.001,'<0.001',
+                                                    ifelse(p_value<0.01,'<0.01',
+                                                           ifelse(p_value<0.05,'<0.05',
+                                                                  'ns'))))) %>%
+            mutate(p = factor(p,levels = c('ns','<0.05','<0.01','<0.001','<0.0001'))) ,
+          x='TC1','TC2',fill = 'score',size ='p',shape=21) +
+  scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
+  theme(text = element_text(size=20,family='Arial'))+
+  facet_wrap(~Pathway)
+ggsave(paste0('results/',tolower(target_dataset),'_pathway_activity_in_translatable_components.png'),
+       height = 12,
+       width = 16,
+       units = 'in',
+       dpi=600)
 
 
 ### Run PLSR and find extra basis--------------------------
@@ -215,48 +242,137 @@ for (theta in thetas){
 #        units = 'in',
 #        dpi=600)
 
-p <- (ggplot(Zh ,aes(x=V1,y=V2,fill=NAS))+
-    geom_point(size=2.8,shape=21,stroke=1.2)+
-    scale_fill_viridis_c()+
-    xlab('LV extra 1')+ylab('LV extra 2')+  
-    theme_minimal(base_size=20,base_family = 'Arial')+
-    theme(text= element_text(size=20,family = 'Arial'),
-          legend.position = 'top')) +
-  (ggplot(Zh ,aes(x=V1,y=V2,fill=fibrosis))+
-     geom_point(size=2.8,shape=21,stroke=1.2)+
-     scale_fill_viridis_c()+
-     xlab('LV extra 1')+ylab('LV extra 2')+ 
-     labs(fill='Fibrosis stage') +
-     theme_minimal(base_size=20,base_family = 'Arial')+
-     theme(text= element_text(size=20,family = 'Arial'),
-           legend.position = 'top'))
-print(p)
+scatter_box_plot <- function(df,legend_title,
+                             font_size =20,font_family = 'Arial',
+                             point_shape = 21,point_size=2.8,point_stroke=1.2,
+                             x_axis='LV extra 1',y_axis='LV extra 2',
+                             box_y_width = 0.2,jitter_y_width=0.1,
+                             jitter_x_height = 0.2,
+                             plotting=TRUE){
+  scatter_plot <- ggplot(df, aes(x = V1, y = V2, fill = pheno)) +
+    geom_point(size = point_size, shape = point_shape, stroke = point_stroke) +
+    scale_fill_viridis_c() +
+    xlab(x_axis) +
+    ylab(y_axis) +
+    labs(fill=legend_title)+
+    theme_minimal(base_size = font_size, base_family = font_family) +
+    theme(
+      text = element_text(size = font_size, family = font_family),
+      legend.position = 'top',
+    )
+  
+  # Boxplot for V1 (x-axis)
+  boxplot_x <- ggplot(df, aes(x = V1, y = "", color = pheno)) +
+    geom_boxplot(outliers = FALSE) +
+    geom_jitter(height = jitter_x_height)+
+    scale_color_viridis_c() +
+    theme_minimal(base_size = font_size, base_family = font_family) +
+    theme(
+      axis.title = element_blank(),
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = "none",
+    )
+  
+  # Boxplot for V2 (y-axis)
+  boxplot_y <- ggplot(df, aes(x = "", y = V2, color = pheno)) +
+    geom_boxplot(outliers = FALSE,width = box_y_width) +
+    geom_jitter(width=jitter_y_width)+
+    scale_color_viridis_c() +
+    theme_minimal(base_size = font_size, base_family = font_family) +
+    theme(
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = "none",
+    )
+  # Combine plots for NAS
+  combo1 <- scatter_plot + boxplot_y + plot_layout(widths = c(3, 1))
+  combo2 <- boxplot_x + plot_spacer() + plot_layout(widths = c(3, 1))
+  combined_plot <- (combo1) / (combo2) +
+    plot_layout(heights = c(4, 1))
+  if (plotting==TRUE){
+    print(combined_plot)
+  }
+  return(combined_plot)
+}
+# ggMarginal(scatter_plot,type = 'box', groupColour = TRUE, groupFill = TRUE)
+combined_plot_nas <- scatter_box_plot(Zh %>% mutate(pheno=NAS),'NAS')
+combined_plot_fibrosis <- scatter_box_plot(Zh %>% mutate(pheno=fibrosis),'Fibrosis stage')
+# p <- (ggplot(Zh ,aes(x=V1,y=V2,fill=NAS))+
+#     geom_point(size=2.8,shape=21,stroke=1.2)+
+#     scale_fill_viridis_c()+
+#     xlab('LV extra 1')+ylab('LV extra 2')+  
+#     theme_minimal(base_size=20,base_family = 'Arial')+
+#     theme(text= element_text(size=20,family = 'Arial'),
+#           legend.position = 'top')) +
+#   (ggplot(Zh ,aes(x=V1,y=V2,fill=fibrosis))+
+#      geom_point(size=2.8,shape=21,stroke=1.2)+
+#      scale_fill_viridis_c()+
+#      xlab('LV extra 1')+ylab('LV extra 2')+ 
+#      labs(fill='Fibrosis stage') +
+#      theme_minimal(base_size=20,base_family = 'Arial')+
+#      theme(text= element_text(size=20,family = 'Arial'),
+#            legend.position = 'top'))
+# print(p)
 ggsave(paste0('figures/projected_',
               tolower(ref_dataset),
-              '_samples_on_extra_basis',
+              '_samples_on_extra_basis_NAS',
               tolower(target_dataset),
               '.png'),
-       plot = p,
-       height = 9,
+       plot = combined_plot_nas,
+       height = 5,
        width = 12,
        units = 'in',
        dpi=600)
 ggsave(paste0('figures/projected_',
               tolower(ref_dataset),
-              '_samples_on_extra_basis',
+              '_samples_on_extra_basis_NAS',
               tolower(target_dataset),
               '.eps'),
-       plot = p,
+       plot = combined_plot_nas,
        device = cairo_ps,
-       height = 9,
+       height = 5,
        width = 12,
        units = 'in',
        dpi=600)
+ggsave(paste0('figures/projected_',
+              tolower(ref_dataset),
+              '_samples_on_extra_basis_fibrosis',
+              tolower(target_dataset),
+              '.png'),
+       plot = combined_plot_fibrosis,
+       height = 5,
+       width = 12,
+       units = 'in',
+       dpi=600)
+ggsave(paste0('figures/projected_',
+              tolower(ref_dataset),
+              '_samples_on_extra_basis_fibrosis',
+              tolower(target_dataset),
+              '.eps'),
+       plot = combined_plot_fibrosis,
+       device = cairo_ps,
+       height = 5,
+       width = 12,
+       units = 'in',
+       dpi=600)
+df_mu_radial <- df %>% group_by(theta) %>% mutate(mu = mean(corr)) %>% ungroup() %>% 
+  select(-corr,-phenotype) %>% unique() %>%
+  mutate(phenotype = 'average') %>% select(theta,phenotype,c('corr'='mu')) %>%
+  mutate(x = corr*cos(theta), y = corr*sin(theta))
 df_radial <- df %>% 
   mutate(x = corr*cos(theta), y = corr*sin(theta)) %>%
-  mutate(phenotype = ifelse(phenotype == "NAS", "NAS", "Fibrosis stage")) #%>% mutate(theta = pi*theta/180)
-plt_cor_radial <-   ggplot(df_radial %>% filter(theta<=90), aes(x = theta, y = corr, color = phenotype, group = phenotype)) + 
+  mutate(phenotype = ifelse(phenotype == "fibrosis", "Fibrosis stage",phenotype)) #%>% mutate(theta = pi*theta/180)
+plt_cor_radial <-   ggplot(df_radial %>% filter(theta<=90), 
+                           aes(x = theta, y = corr, color = phenotype, group = phenotype)) + 
   geom_line(linewidth = 1.5) +
+  geom_line(data = df_mu_radial %>% filter(theta<=90),
+             aes(x = theta, y = corr),
+             color='black',lwd=1.5,linetype='dashed',
+            inherit.aes = FALSE)+
   scale_x_continuous(breaks = seq(0,90,15))+
   geom_hline(yintercept = 0.4,color='black',lwd=1)+
   geom_vline(xintercept = 90,color='black',lwd=1)+
@@ -550,14 +666,14 @@ extra_basis_pathway_activity <- pathway_activity_interpretation(Wm_opt,
 ggsave(paste0('figures/progenies_only_optimal_loadings_',
               tolower(target_dataset),
               '_barplot_LV1.png'),
-       plot = extra_basis_pathway_activity$figure[[1]],
+       plot = extra_basis_pathway_activity$figure[[1]] + theme(plot.title = element_blank()),
        width = 9,
        height = 9,
        dpi = 600)
 ggsave(paste0('figures/progenies_only_optimal_loadings_',
               tolower(target_dataset),
               '_barplot_LV2.png'),
-       plot = extra_basis_pathway_activity$figure[[2]],
+       plot = extra_basis_pathway_activity$figure[[2]]+ theme(plot.title = element_blank()),
        width = 9,
        height = 9,
        dpi = 600)
@@ -566,16 +682,40 @@ postscript(paste0('figures/progenies_only_optimal_loadings_',
                   tolower(target_dataset),
                   '_barplot_LV1.eps'),
            height = 9, width = 9)
-print(extra_basis_pathway_activity$figure[[1]])
+print(extra_basis_pathway_activity$figure[[1]]+ theme(plot.title = element_blank()))
 dev.off()
 setEPS()
 postscript(paste0('figures/progenies_only_optimal_loadings_',
                   tolower(target_dataset),
                   '_barplot_LV2.eps'),
            height = 9, width = 9)
-print(extra_basis_pathway_activity$figure[[2]])
+print(extra_basis_pathway_activity$figure[[2]]+ theme(plot.title = element_blank()))
 dev.off()
+colnames(Wm_combo) <- c('V1','V2')
+translatable_components_progenies <- pathway_activity_interpretation(Wm_combo,
+                                                                       Wm,
+                                                                     lim=15)
+p1 <- translatable_components_progenies$figure[[1]]
+p1 <- p1 + ggtitle('Translatable Component 1')
+p2 <- translatable_components_progenies$figure[[2]] + ggtitle('Translatable Component 2')
+print(p1+p2)
+p <- p1+p2
 
+ggsave(paste0('figures/progenies_only_translatable_components_',
+              tolower(target_dataset),
+              '.png'),
+       plot = p,
+       width = 16,
+       height = 9,
+       dpi = 600)
+
+setEPS()
+postscript(paste0('figures/progenies_only_translatable_components_',
+                  tolower(target_dataset),
+                  '.eps'),
+           height = 9, width = 9)
+print(p)
+dev.off()
 
 ### Visualize pathways in various directions of the new space-----------------------
 Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
@@ -807,6 +947,70 @@ ggsave(paste0('figures/hallmark_',
        height=9,
        units = 'in',
        dpi = 600)
+
+## repeat for TCs
+colnames(Wm_combo) <- c('V1','V2')
+entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(Wm_combo), column = "ENTREZID", keytype = "SYMBOL")
+entrez_ids <- unname(entrez_ids)
+inds <- which(!is.na(entrez_ids))
+entrez_ids <- entrez_ids[inds]
+meas <- as.matrix(Wm_combo[inds,])
+rownames(meas) <- entrez_ids
+msig_tcs <- fastenrichment(colnames(meas),
+                       entrez_ids,
+                       meas,
+                       enrichment_space = 'msig_db_h',
+                       n_permutations = 10000,
+                       order_columns=F)
+msig_nes_tcs <- as.data.frame(msig_tcs$NES$`NES MSIG Hallmark`) %>% rownames_to_column('Hallmark')  #%>% gather('PC','NES',-Hallmark)
+msig_nes_tcs <- msig_nes_tcs %>% gather('LV','NES',-Hallmark)
+msig_pval_tcs <- as.data.frame(msig_tcs$Pval$`Pval MSIG Hallmark`) %>% rownames_to_column('Hallmark')#%>% gather('PC','padj',-Hallmark)
+msig_pval_tcs <- msig_pval_tcs %>% gather('LV','padj',-Hallmark)
+df_msig_tcs <- left_join(msig_nes_tcs,msig_pval_tcs)
+df_msig_tcs <- df_msig_tcs %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
+df_msig_tcs <- df_msig_tcs %>% mutate(Hallmark=str_replace_all(Hallmark,'_',' '))
+df_msig_tcs <- df_msig_tcs %>% mutate(Hallmark = tolower(Hallmark)) %>% 
+  mutate(Hallmark = paste0(toupper(substr(Hallmark, 1, 1)), tolower(substr(Hallmark, 2, nchar(Hallmark)))))
+p1 <- (ggplot(df_msig_tcs %>% filter(LV=='V1') %>% arrange(NES) %>%
+                filter(padj<=0.1),
+              aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+ 
+         geom_bar(stat = 'identity') +
+         # scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+         scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
+         xlab('Normalized Enrichment Score') + ylab('Hallmark')+
+         ggtitle('Hallmarks enriched in TC 1')+
+         theme_minimal(base_family = 'Arial',base_size = 18)+
+         theme(text = element_text(family = 'Arial',size=18),
+               axis.text.y = element_text(size=18),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'none'))
+print(p1)
+p2 <- (ggplot(df_msig_tcs %>% filter(LV=='V2') %>% arrange(NES)%>%
+                filter(padj<=0.1),
+              aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+ 
+         geom_bar(stat = 'identity') +
+         # scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
+         scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
+         xlab('Normalized Enrichment Score') +ylab('Hallmark')+
+         ggtitle('Hallmarks enriched in TC 2')+
+         theme_minimal(base_family = 'Arial',base_size = 18)+
+         theme(text = element_text(family = 'Arial',size=18),
+               axis.text.y = element_text(size=18),
+               plot.title = element_text(hjust = 0.5),
+               legend.key.size = unit(1.5, "lines"),
+               legend.position = 'none'))
+print(p2)
+p <- p1 + p2
+ggsave(paste0('figures/hallmark_',
+              tolower(target_dataset),
+              'on_translatable_components.png'),
+       plot=p,
+       width=16,
+       height=9,
+       units = 'in',
+       dpi = 600)
+
 ### Identify external perturbations with ChemPert "regulon"--------------
 Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
 Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
@@ -847,14 +1051,14 @@ extra_basis_inferred_perts <- perturnation_activity_inference(Wm_opt,metadata_hu
 ggsave(paste0('figures/optimal_LV_1_',
               tolower(target_dataset),
               '_perturbation_activity.png'),
-       plot = extra_basis_inferred_perts$figure[[1]],
+       plot = extra_basis_inferred_perts$figure[[1]]+ theme(plot.title = element_blank()),
        width = 9,
        height = 9,
        dpi = 600)
 ggsave(paste0('figures/optimal_LV_1_',
               tolower(target_dataset),
               '_perturbation_activity.eps'),
-       plot = extra_basis_inferred_perts$figure[[1]],
+       plot = extra_basis_inferred_perts$figure[[1]]+ theme(plot.title = element_blank()),
        device = cairo_ps,
        width = 9,
        height = 9,
@@ -863,14 +1067,14 @@ ggsave(paste0('figures/optimal_LV_1_',
 ggsave(paste0('figures/optimal_LV_2_',
               tolower(target_dataset),
               '_perturbation_activity.png'),
-       plot = extra_basis_inferred_perts$figure[[2]],
+       plot = extra_basis_inferred_perts$figure[[2]]+ theme(plot.title = element_blank()),
        width = 9,
        height = 9,
        dpi = 600)
 ggsave(paste0('figures/optimal_LV_2_',
               tolower(target_dataset),
               '_perturbation_activity.eps'),
-       plot = extra_basis_inferred_perts$figure[[2]],
+       plot = extra_basis_inferred_perts$figure[[2]]+ theme(plot.title = element_blank()),
        device = cairo_ps,
        width = 9,
        height = 9,

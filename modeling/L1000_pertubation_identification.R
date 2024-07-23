@@ -570,7 +570,7 @@ p1 <- ggplot(all_dists_filt2 %>% filter(Var1=='V1') %>% select(cmap_name,pathway
         panel.grid.major = element_line(),
         # axis.ticks.x = element_blank(),
         # axis.text.x = element_blank(),
-        plot.title = element_text(hjust=0.5),
+        plot.title = element_blank(),
         legend.position = 'right')
 print(p1)
 ggsave('../figures/l1000_for_extra_lv1.png',
@@ -601,7 +601,7 @@ p2 <- ggplot(all_dists_filt2 %>% filter(Var1=='V2') %>% select(cmap_name,pathway
               panel.grid.major = element_line(),
               # axis.ticks.x = element_blank(),
               # axis.text.x = element_blank(),
-              plot.title = element_text(hjust=0.5),
+              plot.title = element_blank(),
               legend.position = 'right')
 print(p2)
 ggsave('../figures/l1000_for_extra_lv2.png',
@@ -632,7 +632,7 @@ p3 <- ggplot(all_dists_filt2 %>% filter(Var1=='V3') %>% select(cmap_name,pathway
            panel.grid.major = element_line(),
            # axis.ticks.x = element_blank(),
            # axis.text.x = element_blank(),
-           plot.title = element_text(hjust=0.5),
+           plot.title = element_blank(),
            legend.position = 'right')
 print(p3)
 ggsave('../figures/l1000_for_extra_lv3.png',

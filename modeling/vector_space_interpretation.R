@@ -71,7 +71,8 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
   p <- (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
             filter (condition=='V1'),
           aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
-      scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
+      scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
+                           midpoint = 0,limits = c(-lim,lim))+
       scale_x_continuous(n.breaks = 8,limits = c(-lim,lim))+
       ggtitle('LV extra 1')+
       ylab('Pathway')+
@@ -94,7 +95,8 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
             aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
        ggtitle('LV extra 2')+
        ylab('Pathway')+
-       scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
+       scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
+                            midpoint = 0,limits = c(-lim,lim))+
        scale_x_continuous(n.breaks = 8,limits = c(-lim,lim))+
        geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
                                     ifelse(p_value <= 0.001,"***",
