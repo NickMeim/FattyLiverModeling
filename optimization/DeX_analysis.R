@@ -146,7 +146,7 @@ path_activities <- path_activities + ggtitle('Patwhay activity') +
         axis.title.y = element_blank(),
         axis.text.y = element_text(size=19),
         # plot.title = element_blank(),
-        plot.title = element_text(hjust = 0.5),
+        plot.title = element_blank(),
         legend.position = 'none')
 print(path_activities)
 
@@ -177,7 +177,6 @@ p_msig <- ggplot(df_msig %>% #mutate(Hallmark=tolower(Hallmark)) %>%
              # scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
              scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
              xlab('Normalized Enrichment Score') + ylab('Hallmark')+
-             ggtitle('Hallmark geneset enrichment')+
              theme_minimal(base_family = 'Arial',base_size = 18)+
              theme(text = element_text(family = 'Arial',size=18),
                    axis.text.y = element_text(size=15),

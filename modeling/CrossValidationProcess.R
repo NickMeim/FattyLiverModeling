@@ -1244,7 +1244,6 @@ ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
   geom_text(data = all_cor_results, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
             hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
-  ggtitle('Original human data')+
   facet_wrap(~phenotype,scales = 'free')+
   theme_pubr(base_family = 'Arial',base_size=28)+
   theme(text = element_text(family = 'Arial',size=28),
@@ -1312,7 +1311,7 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
            axis.title.y = element_blank(),
            panel.grid.major = element_line())) + 
   plot_annotation(
-    title = "Truncated human data",
+    title = NULL,
     theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
   )
 ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
@@ -1350,7 +1349,7 @@ ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
            axis.title.y = element_blank(),
            panel.grid.major = element_line())) + 
   plot_annotation(
-    title = "Truncated human data",
+    title = NULL,
     theme = theme(plot.title = element_text(size = 28, family = "Arial", hjust = 0.5,face='bold'))
   )
 ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.eps',

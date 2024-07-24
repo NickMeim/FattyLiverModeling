@@ -41,7 +41,6 @@ pc2_var <- round(100 * var(Zm[,c('PC2')])/sum(apply(Xm,2,var)),2)
 invitro_pca <- as.data.frame(Zm[,c('PC1','PC2')])
 ggplot(invitro_pca,aes(x=PC1,y=PC2)) +
   geom_point(color='#FD0714',size=5)+
-  ggtitle('All MPS samples')+
   xlab(paste0('MPS PC1 (',pc1_var,'%)')) + ylab(paste0('MPS PC2 (',pc2_var,'%)')) +
   theme_pubr(base_size = 30,base_family = 'Arial')+
   theme(text = element_text(size=30,family = 'Arial'),
@@ -146,6 +145,8 @@ plsr_model <- opls(x = Xh,
                    scaleC = "center",
                    fig.pdfC = "none",
                    info.txtC = "none")
+total_plsr_var <- sum(apply(plsr_model@scoreMN,2,var))/sum(apply(Xh,2,var))
+print(paste0('PLSR with 8 LVs accounts for ',round(100*total_plsr_var,2),'% of total variance'))
 
 # Get Wh of PLSR
 Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
@@ -156,6 +157,102 @@ for (ii in 1:nrow(plsr_model@weightMN)){
 }
 # Get regression coefficients
 Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+
+### Plot human PLSR space and projected truncated data
+Zh_plsr <- plsr_model@scoreMN
+mcor <- cor(cbind(Zh_plsr,Yh))
+mcor[upper.tri(mcor,diag = TRUE)] <- 100
+mcor <- reshape2::melt(mcor)
+mcor <- mcor %>% filter(value != 100)
+mcor <- mcor %>% mutate(keep = ifelse(Var1=='fibrosis' | Var2=='fibrosis' | Var1=='NAS' | Var2=='NAS',TRUE,FALSE)) %>%
+  filter(keep==TRUE) %>% select(-keep) %>%
+  mutate(keep = ifelse((Var1=='fibrosis' & Var2=='NAS') | (Var1=='NAS' & Var2=='fibrosis'),FALSE,TRUE))%>%
+  filter(keep==TRUE) %>% select(-keep) 
+mcor <- mcor %>% group_by(Var2) %>% mutate(avg_abs_cor = mean(abs(value))) %>% select(c('LV'='Var2'),avg_abs_cor) %>%
+  unique()
+lvs <- mcor$LV[order(-mcor$avg_abs_cor)]
+lvs <- as.character(lvs[1:2])
+lv1_var <- round(100 * var(Zh_plsr[,c(lvs[1])])/sum(apply(Xm,2,var)),2) 
+lv2_var <- round(100 * var(Zh_plsr[,c(lvs[2])])/sum(apply(Xm,2,var)),2) 
+invivo_plsr <- as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])])
+invivo_plsr <- cbind(invivo_plsr,as.data.frame(Yh))
+invivo_plsr <- invivo_plsr %>% gather('phenotype','Score',-all_of(lvs))
+colnames(invivo_plsr)[1:2] <- c('V1','V2')
+ggplot(invivo_plsr,aes(x=V1,y=V2,color=Score)) +
+  geom_point(size=5)+
+  scale_color_viridis_c()+
+  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
+  theme_pubr(base_size = 30,base_family = 'Arial')+
+  theme(text = element_text(size=30,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_line(linewidth = 4),
+        legend.position = 'right')+
+  facet_wrap(~phenotype)
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr.eps'),
+       device = cairo_ps,
+       height = 5,
+       width = 5,
+       units = 'in',
+       dpi = 600)
+
+## visualize plsr for backprojected data
+# Extract the necessary matrices from the opls object
+P <- plsr_model@loadingMN  # Loadings matrix (P)
+# plsr_scores <- plsr_model@scoreMN    # Scores matrix (T)
+W <- plsr_model@weightMN   # Weights matrix (W)
+# C <- plsr_model@loadingYMN # Y-loadings matrix (C)
+# E <- plsr_model@residualsMN # Residuals matrix (E)
+# U <- plsr_model@orthoScoreMN # Orthogonal scores matrix (U)
+# Manually calculate the scores (T)
+# T = X * W * (P' * W)^-1
+Zh_plsr_backprj <- Xh %*% Wm %*% t(Wm)  %*% Wh %*% solve(t(P) %*% W)
+invivo_plsr_backprj <- as.data.frame(Zh_plsr_backprj[,c(lvs[1],lvs[2])])
+invivo_plsr_backprj <- cbind(invivo_plsr_backprj,as.data.frame(Yh))
+invivo_plsr_backprj <- invivo_plsr_backprj %>% gather('phenotype','Score',-all_of(lvs))
+colnames(invivo_plsr_backprj)[1:2] <- c('V1','V2')
+ggplot(invivo_plsr_backprj,aes(x=V1,y=V2,color=Score)) +
+  # geom_point(color='#FD0714',size=5)+
+  geom_point(size=5)+
+  scale_color_viridis_c()+
+  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
+  theme_pubr(base_size = 30,base_family = 'Arial')+
+  theme(text = element_text(size=30,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_line(linewidth = 4),
+        legend.position = 'right')+
+  facet_wrap(~phenotype)
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr_backproj.eps'),
+       device = cairo_ps,
+       height = 5,
+       width = 5,
+       units = 'in',
+       dpi = 600)
+
+
+invivo_plsr_all <- rbind(invivo_plsr %>% mutate(type = 'Original human data'),
+                         invivo_plsr_backprj %>% mutate(type = 'Truncated human data'))
+invivo_plsr_all <- invivo_plsr_all %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+invivo_plsr_all <- invivo_plsr_all %>% mutate(Phenotype = Score) %>% select(-Score)
+ggplot(invivo_plsr_all,aes(x=V1,y=V2,color=Phenotype)) + #%>% select(-phenotype,-Score) %>% unique()
+  # geom_point(color='#FD0714',size=5)+
+  geom_point(size=5)+
+  scale_x_continuous(limits = c(-50,60))+
+  scale_y_continuous(limits = c(-40,30))+
+  scale_color_viridis_c()+
+  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
+  theme_pubr(base_size = 30,base_family = 'Arial')+
+  theme(text = element_text(size=30,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_line(linewidth = 4),
+        strip.background = element_blank(),
+        legend.position = 'bottom')+
+  facet_wrap(vars(type,phenotype),scales = 'free')
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_all_invivo_plsr_ontop2.eps'),
+       device = cairo_ps,
+       height = 12,
+       width = 12,
+       units = 'in',
+       dpi = 600)
 
 # Find extra basis
 phi <- Wh %*% Bh
@@ -248,14 +345,20 @@ scatter_box_plot <- function(df,legend_title,
                              x_axis='LV extra 1',y_axis='LV extra 2',
                              box_y_width = 0.2,jitter_y_width=0.1,
                              jitter_x_height = 0.2,
+                             theme_use = 'minimal',
                              plotting=TRUE){
+  if (theme_use=='bw'){
+    th <- ggplot2::theme_bw(base_size = font_size, base_family = font_family)
+  }else{
+    th <- ggplot2::theme_minimal(base_size = font_size, base_family = font_family)
+  }
   scatter_plot <- ggplot(df, aes(x = V1, y = V2, fill = pheno)) +
     geom_point(size = point_size, shape = point_shape, stroke = point_stroke) +
     scale_fill_viridis_c() +
     xlab(x_axis) +
     ylab(y_axis) +
     labs(fill=legend_title)+
-    theme_minimal(base_size = font_size, base_family = font_family) +
+    th +
     theme(
       text = element_text(size = font_size, family = font_family),
       legend.position = 'top',
@@ -444,50 +547,83 @@ Wm_combo <- readRDS("results/Wm_kostrzewski_combo.rds")
 # Project human data on these components
 df_tc <- rbind(data.frame(x = Xh %*% Wm_combo[,1], y = Xh %*% Wm_combo[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
                data.frame(x = Xh %*% Wm_combo[,1], y = Xh %*% Wm_combo[,2], phenotype = "NAS", Score = Yh[,1]))
-ptc <- (ggplot(df_tc %>% filter(phenotype!='NAS'),aes(x=x,y=y,fill=Score))+
-          geom_point(size=2.8,shape=21,stroke=1.2)+
-          scale_fill_viridis_c()+
-          xlab('MPS TC1')+ylab('MPS TC2')+  
-          labs(fill='Fibrosis stage')+
-          theme_bw(base_size=28,base_family = 'Arial')+
-          theme(text= element_text(size=28,family = 'Arial'),
-                axis.title.x = element_blank(),
-                legend.position = 'top')) +
-  (ggplot(df_tc%>% filter(phenotype =='NAS') ,aes(x=x,y=y,fill=Score))+
-     geom_point(size=2.8,shape=21,stroke=1.2)+
-     scale_fill_viridis_c()+
-     labs(fill='NAS') +
-     xlab('MPS TC1')+ylab('MPS TC2')+  
-     theme_bw(base_size=28,base_family = 'Arial')+
-     theme(text= element_text(size=28,family = 'Arial'),
-           axis.title.y = element_blank(),
-           axis.title.x = element_text(hjust = -0.8),
-           legend.position = 'top'))
-print(ptc)
-ggsave('figures/AllData_TCs_Scatterplot_human.eps',
-       plot = ptc,
+tc_fibrosis_scatter_boxplot <- scatter_box_plot(df_tc %>% filter(phenotype!='NAS') %>%
+                                             mutate(pheno=Score) %>%
+                                             mutate(V1=x) %>%
+                                             mutate(V2=y) %>%
+                                             select(-phenotype,-x,-y,-Score) %>%
+                                             unique(),
+                                           legend_title = 'Fibrosis stage',
+                                           x_axis = 'MPS TC1',
+                                           y_axis = 'MPS TC2',
+                                           theme_use = 'bw')
+ggsave('figures/AllData_TCs_Scatterplot_MPS_fibrosis.eps',
+       plot = tc_fibrosis_scatter_boxplot,
        device = cairo_ps,
        height = 6,
-       width=12,
+       width=9,
        units = 'in',
        dpi=600)
+tc_nas_scatter_boxplot <- scatter_box_plot(df_tc %>% filter(phenotype=='NAS') %>%
+                                             mutate(pheno=Score) %>%
+                                             mutate(V1=x) %>%
+                                             mutate(V2=y) %>%
+                                             select(-phenotype,-x,-y,-Score) %>%
+                                             unique(),
+                                           legend_title = 'Fibrosis stage',
+                                           x_axis = 'MPS TC1',
+                                           y_axis = 'MPS TC2',
+                                           theme_use = 'bw')
+ggsave('figures/AllData_TCs_Scatterplot_MPS_nas.eps',
+       plot = tc_nas_scatter_boxplot,
+       device = cairo_ps,
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
+# ptc <- (ggplot(df_tc %>% filter(phenotype!='NAS'),aes(x=x,y=y,fill=Score))+
+#           geom_point(size=2.8,shape=21,stroke=1.2)+
+#           scale_fill_viridis_c()+
+#           xlab('MPS TC1')+ylab('MPS TC2')+  
+#           labs(fill='Fibrosis stage')+
+#           theme_bw(base_size=28,base_family = 'Arial')+
+#           theme(text= element_text(size=28,family = 'Arial'),
+#                 axis.title.x = element_blank(),
+#                 legend.position = 'top')) +
+#   (ggplot(df_tc%>% filter(phenotype =='NAS') ,aes(x=x,y=y,fill=Score))+
+#      geom_point(size=2.8,shape=21,stroke=1.2)+
+#      scale_fill_viridis_c()+
+#      labs(fill='NAS') +
+#      xlab('MPS TC1')+ylab('MPS TC2')+  
+#      theme_bw(base_size=28,base_family = 'Arial')+
+#      theme(text= element_text(size=28,family = 'Arial'),
+#            axis.title.y = element_blank(),
+#            axis.title.x = element_text(hjust = -0.8),
+#            legend.position = 'top'))
+# print(ptc)
+# ggsave('figures/AllData_TCs_Scatterplot_human.eps',
+#        plot = ptc,
+#        device = cairo_ps,
+#        height = 6,
+#        width=12,
+#        units = 'in',
+#        dpi=600)
 # take a look also at invitro separation in the TCs
 df_tc_mps <- data.frame(x = Xm %*% Wm_combo[,1], y = Xm %*% Wm_combo[,2], TGF = data_list[[target_dataset]]$metadata$TGF)
 ptc_mps <- ggplot(df_tc_mps,aes(x=x,y=y,fill=TGF))+
           geom_point(size=2.8,shape=21,stroke=1.2)+
-          ggtitle('All MPS Samples')+
           scale_fill_manual(values = c('#66C2A5','#FC8D62'))+
           xlab('MPS TC1')+ylab('MPS TC2')+  
           theme_bw(base_size=28,base_family = 'Arial')+
           theme(text= element_text(size=28,family = 'Arial'),
                 plot.title = element_text(hjust = 0.5,face='bold'),
-                legend.position = 'right')
+                legend.position = 'top')
 print(ptc_mps)
 ggsave('figures/AllData_TCs_Scatterplot_MPS.eps',
        plot = ptc_mps,
        device = cairo_ps,
        height = 6,
-       width=12,
+       width=6,
        units = 'in',
        dpi=600)
 
@@ -537,7 +673,7 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
            axis.title.y = element_blank(),
            panel.grid.major = element_line())) + 
   plot_annotation(
-    title = "Truncated human data through the TCs",
+    title = NULL,
     theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
   )
 ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.png',
@@ -575,7 +711,7 @@ ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.png',
            axis.title.y = element_blank(),
            panel.grid.major = element_line())) + 
   plot_annotation(
-    title = "Truncated human data through the TCs",
+    title = NULL,
     theme = theme(plot.title = element_text(size = 28, family = "Arial", hjust = 0.5,face='bold'))
   )
 ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.eps',
