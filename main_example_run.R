@@ -27,7 +27,7 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list[[ref_dataset]]$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
