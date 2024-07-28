@@ -4,11 +4,12 @@ library(ggpubr)
 library(ggfortify)
 library(ggsignif)
 library(patchwork)
+library(ggforce)
 library(caret)
 library(ropls)
 library(factoextra)
 library(Rtsne)
-library(GA)
+# library(GA)
 source("../utils/plotting_functions.R")
 source("functions_translation.R")
 source("CrossValidationUtilFunctions.R")
@@ -177,6 +178,15 @@ Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+mps_meta_data <- data_list[[target_dataset]]$metadata
+rownames(mps_meta_data) <- NULL
+mps_meta_data <- mps_meta_data %>% select(sampleName,treatment,condition) %>% unique()
+print(all(rownames(Xm)==mps_meta_data$sampleName))
+# saveRDS(mps_meta_data,paste0('../preprocessing/',tolower(target_dataset),'_meta_data.rds'))
+# saveRDS(Xm,paste0('../preprocessing/',tolower(target_dataset),'_centered_data.rds'))
+# saveRDS(Xh,paste0('../preprocessing/',tolower(ref_dataset),'_centered_data.rds'))
+# saveRDS(Yh,paste0('../preprocessing/',tolower(ref_dataset),'_phenotype_data.rds'))
+
 
 #### Train PLSR model and score MPS samples----------------------------------------------------
 plsr_model <- opls(x = Xh, 
@@ -199,66 +209,100 @@ for (ii in 1:nrow(plsr_model@weightMN)){
 Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
 
 Yhat_MPS <- predict(plsr_model,Xm)
-c1 <- rgb(173,216,230,max = 255, alpha = 80, names = "lt.blue")
-c2 <- rgb(255,192,203, max = 255, alpha = 80, names = "lt.pink")
-ha <- hist(Yh[,1],col=c1,main='NAS score distribution',breaks = 20)
-hb <- hist(Yhat_MPS[,1],col = c2,add=TRUE,breaks = 20)
+df_mps <- rbind(as.data.frame(Yhat_MPS) %>% rownames_to_column('sample') %>% 
+                  gather('phenotype','score',-sample) %>% mutate(system = 'MPS'),
+                    as.data.frame(Yh) %>% rownames_to_column('sample') %>% 
+                  gather('phenotype','score',-sample) %>% mutate(system = 'human')) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 
+custom_breaks <- list('Fibrosis stage'=seq(0,4,1),
+                      NAS=seq(0,8,1))
+# Create a custom scale function to set breaks based on phenotype
+custom_scale_x <- function(phenotype) {
+  scale_x_continuous(breaks = custom_breaks[[phenotype]], limits = c(0, NA))
+}
+p <- ggplot(df_mps, aes(x = score, fill = system)) +
+  geom_histogram(color = 'black', alpha = 0.4, bins = 20, position = 'identity') +
+  facet_wrap_paginate(~phenotype, scales = 'free', nrow = 2, ncol = 1, page = 1) +
+  theme_pubr(base_family = 'Arial', base_size = 20) +
+  theme(text = element_text(size = 20, family = 'Arial'))
+# Print the plot for each phenotype with custom x-axis breaks
+for (i in seq_along(custom_breaks)) {
+  print(p + custom_scale_x(names(custom_breaks)[i]))
+}
+ggsave('../figures/plsr_scored_mps_samples.eps',
+       device = cairo_ps,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
 
-ha <- hist(Yh[,2],col=c1,main='Fibrosis score distribution')
-hb <- hist(Yhat_MPS[,2],col = c2,add=TRUE)
 
 ## Move sample in LV extra 1---------------------------------
-Wm_opt <- readRDS('../results/Wm_kostrzewski_extra.rds')
-# Example function to evaluate the solutions
-# Replace this with your actual function
-evaluate_function <- function(params,W,target_value=5,ind_dim=1) {
-  # Example operation: Rosenbrock function
-  x <- params
-  lv <- W[,ind_dim]
-  value <- as.numeric(x %*% lv)
-  mse <- (value - target_value)^2
-  return(mse)
-}
+#### edo rikse to Z new kai to dX kai des gia to dX ti pathways vgainoun kai gia to Z pou exei paei sto latent space
+perturbations <- data.table::fread('../results/FindPerturbation4TargetNAS_Kostrzewski_for_govaere.csv') %>% select(-V1)
+pert_info <- perturbations %>% select(treatment,NAS,mean_distance) %>% mutate(id = paste0(treatment,':',NAS)) %>%
+  column_to_rownames('id')
+perturbations <- perturbations %>% mutate(id = paste0(treatment,':',NAS)) %>% select(-treatment,-NAS,-mean_distance) %>%
+  column_to_rownames('id')
+perturbations <- t(perturbations)
+gc()
 
-# Define the fitness function for the genetic algorithm
-fitness_function <- function(params,W,target_value=5,ind_dim=1) {
-  # We negate the evaluation because GA minimizes the fitness function by default
-  # -evaluate_function(params)
-  evaluate_function(params=params,W=W,target_value=target_value,ind_dim=ind_dim)
-}
-
-# Define the initial vector of parameters
-initial_params <- Xm[,1]  # Replace with your actual initial values
-
-# Define the bounds for the parameters
-lower_bounds <- rep(-10, ncol(Xh))  # Replace with your actual lower bounds
-upper_bounds <- rep(10, ncol(Xh))    # Replace with your actual upper bounds
-
-# Run the genetic algorithm
-ga_result <- ga(
-  type = "real-valued",
-  fitness = function(params) fitness_function(params, W = Wm_opt, target_value = 5, ind_dim = 1),
-  lower = lower_bounds,
-  upper = upper_bounds,
-  popSize = 50,    # Population size
-  maxiter = 3,   # Maximum number of iterations
-  run = 50,        # Number of consecutive generations without improvement
-  optim = TRUE,     # Use local optimization
+### Infer pathway activity
+net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
+path_activity  <- decoupleR::run_viper(perturbations, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
+path_activity_mat <- as.matrix(path_activity %>% select(source,condition,score) %>% spread('source','score') %>% 
+  column_to_rownames('condition'))
+dend1 <- hclust(dist(path_activity_mat))
+dend2 <- hclust(dist(t(path_activity_mat)))
+ordered_matrix <- path_activity_mat[dend1$order, dend2$order]
+cond_groups <- ifelse(grepl('Fat',rownames(ordered_matrix)),'Fat','Lean')
+nas_groups <- data.frame(group = rownames(ordered_matrix))
+nas_groups <- nas_groups %>% mutate(NAS = str_split_fixed(group,':',2)[,2])
+nas_groups <- nas_groups %>%mutate(NAS=as.numeric(NAS))
+nas_groups <- nas_groups$NAS
+groups_row <- data.frame(Condition = cond_groups,NAS=nas_groups)
+rownames(groups_row) <- rownames(ordered_matrix)
+# png('../results/similarity_of_optimal_analytical_lvs_for_many_partitions.png',
+#     height = 14,width = 16,units = 'in',res=600)
+pheatmap::pheatmap(ordered_matrix, 
+                   color = colorRampPalette(c("blue", "white", "red"))(100), 
+                   breaks = seq(-4, 4, length.out = 100),
+                   annotation_row = groups_row,
+                   fontsize = 18,
+                   show_colnames = TRUE,  
+                   show_rownames = FALSE,
+                   filename = '../figures/perturbations_clustermap.png',
+                   height = 12,
+                   width = 14,
+                   units = 'in',
+                   res=600
 )
 
-# Print the best solution found
-best_solution <- ga_result@solution
-# best_value <- -ga_result@fitnessValue  # Negate to get the original value
-best_value <- ga_result@fitnessValue
-print(paste("Best solution:", paste(best_solution, collapse = ", ")))
-print(paste("Best value:", best_value))
 
 ## Project onto exrta basis space
-X_new <- rbind(Xm,best_solution)
-Znew <- X_new %*% Wm_opt
-Znew <- as.data.frame(Znew)
-Znew$type <- c(rep('old',nrow(Xm)),rep('new',nrow(best_solution)))
-ggplot(Znew,aes(x=V1,y=V2,fill=type))+
-  geom_point(size=2.8,shape=21,stroke=1.2)+
+Wm_opt <- readRDS('../results/Wm_kostrzewski_extra.rds')
+Zpert <- data.table::fread('../results/Z_pertNAS_Kostrzewski_for_govaere.csv') 
+Zh <- as.data.frame(Xh %*% Wm_opt)
+Zh$NAS <- Yh[,'NAS']
+colnames(Zh)[1:2] <- c('Z0','Z1')
+Z_all <- rbind(Zh %>% mutate(type='human'),Zpert %>% select(Z0,Z1,NAS) %>% mutate(type='MPS perturbed'))
+# (ggplot(Z_all,aes(x=Z0,y=Z1,fill=type))+
+#   geom_point(size=2.8,shape=21,stroke=1.2)+
+#   theme_minimal(base_size = 20,base_family = 'Arial') )/ 
+#   (ggplot(Z_all %>% filter(type=='MPS perturbed'),aes(x=Z0,y=Z1,fill=NAS))+
+#      geom_point(size=2.8,shape=21,stroke=1.2)+
+#      scale_fill_viridis_c()+
+#      theme_minimal(base_size = 20,base_family = 'Arial'))/
+#   (ggplot(Zh,aes(x=Z0,y=Z1,fill=NAS))+
+#   geom_point(size=2.8,shape=21,stroke=1.2)+
+#   scale_fill_viridis_c()+
+#   theme_minimal(base_size = 20,base_family = 'Arial'))
+
+Z_all$type <- factor(Z_all$type,levels = c('MPS perturbed','human')) 
+ggplot(Z_all,aes(x=Z0,y=Z1,fill=NAS,size=type))+
+  geom_point(shape=21,stroke=1.2)+
+  scale_fill_viridis_c()+
+  scale_size_manual(values = c(1.5,3))+
   theme_minimal(base_size = 20,base_family = 'Arial')
+  

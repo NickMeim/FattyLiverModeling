@@ -17,6 +17,8 @@ data/l1000_*
 preprocessing/all_invitro_data.rds
 preprocessing/TrainingValidationData/external_clinical_data
 results/sex_analysis
+results/Z_pertNAS_Kostrzewski_for_govaere.csv
+results/FindPerturbation4TargetNAS_Kostrzewski_for_govaere.csv
 results/MLresults
 results/MLresults/*
 results/pc_loadings_scores_analysis/dorothea_null_activity_all.rds
