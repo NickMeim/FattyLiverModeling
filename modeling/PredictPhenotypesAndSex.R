@@ -131,39 +131,6 @@ ggplot(invivo_plsr_all,aes(x=V1,y=V2,color=Phenotype)) + #%>% select(-phenotype,
         legend.position = 'bottom')+
   facet_wrap(vars(type,phenotype),scales = 'free')
 
-# Find extra basis
-phi <- Wh %*% Bh
-Wm_opt <- analytical_solution_opt(y=Yh,
-                                  W_invitro = Wm,
-                                  phi = phi)
-Wm_tot <- cbind(Wm, Wm_opt)
-
-Zh <- as.data.frame(Xh %*% Wm_opt)
-Zh$NAS <- Yh[,1]
-Zh$fibrosis <- Yh[,2]
-Zh$sex <- Yh[,3]
-Zh <- Zh %>% rownames_to_column('sample')
-thetas <- seq(0,360,5)
-phis <- seq(0,180,10)
-df_proj <- data.frame()
-df <- data.frame()
-for (theta in thetas){
-  for(p in phis){
-    u <- c(cos(theta * pi / 180)*sin(p * pi / 180),sin(theta * pi / 180)*cos(p * pi / 180),cos(p * pi / 180))
-    u <- as.matrix(u)
-    Wproj <- Wm_opt %*% u
-    Wtmp <- cbind(Wm,Wproj)
-    Yhat <- cbind(1, Xh %*% Wtmp %*% t(Wtmp) %*% Wh) %*% rbind(apply(Yh,2,mean),Bh)
-    corr_nas <- cor(Yhat[,1],Zh$NAS)
-    corr_fib <- cor(Yhat[,2],Zh$fibrosis)
-    confmat <- caret::confusionMatrix(data = as.factor(1*(Yhat[,3]>=0.5)),reference = as.factor(Yh[,3]))
-    df <- rbind(df,
-                data.frame(theta = theta,phi = p,phenotype = 'NAS',performance=corr_nas),
-                data.frame(theta = theta,phi = p,phenotype = 'fibrosis',performance=corr_fib),
-                data.frame(theta = theta,phi = p,phenotype = 'sex',performance=confmat$byClass['F1']))
-  }
-}
-
 scatter_box_plot <- function(df,legend_title,
                              font_size =20,font_family = 'Arial',
                              point_shape = 21,point_size=2.8,point_stroke=1.2,
@@ -239,50 +206,6 @@ combined_plot_sex <- scatter_box_plot(Zh %>% mutate(pheno=sex),'sex',
                                       x_axis='LV extra 2',y_axis='LV extra 3',
                                       dims = c('V2','V3'))
 
-
-df_mu_radial <- df%>% filter(phenotype!='sex') %>%  mutate(z=cos(phi*pi/180))  %>% filter(phi<=90) %>%
-  group_by(theta,z) %>% mutate(mu = mean(performance)) %>% ungroup() %>% 
-  select(-performance,-phenotype) %>% unique() %>%
-  mutate(phenotype = 'average') %>% select(theta,phi,z,phenotype,c('performance'='mu')) %>%
-  mutate(x = performance*cos(theta), y = performance*sin(theta))
-df_radial <- df %>% filter(phenotype!='sex') %>%  mutate(z=cos(phi*pi/180))  %>% filter(phi<=90) %>% 
-  mutate(x = performance*cos(theta), y = performance*sin(theta)) %>%
-  mutate(phenotype = ifelse(phenotype == "fibrosis", "Fibrosis stage",phenotype)) #%>% mutate(theta = pi*theta/180)
-plt_cor_radial <-   ggplot(df_radial %>% filter(theta<=90), 
-                           aes(x = theta, y = performance, color = phenotype, group = phenotype)) + 
-  geom_line(linewidth = 1.5) +
-  geom_line(data = df_mu_radial %>% filter(theta<=90),
-            aes(x = theta, y = performance),
-            color='black',lwd=1.5,linetype='dashed',
-            inherit.aes = FALSE)+
-  scale_x_continuous(breaks = seq(0,90,15))+
-  ylim(c(NA,1))+
-  geom_hline(yintercept = 0.2,color='black',lwd=1)+
-  geom_vline(xintercept = 90,color='black',lwd=1)+
-  coord_radial(start = 0, end = 0.5*pi, inner.radius = 0.4, expand = F, direction = 1) +
-  labs(y = "Performance", x = 'LV extra 2') +
-  ggtitle('LV extra 1')+
-  theme_bw() +
-  theme(text = element_text(size = 20),
-        plot.title = element_text(vjust = -13,hjust = -0.1,size=18,face = 'bold'),
-        axis.text.y = element_text(color = "black"),
-        axis.title.y = element_text(hjust = 0.66,vjust = 5),
-        axis.text.x = element_blank(),
-        axis.title.x = element_text(vjust = 9,hjust = 1.05,size=18,face='bold'),
-        axis.line.x = element_line(linewidth = 1),
-        axis.line.y = element_line(linewidth = 1),
-        legend.key.size = unit(0.3, "cm"),
-        legend.margin = margin(t = 0, r = 0, b = 0, l = -1.5, unit = "cm"),
-        panel.border = element_blank(),
-        panel.grid.major = element_line(linewidth = 1.2),
-        panel.grid.minor = element_line(linewidth = 1.2)) +
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~phi)
-print(plt_cor_radial)
-
-ggplot(df_radial %>% filter(theta<=90),aes(x=theta,y=performance,color=phenotype))+
-  geom_line()+
-  facet_wrap(~phi)
 
 ### Interohgate loadings--------------------
 rownames(Wm_opt) <- rownames(Wm)

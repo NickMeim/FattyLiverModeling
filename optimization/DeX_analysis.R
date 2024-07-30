@@ -92,6 +92,12 @@ ggsave(paste0('../results/optimized_mps/progenies_optimal_variance_paths_',
        height = 9,
        dpi = 600)
 
+### Visualize genes in dx ---------------
+dex_data <- t(dx_lean)
+plot_genes_dx <- plot_gene_loadings(loadings = dex_data,
+                                    selection='V1',
+                                    y_lab = expression('proposed '*Delta*'X on lean samples'),
+                                    top=20)
 ### Perform dorothea analysis using directly dXs ---------------
 # dex_data <- top.table_lean %>% select(gene,logFC) %>% column_to_rownames('gene')
 dex_data <- t(dx_lean)

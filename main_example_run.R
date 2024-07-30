@@ -727,7 +727,8 @@ Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
 Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 plot_extra_gene_loadings_lv1 <- plot_gene_loadings(loadings = Wm_opt,
                                                selection='V1',
-                                               y_lab = 'weight in extra LV1')
+                                               y_lab = 'weight in extra LV1',
+                                               top=20)
 ggsave(paste0('figures/gene_woptimal_LV1_',
               tolower(target_dataset),
               '_loadings.png'),

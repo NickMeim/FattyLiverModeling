@@ -33,11 +33,11 @@ if (rev.Vector(strsplit(dir,split = '/')[[1]])[1] == "FattyLiverModeling"){
   source('enrichment_calculations.R')
 }
 
-plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE){
+plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE,top=10){
   # n_lvs <- ncol(loadings)
   loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,selection)
   loadings$significant <- ''
-  loadings$significant[order(-abs(loadings[,selection]))[1:10]] <- loadings$gene[order(-abs(loadings[,selection]))[1:10]]
+  loadings$significant[order(-abs(loadings[,selection]))[1:top]] <- loadings$gene[order(-abs(loadings[,selection]))[1:top]]
   loadings <- loadings[order(loadings[,selection]),]
   loadings$gene <- factor(loadings$gene,levels = loadings$gene)
   colnames(loadings)[2] <- 'LV'
