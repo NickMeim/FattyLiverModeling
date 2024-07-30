@@ -30,9 +30,38 @@ plt_list <- tmp$plt_list
 Yh <- as.matrix(data_list[[ref_dataset]]$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
+if (ref_dataset=='Hoang'){
+  sex_inferred <- data_list[[ref_dataset]]$metadata$sex
+}else if (ref_dataset=='Pantano') {
+  sex_inferred <- data_list[[ref_dataset]]$metadata$Sex
+}else{
+  sex_inferred <- apply(as.matrix(Xh[,c('RPS4Y1')]),2,sign) 
+  sex_inferred <- 1*(sex_inferred>0)
+  sex_inferred <- ifelse(sex_inferred==1,'male','female')
+}
 Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
+
+## print some statistics about NAS and fiborsis distribution between sexes
+print(all(rownames(Xh)==rownames(sex_inferred)))
+pheno_stats <- as.data.frame(cbind(Yh,sex_inferred))
+colnames(pheno_stats) <- c('NAS','fibrosis','sex')
+pheno_stats$NAS <- as.numeric(pheno_stats$NAS)
+pheno_stats$fibrosis <- as.numeric(pheno_stats$fibrosis)
+ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>% 
+            mutate(phenotype= ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)),
+          x='sex',y='score',add='jitter')+
+  stat_compare_means(comparisons = list(c('male','female')),
+                     method='wilcox',
+                     size=6)+
+  facet_wrap(~phenotype,scales="free_y")+
+  theme(text = element_text(size=20,family='Arial'))
+ggsave(paste0('figures/',ref_dataset,'_study_stats.png'),
+       width = 9,
+       height = 6,
+       units = 'in',
+       dpi=600)
 
 ### Project in-vitro data to their group-derived PC space
 Zm <- Xm %*% Wm
@@ -178,7 +207,7 @@ invivo_plsr <- as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])])
 invivo_plsr <- cbind(invivo_plsr,as.data.frame(Yh))
 invivo_plsr <- invivo_plsr %>% gather('phenotype','Score',-all_of(lvs))
 colnames(invivo_plsr)[1:2] <- c('V1','V2')
-ggplot(invivo_plsr,aes(x=V1,y=V2,color=Score)) +
+ggplot(invivo_plsr %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)),aes(x=V1,y=V2,color=Score)) +
   geom_point(size=5)+
   scale_color_viridis_c()+
   xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
@@ -190,8 +219,30 @@ ggplot(invivo_plsr,aes(x=V1,y=V2,color=Score)) +
   facet_wrap(~phenotype)
 ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr.eps'),
        device = cairo_ps,
-       height = 5,
-       width = 5,
+       height = 6,
+       width = 9,
+       units = 'in',
+       dpi = 600)
+### visualize sex seperation in PLSR
+# tt <- cbind(as.data.frame(Zh_plsr), 
+#             as.data.frame(sex_inferred) %>% select(c('sex'='V1'))) %>%
+#   gather('variable','value',-sex)
+# ggboxplot(tt,x='sex',y='value') + facet_wrap(~variable) + stat_compare_means()
+ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
+                 as.data.frame(sex_inferred) %>% select(c('sex'='V1'))),
+       aes(x=p1,y=p2,color=sex)) +
+  geom_point(size=5)+
+  scale_color_viridis_d()+
+  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
+  theme_pubr(base_size = 30,base_family = 'Arial')+
+  theme(text = element_text(size=30,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_line(linewidth = 4),
+        legend.position = 'right')
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr_sex_separete.eps'),
+       device = cairo_ps,
+       height = 6,
+       width = 9,
        units = 'in',
        dpi = 600)
 
@@ -462,6 +513,66 @@ ggsave(paste0('figures/projected_',
        width = 12,
        units = 'in',
        dpi=600)
+
+## separation of sex in the extra basis
+ggplot(left_join(Zh , as.data.frame(sex_inferred) %>% select(c('sex'='V1')) %>%rownames_to_column('sample')),
+       aes(x=V1,y=V2,fill=sex)) +
+  geom_point(size=2.8,shape=21,stroke=1.2)+
+  scale_fill_viridis_d()+
+  xlab('LV extra 1') + ylab('LV extra 2') +
+  theme_bw(base_size = 20,base_family = 'Arial')+
+  theme(text = element_text(size=20,family = 'Arial'),
+        panel.background = element_rect(fill='white',linetype = 0 ),
+        panel.border = element_blank(),
+        legend.position = 'right')
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_extra_basis_sex_separete.eps'),
+       device = cairo_ps,
+       height = 6,
+       width = 9,
+       units = 'in',
+       dpi = 600)
+ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_extra_basis_sex_separete.png'),
+       height = 6,
+       width = 9,
+       units = 'in',
+       dpi = 600)
+### Can you even predict sex extra LVs ?
+sex_model <- opls(x = as.matrix(left_join(Zh , 
+                                as.data.frame(sex_inferred) %>% 
+                                  select(c('sex'='V1')) %>%
+                                  rownames_to_column('sample')) %>%
+                    select(V1,V2)), 
+                   y = as.matrix(left_join(Zh , 
+                                 as.data.frame(sex_inferred) %>% 
+                                   select(c('sex'='V1')) %>%
+                                   rownames_to_column('sample')) %>%
+                    select(sex) %>% mutate(sex=factor(sex))),
+                   predI = 8,
+                   crossvalI = 1,
+                   scaleC = "center",
+                   fig.pdfC = "none",
+                   info.txtC = "none")
+sex_predicted <- predict(sex_model,
+                         as.matrix(left_join(Zh , 
+                                             as.data.frame(sex_inferred) %>% 
+                                               select(c('sex'='V1')) %>%
+                                               rownames_to_column('sample')) %>%
+                                     select(V1,V2)))
+sex_predicted <- factor(sex_predicted,levels = c('male','female'))
+sex_inferred2 <- factor(sex_inferred,levels = levels(sex_predicted))
+print(confusionMatrix(data=sex_predicted,
+                reference = sex_inferred2,
+                positive = 'male'))
+# try also with RF
+rf_fit <- train(sex ~ ., 
+                data = left_join(Zh , 
+                                 as.data.frame(sex_inferred) %>%
+                                   select(c('sex'='V1')) %>%
+                                   rownames_to_column('sample')) %>%
+                  select(V1,V2,sex), 
+                method = "rf")
+print(rf_fit$results)
+
 df_mu_radial <- df %>% group_by(theta) %>% mutate(mu = mean(corr)) %>% ungroup() %>% 
   select(-corr,-phenotype) %>% unique() %>%
   mutate(phenotype = 'average') %>% select(theta,phenotype,c('corr'='mu')) %>%
