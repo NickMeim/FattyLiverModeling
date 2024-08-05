@@ -681,7 +681,7 @@ tc_nas_scatter_boxplot <- scatter_box_plot(df_tc %>% filter(phenotype=='NAS') %>
                                              mutate(V2=y) %>%
                                              select(-phenotype,-x,-y,-Score) %>%
                                              unique(),
-                                           legend_title = 'Fibrosis stage',
+                                           legend_title = 'NAS',
                                            x_axis = 'MPS TC1',
                                            y_axis = 'MPS TC2',
                                            theme_use = 'bw')

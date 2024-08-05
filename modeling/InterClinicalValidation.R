@@ -61,6 +61,7 @@ Wm_tot <- readRDS(paste0('../results/Wm_',target_dataset,'_total.rds'))
 ### if performance can be retrieved when backprojecting for other human datasets
 external_clinical_datasets <- c("Hoang","Pantano")
 df_results <- data.frame()
+predictions_results <- data.frame()
 for (dataset in external_clinical_datasets){
   message(paste0('Begun ',dataset ,' dataset'))
   X <- data_list[[dataset]]$data_center %>% t()
@@ -73,7 +74,7 @@ for (dataset in external_clinical_datasets){
   }
   colnames(Y) <- c('NAS','fibrosis')
   ### Run a small 5-fold cross validation procedure for 
-  data_splits <- createMultiFolds(y = Y[,2], k = 5, times = 1)
+  data_splits <- createMultiFolds(y = Y[,2], k = 10, times = 10)
   train_r <- NULL
   val_r <- NULL
   train_r_backproj <- NULL
@@ -82,6 +83,7 @@ for (dataset in external_clinical_datasets){
   val_r_extra <- NULL
   j <- 1
   for (ind in data_splits){
+    name_fold_id <- names(data_splits)[j]
     y_val <- Y[-ind,]
     y_train <- Y[ind,]
     x_val <- X[-ind,]
@@ -128,20 +130,24 @@ for (dataset in external_clinical_datasets){
     print(paste0('Finished ',j,' fold out of ',length(data_splits)))
     j <- j+1
   }
-  tmp_train <- data.frame(PLSR = train_r,PC = train_r_backproj,'extra basis'=train_r_extra) %>% 
+  tmp_train <- data.frame(PLSR = train_r,PC = train_r_backproj,'extra basis'=train_r_extra,fold_ids = names(data_splits)) %>% 
     mutate(dataset = dataset) %>% mutate(set = 'train')
-  tmp_val <- data.frame(PLSR = val_r,PC =val_r_backproj,'extra basis'=val_r_extra) %>% 
+  tmp_val <- data.frame(PLSR = val_r,PC =val_r_backproj,'extra basis'=val_r_extra,fold_ids = names(data_splits)) %>% 
     mutate(dataset = dataset) %>% mutate(set = 'test')
   df_results <- rbind(df_results,tmp_train,tmp_val)
 }
-df_results <- df_results %>% gather('model','r',-dataset,-set)
+# saveRDS(predictions_results,'../results/external_clinical_differences_results_of_extra_vector.rds')
+# #df_results <- readRDS('../results/external_clinical_performance_of_extra_vector.rds')
+df_results <- df_results %>% gather('model','r',-dataset,-set,-fold_ids)
 # df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','extra basis',
 #                                                    ifelse(model!='PLSR','in-vitro PCs','original PLSR')))
 df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','optimized MPS',
                                                    ifelse(model!='PLSR','back-projected','human genes')))
 # df_results$model <- factor(df_results$model,levels = c('original PLSR','extra basis','in-vitro PCs'))
 df_results$model <- factor(df_results$model,levels = c('human genes','optimized MPS','back-projected'))
-
+df_results <- df_results %>% separate('fold_ids',into = c('fold','repetition')) %>%
+  group_by(dataset,model,set,repetition) %>% mutate(r_mu = mean(r))  %>% ungroup()%>%
+  select(-repetition,-fold) %>% unique()
 
 ### Visualize 
 # model_comparisons <- list(
@@ -152,20 +158,71 @@ model_comparisons <- list(
   c('human genes', 'optimized MPS'),
   c('optimized MPS', 'back-projected')
 )
-p <- ggboxplot(df_results,x='set',y='r',color = 'model',add='jitter') +
+df_results$set <- factor(df_results$set,levels=c('train','test')) 
+df_results  <- left_join(df_results,
+                 df_results %>% select(-r) %>% unique() %>% 
+                   group_by(dataset,model,set) %>% mutate(total_se = sd(r_mu)) %>%
+                   ungroup())
+df_results <- df_results %>% group_by(dataset,model,set) %>%  mutate(all_mu = mean(r_mu)) %>% ungroup()
+# p1 <- ggviolin(df_results %>% filter(dataset=='Hoang'),x='model',y='r',fill = 'model') +
+#   geom_boxplot(data=df_results %>% select(dataset,model,set,r_mu) %>% unique() %>% filter(dataset=='Hoang'),
+#                aes(x=model,y=r_mu,fill=model),
+#                width = 0.3,
+#                size=0.5,outlier.shape = NA)+
+#   scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
+#   xlab('')+ ylab('pearson`s correlation')+
+#   ggtitle('Hoang')+
+#   theme(text = element_text(size = 20,family = 'Arial'),
+#         plot.title = element_text(hjust = 0.5),
+#         axis.text.x = element_blank(),
+#         panel.grid.major.y = element_line(linewidth = 1),
+#         panel.grid.minor.y = element_line(linewidth = 0.5),
+#         legend.position = 'bottom')+
+#   facet_wrap(~set)+
+#   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+#                                         c('optimized MPS','back-projected'),
+#                                         c('human genes','back-projected')),
+#                      label.y = c(0.98,0.98,1.03),
+#                      method = 'wilcox')
+p1 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,r_mu) %>% unique(),
+                x='model',y='r_mu',color = 'model',add='jitter') +
   scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
   xlab('')+ ylab('pearson`s correlation')+
-  ggtitle('Performance in predicting phenotype in other in-vivo human datasets')+
+  ggtitle('Hoang')+
   theme(text = element_text(size = 20,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_blank(), 
         panel.grid.major.y = element_line(linewidth = 1),
         panel.grid.minor.y = element_line(linewidth = 0.5),
         legend.position = 'bottom')+
-  facet_wrap(~dataset)+
+  facet_wrap(~set)+
   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-                                        c('optimized MPS','back-projected')),
+                                        c('optimized MPS','back-projected'),
+                                        c('human genes','back-projected')),
+                     label.y = c(0.98,0.98,1.03),
                      method = 'wilcox')
+# print(p1)
+p2 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,r_mu) %>% unique(),
+                x='model',y='r_mu',color = 'model',add='jitter') +
+  scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
+  xlab('')+ ylab('pearson`s correlation')+
+  ggtitle('Pantano')+
+  theme(text = element_text(size = 20,family = 'Arial'),
+        plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_blank(), 
+        panel.grid.major.y = element_line(linewidth = 1),
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'bottom')+
+  facet_wrap(~set)+
+  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+                                        c('optimized MPS','back-projected'),
+                                        c('human genes','back-projected')),
+                     label.y = c(0.98,0.98,1.03),
+                     method = 'wilcox')
+# print(p2)
+p <- (p1 + p2) + plot_layout(guides = "collect",axes = "collect") & theme(legend.position = 'bottom')
 print(p)
+
 ggsave('../figures/inter_clinical_dataset_performance.png',
        plot=p,
        width = 14,
@@ -188,6 +245,7 @@ num_LVs <- 8
 val_r_shuffle_y <- matrix(0,nrow = 10,ncol = 2)
 val_r_shuffle_x <- matrix(0,nrow = 10,ncol = 2)
 val_r <- matrix(0,nrow = 10,ncol = 2)
+predictions_results <- data.frame()
 for (i in 1:num_folds){
   x_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Xh_train',i,'.rds'))
   y_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Yh_train',i,'.rds'))
@@ -238,6 +296,12 @@ for (i in 1:num_folds){
     ## PLSR original
     y_val_hat <- predict(plsr_model,X)
     val_r[i,j] <- mean(diag(cor(y_val_hat,Y)))
+    tmp_plsr <- rbind(data.frame(score= Y[,'NAS'],
+                                 prediction = y_val_hat[,'NAS']) %>% mutate(phenotype='NAS'),
+                      data.frame(score= Y[,'fibrosis'],
+                                 prediction = y_val_hat[,'fibrosis']) %>% mutate(phenotype='fibrosis')) %>%
+      mutate(fold = i) %>% mutate(dataset = dataset)
+    predictions_results <- rbind(predictions_results,tmp_plsr)
     
     ## Shuffled labels
     y_hat_val <- predict(plsr_model_shuffle_y,X)
@@ -268,7 +332,7 @@ model_comparisons <- list(
 p <- ggboxplot(df_results,x='model',y='r',color = 'model',add='jitter') +
   scale_y_continuous(breaks = seq(-0.2,1,0.1),limits = c(-0.25,1))+
   xlab('')+ ylab('pearson`s correlation')+
-  ggtitle('PLSR generalization in other in-vivo human datasets')+
+  # ggtitle('PLSR generalization in other in-vivo human datasets')+
   theme(text = element_text(size = 24,family = 'Arial'),
         axis.text.x = element_text(size = 22),
         plot.title = element_text(hjust = 0.5),
@@ -288,6 +352,93 @@ ggsave('../figures/inter_clinical_PLSR_performance.png',
        dpi = 600)
 ggsave('../figures/inter_clinical_PLSR_performance.eps',
        plot=p,
+       device = cairo_ps,
+       width = 16,
+       height = 10,
+       units = 'in',
+       dpi = 600)
+
+### Visualize predictions
+predictions_results <- predictions_results %>% mutate(prediction = ifelse(prediction>8,8,
+                                                                          ifelse(prediction<0,0,prediction)))
+predictions_results <- predictions_results %>% mutate(prediction = ifelse(phenotype=='fibrosis',
+                                                                          ifelse(prediction>4,4,prediction),
+                                                                          prediction))
+ggscatter(predictions_results %>% filter(phenotype=='NAS') %>% filter(dataset=='Hoang') %>%
+                         mutate(fold = paste0('fold no:',fold)),
+                       x='score',y='prediction',cor.coef = TRUE) +
+  scale_y_continuous(limits = c(0,8))+
+  xlab('Measured')+ ylab('Predicted')+
+  geom_abline(slope=1)+
+  ggtitle('NAS prediction in Hoang dataset')+
+  theme(text = element_text(size = 24,family = 'Arial'),
+        axis.text.x = element_text(size = 22),
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major.y = element_line(linewidth = 1),
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'none')+
+  facet_wrap(~fold)
+ggsave('../figures/PLSR_predictions_nas_hoang.eps',
+       device = cairo_ps,
+       width = 16,
+       height = 10,
+       units = 'in',
+       dpi = 600)
+ggscatter(predictions_results %>% filter(phenotype=='fibrosis') %>% filter(dataset=='Hoang') %>%
+            mutate(fold = paste0('fold no:',fold)),
+          x='score',y='prediction',cor.coef = TRUE) +
+  scale_y_continuous(limits = c(0,4))+
+  xlab('Measured')+ ylab('Predicted')+
+  geom_abline(slope=1)+
+  ggtitle('Fibrosis stage prediction in Hoang dataset')+
+  theme(text = element_text(size = 24,family = 'Arial'),
+        axis.text.x = element_text(size = 22),
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major.y = element_line(linewidth = 1),
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'none')+
+  facet_wrap(~fold)
+ggsave('../figures/PLSR_predictions_fibrosis_hoang.eps',
+       device = cairo_ps,
+       width = 16,
+       height = 10,
+       units = 'in',
+       dpi = 600)
+ggscatter(predictions_results %>% filter(phenotype=='NAS') %>% filter(dataset=='Pantano') %>%
+            mutate(fold = paste0('fold no:',fold)),
+          x='score',y='prediction',cor.coef = TRUE) +
+  scale_y_continuous(limits = c(0,8))+
+  xlab('Measured')+ ylab('Predicted')+
+  geom_abline(slope=1)+
+  ggtitle('NAS prediction in Pantano dataset')+
+  theme(text = element_text(size = 24,family = 'Arial'),
+        axis.text.x = element_text(size = 22),
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major.y = element_line(linewidth = 1),
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'none')+
+  facet_wrap(~fold)
+ggsave('../figures/PLSR_predictions_nas_pantano.eps',
+       device = cairo_ps,
+       width = 16,
+       height = 10,
+       units = 'in',
+       dpi = 600)
+ggscatter(predictions_results %>% filter(phenotype=='fibrosis') %>% filter(dataset=='Pantano') %>%
+            mutate(fold = paste0('fold no:',fold)),
+          x='score',y='prediction',cor.coef = TRUE) +
+  scale_y_continuous(limits = c(0,4))+
+  xlab('Measured')+ ylab('Predicted')+
+  geom_abline(slope=1)+
+  ggtitle('Fibrosis stage prediction in Pantano dataset')+
+  theme(text = element_text(size = 24,family = 'Arial'),
+        axis.text.x = element_text(size = 22),
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major.y = element_line(linewidth = 1),
+        panel.grid.minor.y = element_line(linewidth = 0.5),
+        legend.position = 'none')+
+  facet_wrap(~fold)
+ggsave('../figures/PLSR_predictions_fibrosis_pantano.eps',
        device = cairo_ps,
        width = 16,
        height = 10,

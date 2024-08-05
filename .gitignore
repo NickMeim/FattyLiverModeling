@@ -1,5 +1,6 @@
 modeling/__pycache__/
 modeling/__pypackages__/
+modeling/InterClinicalTestScript.R
 optimization/__pycache__/
 optimization/__pypackages__/
 optimization/.ipynb_checkpoints

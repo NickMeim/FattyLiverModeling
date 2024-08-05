@@ -236,6 +236,13 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.png',
        units = 'in',
        dpi=600)
 
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.eps',
+       device = cairo_ps,
+       width = 16,
+       height = 9,
+       units = 'in',
+       dpi=600)
+
 ### Check different partitions of data based on the average similarity of training and test set
 ### First find similarity distribution of all data
 Xh <- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
@@ -456,6 +463,13 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multi
        units = 'in',
        dpi=600)
 
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multiple_partitions.eps',
+       device = cairo_ps,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
+
 ### After selecting 8 LVs as the tuned parameter re-fit with only those
 ### But also calculate shuffled and null models performance
 val_mae <- NULL
@@ -568,46 +582,55 @@ plotting_performance_df <- performance_df %>%
   mutate(metric=ifelse(metric=='r','pearson`s r',metric))
 plotting_performance_df$set <- factor(plotting_performance_df$set,
                                       levels = c('train','validation','test','shuffle Y','shuffle X','random X'))
-(ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
+p <- (ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
     scale_y_continuous(n.breaks = 15)+
     geom_hline(yintercept = avg_mae,linetype='dashed',color='black',lwd=1)+
-    annotate('text',x=3,y=1.75,size=6,label = 'error from the mean of the data')+
+    annotate('text',x=3,y=1.95,size=6,label = 'error from the mean of the data')+
     xlab('')+
     theme(text = element_text(size=20,family = 'Arial'),
           legend.position = 'none',
-          axis.text.x = element_text(size=16),
+          axis.text.x = element_text(size=20),
           strip.text = element_text(face = 'bold'),
           panel.grid.major.y = element_line(linewidth = 1))+
-    stat_compare_means(comparisons = list(c('test','shuffle Y'),
+    stat_compare_means(comparisons = list(c('validation','test'),
+                                          c('test','shuffle Y'),
                                           c('test','shuffle X'),
                                           c('test','random X')),
                        method = 'wilcox',label = 'p.signif',
                        tip.length = 0.01,
-                       label.y = c(1.3,1.4,1.5)) +
-    facet_wrap(~metric)) +
+                       label.y = c(1,1.5,1.6,1.7)) +
+    facet_wrap(~metric)) /
   (ggboxplot(plotting_performance_df %>% filter(metric!='MAE'),x='set',y='value',color = 'set',add='jitter')+
      scale_y_continuous(breaks = seq(-0.5,1,0.1))+
      # geom_hline(yintercept = 0,linetype='dashed',color='black',lwd=1)+
      xlab('')+
      theme(text = element_text(size=20,family = 'Arial'),
            legend.position = 'none',
-           axis.text.x = element_text(size=16),
+           axis.text.x = element_text(size=20),
            strip.text = element_text(face = 'bold'),
            panel.grid.major.y = element_line(linewidth = 1))+
-     stat_compare_means(comparisons = list(c('test','shuffle Y'),
+     stat_compare_means(comparisons = list(c('validation','test'),
+                                           c('test','shuffle Y'),
                                            c('test','shuffle X'),
                                            c('test','random X')),
                         method = 'wilcox',label = 'p.signif',
                         tip.length = 0.01,
-                        label.y = c(0.75,0.85,0.95)) +
+                        label.y = c(0.75,0.75,0.85,0.95)) +
      facet_wrap(~metric))
-
+print(p)
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.png',
-       width = 14,
+       plot = p,
+       width = 12,
        height = 9,
        units = 'in',
        dpi = 600)
-
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.eps',
+       plot = p,
+       device = cairo_ps,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
 ### Since we do not overfit to validation now perform cross-validation with this dataset-------------
 ### Where you calculate validation and train performance of:
 ### a) human data PLSR to predict NAS,Fibrosis
@@ -710,12 +733,13 @@ ggboxplot(performance_1,x='type',y='value',color='type',add='jitter') +
         axis.text.x = element_text(size=22),
         # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('test','shuffle Y'),
+  stat_compare_means(comparisons = list(c('train','test'),
+                                        c('test','shuffle Y'),
                                         c('test','shuffle X'),
                                         c('test','random X')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     label.y = c(0.75, 0.8, 0.85),
+                     label.y = c(0.9,0.75, 0.8, 0.85),
                      size=7)+
   facet_wrap(~phenotype,nrow = 2)
 ggsave('../figures/performance_df_just_human_plsr.png',
