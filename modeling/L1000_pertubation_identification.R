@@ -318,6 +318,10 @@ combo_tfs <- as.matrix(cbind(t(TF_activities_extra)[rownames(TF_activities),],TF
 # saveRDS(combo_tfs,'../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_tfs.rds')
 
 ### Get L1000 hits-----------------------------------------------------------------------------------------
+# combo_hallmarks <- readRDS('../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_hallmarks.rds')
+# combo_gos<- readRDS('../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_gos.rds')
+# combo_keggs<- readRDS('../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_keggs.rds')
+# combo_tfs<- readRDS('../../../L1000_2021_11_23/combo_L1000_liverExtraBasis_tfs.rds')
 sigInfo <- sigInfo %>% filter(sig_id %in% sigs_selected)
 drug_ligand_ex <- drug_ligand_ex[,sigInfo$sig_id]
 
@@ -553,69 +557,93 @@ palette_colors <- scales::hue_pal()(num_colors)
 color_mapping <- setNames(palette_colors, unique(all_dists_filt2$pathway[all_dists_filt2$pathway!='other']))
 p1 <- ggplot(all_dists_filt2 %>% filter(Var1=='V1') %>% select(cmap_name,pathway,avg_dist,significant) %>% unique() %>% 
                mutate(pathway = ifelse(pathway=='other',NA,pathway)) %>% mutate(s = ifelse(is.na(pathway),'big','small')),
-             aes(x=reorder(cmap_name,avg_dist),y=avg_dist,color = pathway)) +
-  geom_point(aes(size=s),alpha=0.7) +
-  geom_text_repel(aes(label=significant),show.legend = FALSE,size=6,max.overlaps=60,box.padding = 0.7)+
+             aes(x=as.numeric(reorder(cmap_name,avg_dist)),y=avg_dist)) +
+  geom_point(aes(size=s),alpha=0.7,color = '#CD5C5C') +
+  geom_text_repel(aes(label=significant,color = pathway),show.legend = TRUE,size=8,max.overlaps=60,box.padding = 1)+
   scale_size_manual(values = c(0.7,2))+
-  xlab('') + ylab('score')+
-  ggtitle('L1000 perturbations for extra LV1')+
+  xlab('Rank') + ylab('score')+
+  ggtitle('L1000 perturbations for LV extra 1')+
   guides(size='none')+
   labs(color='target')+
-  theme_pubr(base_family = 'Arial',base_size = 18)+
-  theme(text = element_text(family = 'Arial',size=18),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_blank(),
-        plot.title = element_text(hjust=0.5),
+  theme_pubr(base_family = 'Arial',base_size = 24)+
+  theme(text = element_text(family = 'Arial',size=24),
+        panel.grid.major = element_line(),
+        # axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank(),
+        plot.title = element_blank(),
         legend.position = 'right')
 print(p1)
-ggsave('../results/l1000_for_extra_lv1.png',
+ggsave('../figures/l1000_for_extra_lv1.png',
        plot=p1,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/l1000_for_extra_lv1.eps',
+       plot=p1,
+       device = cairo_ps,
        width = 12,
        height = 9,
        units = 'in',
        dpi=600)
 p2 <- ggplot(all_dists_filt2 %>% filter(Var1=='V2') %>% select(cmap_name,pathway,avg_dist,significant) %>% unique() %>% 
                mutate(pathway = ifelse(pathway=='other',NA,pathway))%>% mutate(s = ifelse(is.na(pathway),'big','small')),
-             aes(x=reorder(cmap_name,avg_dist),y=avg_dist,color = pathway)) +
-        geom_point(aes(size=s),alpha=0.7) +
-        geom_text_repel(aes(label=significant),show.legend = FALSE,size=6,max.overlaps=60,box.padding = 0.7)+
+             aes(x=as.numeric(reorder(cmap_name,avg_dist)),y=avg_dist)) +
+        geom_point(aes(size=s),alpha=0.7,color = '#CD5C5C') +
+        geom_text_repel(aes(label=significant,color = pathway),show.legend = TRUE,size=8,max.overlaps=60,box.padding = 1)+
         scale_size_manual(values = c(0.7,2))+
-        xlab('') + ylab('score')+
-        ggtitle('L1000 perturbations for extra LV2')+
+        xlab('Rank') + ylab('score')+
+        ggtitle('L1000 perturbations for LV extra 2')+
         guides(size='none')+
         labs(color='target')+
-        theme_pubr(base_family = 'Arial',base_size = 18)+
-        theme(text = element_text(family = 'Arial',size=18),
-              axis.ticks.x = element_blank(),
-              axis.text.x = element_blank(),
-              plot.title = element_text(hjust=0.5),
+        theme_pubr(base_family = 'Arial',base_size = 24)+
+        theme(text = element_text(family = 'Arial',size=24),
+              panel.grid.major = element_line(),
+              # axis.ticks.x = element_blank(),
+              # axis.text.x = element_blank(),
+              plot.title = element_blank(),
               legend.position = 'right')
 print(p2)
-ggsave('../results/l1000_for_extra_lv2.png',
+ggsave('../figures/l1000_for_extra_lv2.png',
        plot=p2,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/l1000_for_extra_lv2.eps',
+       plot=p2,
+       device = cairo_ps,
        width = 12,
        height = 9,
        units = 'in',
        dpi=600)
 p3 <- ggplot(all_dists_filt2 %>% filter(Var1=='V3') %>% select(cmap_name,pathway,avg_dist,significant) %>% unique() %>% 
             mutate(pathway = ifelse(pathway=='other',NA,pathway))%>% mutate(s = ifelse(is.na(pathway),'big','small')),
-          aes(x=reorder(cmap_name,avg_dist),y=avg_dist,color = pathway)) +
-     geom_point(aes(size=s),alpha=0.7) +
-     geom_text_repel(aes(label=significant),show.legend = FALSE,size=6,max.overlaps=60,box.padding = 0.7)+
-     xlab('') + ylab('score')+
-     ggtitle('L1000 perturbations for direction of optimized variance')+
+          aes(x=as.numeric(reorder(cmap_name,avg_dist)),y=avg_dist)) +
+     geom_point(aes(size=s),alpha=0.7,color = '#CD5C5C') +
+     geom_text_repel(aes(label=significant,color = pathway),show.legend = TRUE,size=8,max.overlaps=60,box.padding = 1)+
+     xlab('Rank') + ylab('score')+
+     ggtitle('L1000 perturbations for direction of maximized variance')+
      guides(size='none')+
      labs(color='target')+
      scale_size_manual(values = c(0.7,2))+
-     theme_pubr(base_family = 'Arial',base_size = 18)+
-     theme(text = element_text(family = 'Arial',size=18),
-           axis.ticks.x = element_blank(),
-           axis.text.x = element_blank(),
-           plot.title = element_text(hjust=0.5),
+     theme_pubr(base_family = 'Arial',base_size = 24)+
+     theme(text = element_text(family = 'Arial',size=24),
+           panel.grid.major = element_line(),
+           # axis.ticks.x = element_blank(),
+           # axis.text.x = element_blank(),
+           plot.title = element_blank(),
            legend.position = 'right')
 print(p3)
-ggsave('../results/l1000_for_extra_lv3.png',
+ggsave('../figures/l1000_for_extra_lv3.png',
        plot=p3,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/l1000_for_extra_lv3.eps',
+       plot=p3,
+       device = cairo_ps,
        width = 12,
        height = 9,
        units = 'in',
