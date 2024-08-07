@@ -207,9 +207,12 @@ invivo_plsr <- as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])])
 invivo_plsr <- cbind(invivo_plsr,as.data.frame(Yh))
 invivo_plsr <- invivo_plsr %>% gather('phenotype','Score',-all_of(lvs))
 colnames(invivo_plsr)[1:2] <- c('V1','V2')
-ggplot(invivo_plsr %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)),aes(x=V1,y=V2,color=Score)) +
+ggplot(invivo_plsr %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
+         group_by(phenotype) %>% mutate(normed_score=Score/max(Score)),
+       aes(x=V1,y=V2,color=normed_score)) +
   geom_point(size=5)+
   scale_color_viridis_c()+
+  labs(color = 'Score')+
   xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
   theme_pubr(base_size = 30,base_family = 'Arial')+
   theme(text = element_text(size=30,family = 'Arial'),
@@ -284,19 +287,22 @@ invivo_plsr_all <- rbind(invivo_plsr %>% mutate(type = 'Original human data'),
                          invivo_plsr_backprj %>% mutate(type = 'Truncated human data'))
 invivo_plsr_all <- invivo_plsr_all %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 invivo_plsr_all <- invivo_plsr_all %>% mutate(Phenotype = Score) %>% select(-Score)
-ggplot(invivo_plsr_all,aes(x=V1,y=V2,color=Phenotype)) + #%>% select(-phenotype,-Score) %>% unique()
+ggplot(invivo_plsr_all %>% group_by(phenotype) %>% mutate(scaled=Phenotype/max(Phenotype)) %>% ungroup(),
+       aes(x=V1,y=V2,color=scaled)) + #%>% select(-phenotype,-Score) %>% unique()
   # geom_point(color='#FD0714',size=5)+
   geom_point(size=5)+
   scale_x_continuous(limits = c(-50,60))+
   scale_y_continuous(limits = c(-40,30))+
-  scale_color_viridis_c()+
+  scale_color_viridis_c(breaks=seq(0,1,0.5))+
+  labs(color = 'Normalized score')+
   xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
   theme_pubr(base_size = 30,base_family = 'Arial')+
   theme(text = element_text(size=30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
         axis.line = element_line(linewidth = 4),
         strip.background = element_blank(),
-        legend.position = 'bottom')+
+        legend.position = 'none')+
+  guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
   facet_wrap(vars(type,phenotype),scales = 'free')
 ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_all_invivo_plsr_ontop2.eps'),
        device = cairo_ps,
@@ -516,15 +522,18 @@ ggsave(paste0('figures/projected_',
 
 ## separation of sex in the extra basis
 ggplot(left_join(Zh , as.data.frame(sex_inferred) %>% select(c('sex'='V1')) %>%rownames_to_column('sample')),
-       aes(x=V1,y=V2,fill=sex)) +
-  geom_point(size=2.8,shape=21,stroke=1.2)+
+       aes(x=V1,y=V2,fill=sex,color=sex)) +
+  geom_point(size=2.8,shape=21,stroke=1.2,color='black')+
   scale_fill_viridis_d()+
   xlab('LV extra 1') + ylab('LV extra 2') +
   theme_bw(base_size = 20,base_family = 'Arial')+
   theme(text = element_text(size=20,family = 'Arial'),
         panel.background = element_rect(fill='white',linetype = 0 ),
         panel.border = element_blank(),
-        legend.position = 'right')
+        legend.position = 'right')+
+  stat_ellipse(aes(color = sex),size=1.2) +
+  scale_color_viridis_d()+
+  scale_fill_viridis_d()
 ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_extra_basis_sex_separete.eps'),
        device = cairo_ps,
        height = 6,
@@ -740,9 +749,11 @@ ggsave('figures/AllData_TCs_Scatterplot_MPS.eps',
 
 ## take a look also at performance of back-projection through the TCs
 Th <- Xh %*% Wm_combo %*% t(Wm_combo) %*% Wh
+Th0 <- Xh %*% Wm %*% t(Wm) %*% Wh
 Y_pred_backproj <- cbind(1, Th)  %*% rbind(apply(Yh,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
-all_scatter_plot_backproj <- left_join(data.frame(Yh) %>% 
-                                         mutate(id = seq(1,nrow(Yh))) %>% 
+Y_pred_truncated <-  cbind(1, Th0)  %*% rbind(apply(Yh,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+all_scatter_plot_backproj <- left_join(data.frame(Y_pred_truncated) %>% 
+                                         mutate(id = seq(1,nrow(Y_pred_truncated))) %>% 
                                          gather('phenotype','true',-id),
                                        data.frame(Y_pred_backproj) %>% 
                                          mutate(id = seq(1,nrow(Y_pred_backproj))) %>% 
@@ -759,10 +770,10 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
     geom_jitter(width = 0.05,color='#4682B4') + 
     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
     geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
-              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              aes(x = 1, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
-    ylab('Predicted') + xlab('Measured')+
-    ylim(c(0,4))+
+    ylab('prediction using TCs') + xlab('prediction using all PCs')+
+    ylim(c(1,3))+ xlim(c(1,3))+
     facet_wrap(~phenotype,scales = 'free')+
     theme_pubr(base_family = 'Arial',base_size=25)+
     theme(text = element_text(family = 'Arial',size=25),
@@ -773,10 +784,10 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
      geom_jitter(width = 0.05,color='#4682B4') + 
      geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
      geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
-               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               aes(x = 1, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
                hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
-     ylab('Predicted') + xlab('Measured')+
-     ylim(c(0,8))+
+     ylab('prediction using TCs') + xlab('prediction using all PCs')+
+     ylim(c(1,7))+xlim(c(1,7))+
      facet_wrap(~phenotype,scales = 'free')+
      theme_pubr(base_family = 'Arial',base_size=25)+
      theme(text = element_text(family = 'Arial',size=25),
@@ -787,7 +798,7 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
     title = NULL,
     theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
   )
-ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.png',
+ggsave('figures/AllData_TCs_VS_PCs_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
        units = 'in',
@@ -796,14 +807,13 @@ ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.png',
     geom_jitter(width = 0.05,color='#4682B4') + 
     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
     geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
-              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-              hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
-    ylab('Predicted') + xlab('Measured')+
-    ylim(c(0,4))+
+              aes(x = 1, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+    ylab('prediction using TCs') + xlab('prediction using all PCs')+
+    ylim(c(1,3))+ xlim(c(1,3))+
     facet_wrap(~phenotype,scales = 'free')+
-    theme_pubr(base_family = 'Arial',base_size=28)+
-    theme(text = element_text(family = 'Arial',size=28),
-          plot.title = element_text(hjust = 0.5,face = 'bold'),
+    theme_pubr(base_family = 'Arial',base_size=25)+
+    theme(text = element_text(family = 'Arial',size=25),
           axis.title.x = element_blank(),
           axis.title.y = element_text(face='bold'),
           panel.grid.major = element_line()))+
@@ -811,21 +821,21 @@ ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.png',
      geom_jitter(width = 0.05,color='#4682B4') + 
      geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
      geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
-               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-               hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
-     ylab('Predicted') + xlab('Measured')+
-     ylim(c(0,8))+
+               aes(x = 1, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylab('prediction using TCs') + xlab('prediction using all PCs')+
+     ylim(c(1,7))+xlim(c(1,7))+
      facet_wrap(~phenotype,scales = 'free')+
-     theme_pubr(base_family = 'Arial',base_size=28)+
-     theme(text = element_text(family = 'Arial',size=28),
-           axis.title.x = element_text(hjust = -0.4,face='bold'),
+     theme_pubr(base_family = 'Arial',base_size=25)+
+     theme(text = element_text(family = 'Arial',size=25),
+           axis.title.x = element_text(hjust = -3,face='bold'),
            axis.title.y = element_blank(),
            panel.grid.major = element_line())) + 
   plot_annotation(
     title = NULL,
-    theme = theme(plot.title = element_text(size = 28, family = "Arial", hjust = 0.5,face='bold'))
+    theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
   )
-ggsave('figures/AllData_backproj_TCs_Scatterplot_human_plsr.eps',
+ggsave('figures/AllData_TCs_VS_PCs_Scatterplot_human_plsr.eps',
        device = cairo_ps,
        height = 6,
        width=12,
@@ -939,6 +949,7 @@ postscript(paste0('figures/progenies_only_optimal_loadings_',
            height = 9, width = 9)
 print(extra_basis_pathway_activity$figure[[2]]+ theme(plot.title = element_blank()))
 dev.off()
+
 colnames(Wm_combo) <- c('V1','V2')
 translatable_components_progenies <- pathway_activity_interpretation(Wm_combo,
                                                                        Wm,
@@ -961,7 +972,7 @@ setEPS()
 postscript(paste0('figures/progenies_only_translatable_components_',
                   tolower(target_dataset),
                   '.eps'),
-           height = 9, width = 9)
+           height = 9, width = 16)
 print(p)
 dev.off()
 

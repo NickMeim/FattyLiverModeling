@@ -23,10 +23,11 @@ num_folds <- length(unique(df_res_cv$fold))
 
 ### Visualize results---------------------------------
 df_res <- rbind(df_res_cv,df_res_external %>% mutate(set=dataset) %>% select(all_of(colnames(df_res_cv))))
-df_plot <- df_res %>% group_by(model,set,input) %>% mutate(mu = mean(r)) %>% mutate(se = sd(r)/num_folds) %>% ungroup() %>%
-  mutate(input = factor(input,levels=c('optimized MPS','back-projected','human genes')))
+df_plot <- df_res %>% mutate(input = ifelse(input=='back-projected','truncated',input)) %>%
+  group_by(model,set,input) %>% mutate(mu = mean(r)) %>% mutate(se = sd(r)/num_folds) %>% ungroup() %>%
+  mutate(input = factor(input,levels=c('optimized MPS','truncated','human genes')))
 df_plot$model <- factor(df_plot$model,
-                           levels = c('neuralNet','rf','xgboost','svmRBF','svmPoly','svmLinear','knn','elasticNet','lasso','ridge'))
+                           levels = c('PLSR','neuralNet','rf','xgboost','svmRBF','svmPoly','svmLinear','knn','elasticNet','lasso','ridge'))
 df_plot$model <-factor(df_plot$model, levels = rev(levels(df_plot$model)))
 df_plot$set <- factor(df_plot$set,levels = c('train','test','Hoang','Pantano'))
 p1 <- ggplot(df_plot,

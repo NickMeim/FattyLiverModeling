@@ -634,9 +634,9 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tun
 ### Since we do not overfit to validation now perform cross-validation with this dataset-------------
 ### Where you calculate validation and train performance of:
 ### a) human data PLSR to predict NAS,Fibrosis
-### b) back-projected human data PLSR to predict NAS, Fibrosis
-### c) back-projected human data PLSR to predict NAS, Fibrosis with translatable combination of MPS PCs
-### d) c) back-projected human data PLSR to predict NAS, Fibrosis with optimal direction
+### b) truncated human data PLSR to predict NAS, Fibrosis
+### c) truncated human data PLSR to predict NAS, Fibrosis with translatable combination of MPS PCs
+### d) c) truncated human data PLSR to predict NAS, Fibrosis with optimal direction
 num_folds <- 10
 loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
 num_LVS <- 8
@@ -939,27 +939,13 @@ performance_all <- rbind(performance_1,
                          performance_5,
                          performance_6)
 ### Select what to show in the figure
-# performance_all_plot <- performance_all %>% 
-#   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
-#                      ifelse(type=='model',TRUE,FALSE))) %>% 
-#   filter(keep==TRUE) %>% select(-keep) %>%
-#   mutate(approach = ifelse(task=='human_plsr','PLSR',
-#                         ifelse(task=='human_backprojected','backprojected',
-#                                ifelse(task=='human_backprojected_retrained','backprojected retrained',
-#                                       ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
-#                                              ifelse(task=='analytical_optimal','analytical Wopt',
-#                                              'Wopt')))))) %>%
-#   mutate(approach = ifelse(approach=='PLSR',
-#                            ifelse(type=='model',approach,type),
-#                            approach)) %>%
-#   select(-type,-task)
 performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-metric) %>% mutate(r=value) %>% select(-value)%>%
   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
                      ifelse(type=='model',TRUE,FALSE))) %>% 
   filter(keep==TRUE) %>% select(-keep) %>%
   mutate(approach = ifelse(task=='human_plsr','human genes',
-                           ifelse(task=='human_backprojected','back-projected',
-                                  ifelse(task=='human_backprojected_retrained','back-projected re-trained',
+                           ifelse(task=='human_backprojected','truncated',
+                                  ifelse(task=='human_backprojected_retrained','truncated re-trained',
                                          ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
                                                 ifelse(task=='analytical_optimal','optimized MPS',
                                                        'Wopt')))))) %>%
@@ -967,20 +953,24 @@ performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-met
                            ifelse(type=='model',approach,type),
                            approach)) %>%
   select(-type,-task)
-performance_all_plot <- performance_all_plot %>%
-  filter(approach %in% c('human genes','back-projected','optimized MPS','shuffle X'))
 
-# performance_all_plot$approach <- factor(performance_all_plot$approach,
-#                                         levels = c('PLSR',
-#                                                    'backprojected',
-#                                                    'backprojected retrained',
-#                                                    'translatable LVs',
-#                                                    'Wopt',
-#                                                    'analytical Wopt',
-#                                                    'shuffle X'))
+performance_all_truncated <- performance_all_plot %>%
+  filter(approach %in% c('truncated','truncated re-trained','human genes'))
+performance_all_truncated$approach <- factor(performance_all_truncated$approach,
+                                        levels = c('human genes',
+                                                   'truncated',
+                                                   'truncated re-trained'))
+performance_all_truncated <- performance_all_truncated %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+performance_all_truncated$phenotype <- factor(performance_all_truncated$phenotype)
+performance_all_truncated$phenotype <- factor(performance_all_truncated$phenotype,
+                                         levels = rev(levels(performance_all_truncated$phenotype)))
+
+
+performance_all_plot <- performance_all_plot %>%
+  filter(approach %in% c('human genes','truncated','optimized MPS','shuffle X'))
 performance_all_plot$approach <- factor(performance_all_plot$approach,
                                         levels = c('human genes',
-                                                   'back-projected',
+                                                   'truncated',
                                                    'optimized MPS',
                                                    'shuffle X'))
 performance_all_plot <- performance_all_plot %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
@@ -990,7 +980,7 @@ performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,
                                          levels = rev(levels(performance_all_plot$phenotype)))
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
-  scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
+  scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(NA,1.02))+
   xlab('')+ ylab('pearson`s correlation') +
   ggtitle('10-fold train performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
@@ -1000,18 +990,18 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(ap
         # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-                                        c('human genes','back-projected'),
-                                        c('optimized MPS','back-projected')),
+                                        c('human genes','truncated'),
+                                        c('optimized MPS','truncated')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(1,0.95,0.95),
-                     size = 8)+
+                     label.y = c(0.98,0.94,0.94),
+                     size = 6)+
   facet_wrap(~phenotype,nrow = 2)
 print(p_train)  
 ggsave('../figures/approaches_comparison_training.png',
        plot = p_train,
-       height = 9,
-       width = 11,
+       height = 10,
+       width = 12,
        units = 'in',
        dpi=600)
 
@@ -1029,8 +1019,8 @@ p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(appro
         panel.spacing = unit(0, "lines"),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-                                        c('human genes','back-projected'),
-                                        c('optimized MPS','back-projected'),
+                                        c('human genes','truncated'),
+                                        c('optimized MPS','truncated'),
                                         c('optimized MPS','shuffle X')),
                      method = 'wilcox',
                      tip.length = 0.01,
@@ -1052,6 +1042,62 @@ ggsave('../figures/approaches_comparison_10foldtest.eps',
        units = 'in',
        dpi=600)
 
+### Compare the trincated versions only
+p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train') %>% filter(approach!='Wopt'),
+                     x='approach',y='r',color='approach',add='jitter') +
+  scale_y_continuous(n.breaks = 10,limits = c(NA,NA))+
+  xlab('')+ ylab('pearson`s correlation') +
+  ggtitle('10-fold train performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=26), #angle = 25
+        # strip.text = element_text(face = 'bold'),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  stat_compare_means(comparisons = list(c('truncated','truncated re-trained'),
+                                        c('truncated','human genes'),
+                                        c('human genes','truncated re-trained')),
+                     method = 'wilcox',
+                     tip.length = 0.01,
+                     label.y = c(0.7,0.95,1),
+                     size = 6)+
+  facet_wrap(~phenotype,nrow = 2)
+print(p_train_truncated)  
+ggsave('../figures/truncated_all_genes_comparison_training.png',
+       plot = p_train_truncated,
+       height = 10,
+       width = 12,
+       units = 'in',
+       dpi=600)
+
+p_test_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='test')%>% filter(approach!='Wopt'),
+                    x='approach',y='r',color='approach',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.1,1,0.1),limits = c(NA,1.05))+
+  xlab('')+ylab('pearson`s correlation') +
+  # ggtitle('10-fold test performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
+        legend.position = 'none',
+        axis.text.y = element_text(size=22),
+        # plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=24), #angle = 25
+        # strip.text = element_text(face = 'bold'),
+        panel.spacing = unit(0, "lines"),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  stat_compare_means(comparisons = list(c('truncated','truncated re-trained'),
+                                        c('truncated','human genes'),
+                                        c('human genes','truncated re-trained')),
+                     method = 'wilcox',
+                     tip.length = 0.01,
+                     label.y = c(0.7,0.8,0.9),
+                     size = 6)+
+  facet_wrap(~phenotype,nrow = 2)
+print(p_test_truncated)  
+ggsave('../figures/truncated_all_genes_comparison_10foldtest.png',
+       plot = p_test_truncated,
+       height = 10,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
 
 ### See how training performance converges
@@ -1292,6 +1338,14 @@ for (ii in 1:nrow(plsr_model@weightMN)){
 }
 Th <- Xh %*% Wm %*% t(Wm) %*% Wh
 Y_pred_backproj <- cbind(1, Th)  %*% rbind(apply(Yh,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+Y_pred_backproj_retrained <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
+for (i in 1:ncol(Yh)){
+  train_data <- cbind(Yh[,i], Th)
+  colnames(train_data)[1] <- 'V1'
+  mod_retrain <- lm(V1 ~., data = as.data.frame(train_data))
+  Y_pred_backproj_retrained[,i] <- predict(mod_retrain)
+}
+colnames(Y_pred_backproj_retrained) <- colnames(Y_pred_backproj)
 all_scatter_plot_backproj <- left_join(data.frame(Yh) %>% 
                                 mutate(id = seq(1,nrow(Yh))) %>% 
                                 gather('phenotype','true',-id),
@@ -1357,6 +1411,7 @@ ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
           plot.title = element_text(hjust = 0.5,face = 'bold'),
           axis.title.x = element_blank(),
           axis.title.y = element_text(face='bold'),
+          # axis.title.y = element_blank(),
           panel.grid.major = element_line()))+
   (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
      geom_jitter(width = 0.05,color='#4682B4') + 
@@ -1369,7 +1424,8 @@ ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
      facet_wrap(~phenotype,scales = 'free')+
      theme_pubr(base_family = 'Arial',base_size=28)+
      theme(text = element_text(family = 'Arial',size=28),
-           axis.title.x = element_text(hjust = -0.4,face='bold'),
+           # axis.title.x = element_text(hjust = -0.4,face='bold'),
+           axis.title.x = element_blank(),
            axis.title.y = element_blank(),
            panel.grid.major = element_line())) + 
   plot_annotation(
@@ -1383,6 +1439,58 @@ ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.eps',
        units = 'in',
        dpi=600)
 
+### plot scatterplot when re-training Bh
+all_scatter_plot_backproj_retrained <- left_join(data.frame(Yh) %>% 
+                                         mutate(id = seq(1,nrow(Yh))) %>% 
+                                         gather('phenotype','true',-id),
+                                       data.frame(Y_pred_backproj_retrained) %>% 
+                                         mutate(id = seq(1,nrow(Y_pred_backproj_retrained))) %>% 
+                                         gather('phenotype','prediction',-id)) %>%
+  select(-id) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+all_cor_results_backproj_retrained <- all_scatter_plot_backproj_retrained %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+(ggplot(all_scatter_plot_backproj_retrained %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+    geom_jitter(width = 0.05,color='#4682B4') + 
+    geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+    geom_text(data = all_cor_results_backproj_retrained%>% filter(phenotype=='Fibrosis stage'), 
+              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+    ylab('Predicted') + xlab('Measured')+
+    ylim(c(0,4))+
+    facet_wrap(~phenotype,scales = 'free')+
+    theme_pubr(base_family = 'Arial',base_size=25)+
+    theme(text = element_text(family = 'Arial',size=25),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(face='bold'),
+          panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj_retrained %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj_retrained%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=25)+
+     theme(text = element_text(family = 'Arial',size=25),
+           axis.title.x = element_text(hjust = -0.6,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = NULL,
+    theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('../figures/AllData_backproj_retrained_Scatterplot_human_plsr.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
 ### Now see convergence of performance
 train_performance_res <- rbind(data.frame(r = train_r,
                                           fold = seq(1,length(train_r)),

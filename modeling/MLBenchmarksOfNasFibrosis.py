@@ -4,6 +4,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.svm import SVR, LinearSVR
 from sklearn.linear_model import Lasso,Ridge,ElasticNet
+from sklearn.cross_decomposition import PLSRegression
 # from sklearn.gaussian_process import GaussianProcessRegressor
 # from sklearn.gaussian_process.kernels import DotProduct, RBF, RationalQuadratic
 from sklearn.ensemble import RandomForestRegressor
@@ -59,7 +60,7 @@ def L2Regularization(deepLearningModel, L2):
 
 ### Initialize the parsed arguments
 parser = argparse.ArgumentParser(description='Run different ML models')
-parser.add_argument('--model_types', metavar='N', type=str, nargs='*', help='models to train',default=['knn' ,'svmLinear','svmRBF','svmPoly','lasso','ridge','elasticNet','neuralNet','xgboost','rf'])
+parser.add_argument('--model_types', metavar='N', type=str, nargs='*', help='models to train',default=['knn' ,'svmLinear','svmRBF','svmPoly','lasso','ridge','elasticNet','neuralNet','xgboost','rf','PLSR'])
 parser.add_argument('--cv_files_location', action='store',help='location of files used in CV training of originalPLSR model',default='../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/')
 parser.add_argument('--clinical_files_location', action='store',help='location of external clinical files',default='../preprocessing/TrainingValidationData/external_clinical_data/')
 parser.add_argument('--clinical_datasets', metavar='N', type=str, nargs='*', help='names of the external clinical datasets',default=['Hoang','Pantano'])
@@ -92,6 +93,8 @@ for mdl in model_types:
             }
         model = GridSearchCV(estimator=KNN(),param_grid = params, cv=5, n_jobs=-1)
         # model = KNN(n_neighbors=5)
+    elif mdl=='PLSR':
+        model = PLSRegression(n_components=8,scale=False)
     elif mdl == 'rf':
         # params = {
         #     'n_estimators': [10,25,50,75,100],

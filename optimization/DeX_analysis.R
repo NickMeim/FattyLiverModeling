@@ -24,7 +24,7 @@ source('enrichment_calculations.R')
 
 # Load data and do PCA----------------------------------------------------------
 dataset_names <- c("Govaere", "Kostrzewski","Wang", "Feaver",'Hoang')
-ref_dataset <- "Hoang"
+ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
 # Load
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
@@ -32,7 +32,7 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list$Hoang$metadata  %>% select(nafld_activity_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list$Govaere$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 Xm <- data_list[[target_dataset]]$data_center %>% t()
@@ -41,56 +41,10 @@ Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 ## get in vitro metadata and keep only control high NPC lean
 invitro_metadata <- as.data.frame(data_list[[target_dataset]]$metadata)
 invitro_metadata <- invitro_metadata[,1:13] %>% filter(Number_of_cues==0) %>% filter(NPC=='high') %>% filter(Background=='lean')
-Xm <- Xm[invitro_metadata$sampleName,]
+# Xm <- Xm[invitro_metadata$sampleName,]
 
-## Load perturbation and perturb
+## Load perturbation
 dx_lean <- data.table::fread('../results/optimized_mps/dx_lean_govaere_kostrzewski.csv') %>% select(-V1)
-Xper <- as.matrix(Xm) + do.call(rbind, replicate(nrow(Xm), as.matrix(dx_lean), simplify=FALSE))
-X_all <- rbind(Xm,Xper)
-conditions <- c(rep('control',nrow(Xm)),rep('perturbed',nrow(Xm)))
-rownames(X_all) <- conditions
-pca <- prcomp(X_all,scale. = FALSE, center = TRUE)
-fviz_screeplot(pca)
-df_pcs <- as.data.frame(pca$x)
-df_pcs$condition <- conditions
-ggplot(df_pcs,aes(x=PC1,y=PC2,color=condition)) +
-  geom_point(size=1.5)+
-  theme_pubr(base_size=20,base_family = 'Arial')
-w <- as.matrix(pca$rotation[,1])
-colnames(w) <- 'P1'
-plot_extra_gene_loadings_pc1 <- plot_gene_loadings(loadings = w,
-                                                   selection='P1',
-                                                   y_lab = 'gene weight')
-optimal_var_pathway_activity <- pathway_activity_interpretation(w,
-                                                                Wm,
-                                                                plotting = FALSE)
-optimal_var_pathway_activity <- optimal_var_pathway_activity[[2]]
-ggplot(optimal_var_pathway_activity %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
-         filter (condition=='P1'),
-       aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity',color='black') +
-  scale_fill_gradient2(low='blue',high = 'red',mid = 'white',midpoint = 0)+
-  # scale_x_continuous(n.breaks = 8,limits = c(-8,8))+
-  ylab('Pathway')+
-  geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
-                               ifelse(p_value <= 0.001,"***",
-                                      ifelse(p_value<=0.01,"**",
-                                             ifelse(p_value<=0.05,'*',
-                                                    ifelse(p_value<=0.1,'\u2219',
-                                                           'ns'))))),
-                x = ifelse(activity < 0, activity - 0.2, activity + 0.2)),
-            size = 6,
-            color = 'black',
-            angle=90) +                                   
-  theme_pubr(base_size = 18,base_family = 'Arial')+
-  theme(text = element_text(size = 18,family = 'Arial'),
-        legend.position = 'right',
-        plot.title = element_text(hjust = 0.5))
-ggsave(paste0('../results/optimized_mps/progenies_optimal_variance_paths_',
-              tolower(target_dataset),
-              '_barplot.png'),
-       width = 12,
-       height = 9,
-       dpi = 600)
 
 ### Visualize genes in dx ---------------
 dex_data <- t(dx_lean)
@@ -222,77 +176,68 @@ postscript(paste0('../figures/perturbed_pathway_and_msig_',
 print(combined_plot)
 dev.off()
 
-# Interrogate dX for sex-related genesets enrichment-------------------------------------
-# Retrieve all gene sets
-# List available libraries
-msigdb_gene_sets <- msigdbr(species = "Homo sapiens")
-# Filter for gene sets related to sex differences
-sex_diff_gene_sets <- msigdb_gene_sets %>%
-  filter(grepl("sex|gender", gs_name, ignore.case = TRUE))
-all_sex_genesets <- sex_diff_gene_sets %>%
-  group_by(gs_name) %>%
-  summarise(genes = list(gene_symbol)) %>%
-  deframe()
-all_genesets <- msigdb_gene_sets %>%
-  group_by(gs_name) %>%
-  summarise(genes = list(gene_symbol)) %>%
-  deframe()
-### Gene-set enrichment witll MSIG data
-msig_sex_diff <- apply(dex_data,
-                       MARGIN = 2,
-                       fgsea,pathways = all_sex_genesets,
-                       minSize=10,
-                       maxSize=500,
-                       nperm = 10000)
-df_msig_sex <- msig_sex_diff[[1]]
-df_msig_sex <- df_msig_sex %>% select(c('geneset'='pathway'),ES,NES,pval,padj) %>% unique()
-df_msig_sex <- left_join(df_msig_sex,distinct(msigdb_gene_sets %>% select(c('geneset'='gs_name'),gs_cat,gs_subcat)))
-df_msig_sex <- df_msig_sex %>% mutate(type = ifelse(geneset %in% sex_diff_gene_sets$gs_name,'sex diff','other')) 
-df_msig_sex <- df_msig_sex %>% 
-  mutate(geneset = ifelse(gs_subcat=='GO:BP',substr(geneset, nchar('GOBP_')+1, nchar(geneset)),
-ifelse(gs_subcat=='GO:CC',substr(geneset, nchar('GOCC_')+1, nchar(geneset)),
-       ifelse(gs_subcat=='HPO',substr(geneset, nchar('HP_')+1, nchar(geneset)),
-              ifelse(gs_subcat=='CP:WIKIPATHWAYS',substr(geneset, nchar('WP_')+1, nchar(geneset)),
-                     ifelse(gs_subcat=='IMMUNESIGDB',substr(geneset, nchar('GSE18281_')+1, nchar(geneset)),
-                            ifelse(gs_subcat=='GO:MF',substr(geneset, nchar('GOMF_')+1, nchar(geneset)),
-                                   geneset)))))))%>% 
-  mutate(geneset = str_replace_all(geneset,'_'," "))
-# df_msig_sex <- df_msig_sex %>% mutate(geneset=tolower(geneset))
-# df_msig_sex <- df_msig_sex %>% filter(padj<0.25) %>% filter(abs(NES)>=0.5)
-p_msig_sex_diff <- ggplot(df_msig_sex %>% 
-                   arrange(NES), #%>% filter(padj<=0.1)
-                 aes(x=NES,y=reorder(geneset,NES),fill=padj))+ 
-  geom_bar(stat = 'identity') +
-  scale_fill_gradient(trans='log10',low='indianred',high = 'whitesmoke',limits = c(0.01,1)) +
-  # scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
-  geom_text(aes(label = ifelse(geneset %in% c('SOMATIC SEX DETERMINATION','MALE SEX DIFFERENTIATION'),
-                               paste0('p-adj.=',round(padj,3)),NA),
-                x = ifelse(NES < 0, 0.3, -0.3)),
-            size = 6,
-            color = 'black',
-            angle=0) + 
-  xlab('Normalized Enrichment Score') + ylab('geneset')+
-  ggtitle('Enrichment of sex-related genesets from the MSIG database')+
-  labs(fill = "p-adj.")+
-  theme_minimal(base_family = 'Arial',base_size = 18)+
-  theme(text = element_text(family = 'Arial',size=18),
-        axis.text.y = element_text(size=16),
-        plot.title = element_text(hjust = 0.5),
-        # legend.key.size = unit(1.5, "lines"),
-        legend.position = 'right')
-print(p_msig_sex_diff)
-ggsave(paste0('../figures/perturbed_msig_sex_',
-              tolower(target_dataset),
-              '_barplot.png'),
-       plot=p_msig_sex_diff,
-       width = 16,
-       height = 8,
-       dpi = 600)
-ggsave(paste0('../figures/perturbed_msig_sex_',
-              tolower(target_dataset),
-              '_barplot.eps'),
-       plot=p_msig_sex_diff,
-       device = cairo_ps,
-       width = 16,
-       height = 8,
-       dpi = 600)
+# # Project human samples onto DX and see if they separate sex------------------------
+# if (ref_dataset=='Hoang'){
+#   sex_inferred <- data_list[[ref_dataset]]$metadata$sex
+# }else if (ref_dataset=='Pantano') {
+#   sex_inferred <- data_list[[ref_dataset]]$metadata$Sex
+# }else{
+#   sex_inferred <- apply(as.matrix(Xh[,c('RPS4Y1')]),2,sign) 
+#   sex_inferred <- 1*(sex_inferred>0)
+#   sex_inferred <- ifelse(sex_inferred==1,'male','female')
+# }
+# X_pert <- Xm[invitro_metadata$sampleName,]
+# X_pert <- as.matrix(X_pert) + do.call(rbind, replicate(nrow(X_pert), as.matrix(dx_lean), simplify=FALSE))
+# X_pert <- colMeans(X_pert)
+# X_pert <- t(t(X_pert))
+# # #X_all <- rbind(control = colMeans(Xm[invitro_metadata$sampleName,]),perturbed = X_pert)
+# # #conditions <- c(rep('control',nrow(Xm[invitro_metadata$sampleName,])),rep('perturbed',nrow(Xm[invitro_metadata$sampleName,])))
+# # X_all <- rbind(Xm[invitro_metadata$sampleName,],X_pert)
+# X_all <- cbind(data_list$Kostrzewski$Xm_grouped,X_pert)
+# X_all <- t(X_all)
+# pca <- prcomp(X_all,scale. = FALSE, center = TRUE)
+# fviz_screeplot(pca)
+# df_pcs <- as.data.frame(pca$x)
+# df_pcs$condition <- rownames(df_pcs)
+# wm_new <- pca$rotation
+# dx_weights_centered <- t(dx_lean) - mean(t(dx_lean))
+# dx_weights_centered <- dx_weights_centered / sqrt(sum(dx_weights_centered^2))
+# hist(dx_weights_centered)
+# print(all(colnames(Xh)==rownames(dx_weights_centered)))
+# 
+# similarity <- cor(Wm,wm_new)
+# similarity <- as.data.frame(similarity) %>% rownames_to_column('old') %>% gather('new','similarity',-old)
+# similarity <- similarity %>% group_by(new) %>% mutate(max_sim = max(abs(similarity))) %>% ungroup()
+# similarity <- similarity %>% select(new,max_sim) %>% unique()
+# ind <- similarity$new[which.min(similarity$max_sim)]
+# print(ind)
+# 
+# Z_proj <- Xh  %*% Wm #as.matrix(w1)
+# # colnames(Z_proj) <- 'V1'
+# # Z_proj <- Xh  %*% dx_weights_centered #as.matrix(w1)
+# data_projected <- as.data.frame(Z_proj)
+# data_projected$sex <- sex_inferred[,1]
+# data_projected$NAS <- Yh[,1]
+# data_projected$fibrosis <- Yh[,2]
+# 
+# 
+# ggboxplot(data_projected,x='sex',y='PC1',add='jitter')+
+#   ylab('value')+
+#   # ylab(expression('value of projected samples along   '*Delta*'X'))+
+#   stat_compare_means(comparisons = list(c('female','male')),
+#                      method = 'wilcox')
+# 
+# ggplot(data_projected,
+#        aes(x=PC1,y=PC2,fill=sex,color=sex)) +
+#   geom_point(size=2.8,shape=21,stroke=1.2,color='black')+
+#   scale_fill_viridis_d()+
+#   xlab('PC1') + ylab('PC2') +
+#   theme_bw(base_size = 20,base_family = 'Arial')+
+#   theme(text = element_text(size=20,family = 'Arial'),
+#         panel.background = element_rect(fill='white',linetype = 0 ),
+#         panel.border = element_blank(),
+#         legend.position = 'right')+
+#   stat_ellipse(aes(color = sex),size=1.2) +
+#   scale_color_viridis_d()+
+#   scale_fill_viridis_d()
+

@@ -142,9 +142,8 @@ df_results <- df_results %>% gather('model','r',-dataset,-set,-fold_ids)
 # df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','extra basis',
 #                                                    ifelse(model!='PLSR','in-vitro PCs','original PLSR')))
 df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','optimized MPS',
-                                                   ifelse(model!='PLSR','back-projected','human genes')))
-# df_results$model <- factor(df_results$model,levels = c('original PLSR','extra basis','in-vitro PCs'))
-df_results$model <- factor(df_results$model,levels = c('human genes','optimized MPS','back-projected'))
+                                                   ifelse(model!='PLSR','truncated','human genes')))
+df_results$model <- factor(df_results$model,levels = c('human genes','truncated','optimized MPS'))
 df_results <- df_results %>% separate('fold_ids',into = c('fold','repetition')) %>%
   group_by(dataset,model,set,repetition) %>% mutate(r_mu = mean(r))  %>% ungroup()%>%
   select(-repetition,-fold) %>% unique()
@@ -156,7 +155,7 @@ df_results <- df_results %>% separate('fold_ids',into = c('fold','repetition')) 
 # )
 model_comparisons <- list(
   c('human genes', 'optimized MPS'),
-  c('optimized MPS', 'back-projected')
+  c('optimized MPS', 'truncated')
 )
 df_results$set <- factor(df_results$set,levels=c('train','test')) 
 df_results  <- left_join(df_results,
@@ -180,45 +179,50 @@ df_results <- df_results %>% group_by(dataset,model,set) %>%  mutate(all_mu = me
 #         legend.position = 'bottom')+
 #   facet_wrap(~set)+
 #   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-#                                         c('optimized MPS','back-projected'),
-#                                         c('human genes','back-projected')),
+#                                         c('optimized MPS','truncated'),
+#                                         c('human genes','truncated')),
 #                      label.y = c(0.98,0.98,1.03),
 #                      method = 'wilcox')
 p1 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,r_mu) %>% unique(),
                 x='model',y='r_mu',color = 'model',add='jitter') +
-  scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
+  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.45,NA))+
   xlab('')+ ylab('pearson`s correlation')+
   ggtitle('Hoang')+
-  theme(text = element_text(size = 20,family = 'Arial'),
+  theme(text = element_text(size = 30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
         axis.text.x = element_blank(), 
         panel.grid.major.y = element_line(linewidth = 1),
         panel.grid.minor.y = element_line(linewidth = 0.5),
         legend.position = 'bottom')+
   facet_wrap(~set)+
-  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-                                        c('optimized MPS','back-projected'),
-                                        c('human genes','back-projected')),
+  stat_compare_means(comparisons = list(c('human genes','truncated'),
+                                        c('optimized MPS','truncated'),
+                                        c('human genes','optimized MPS')),
                      label.y = c(0.98,0.98,1.03),
-                     method = 'wilcox')
+                     method = 'wilcox',
+                     label = 'p.signif',
+                     size=8
+                     )
 # print(p1)
 p2 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,r_mu) %>% unique(),
                 x='model',y='r_mu',color = 'model',add='jitter') +
-  scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
+  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.45,NA))+
   xlab('')+ ylab('pearson`s correlation')+
   ggtitle('Pantano')+
-  theme(text = element_text(size = 20,family = 'Arial'),
+  theme(text = element_text(size = 30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
         axis.text.x = element_blank(), 
         panel.grid.major.y = element_line(linewidth = 1),
         panel.grid.minor.y = element_line(linewidth = 0.5),
         legend.position = 'bottom')+
   facet_wrap(~set)+
-  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-                                        c('optimized MPS','back-projected'),
-                                        c('human genes','back-projected')),
+  stat_compare_means(comparisons = list(c('human genes','truncated'),
+                                        c('optimized MPS','truncated'),
+                                        c('human genes','optimized MPS')),
                      label.y = c(0.98,0.98,1.03),
-                     method = 'wilcox')
+                     method = 'wilcox',
+                     label = 'p.signif',
+                     size=8)
 # print(p2)
 p <- (p1 + p2) + plot_layout(guides = "collect",axes = "collect") & theme(legend.position = 'bottom')
 print(p)
