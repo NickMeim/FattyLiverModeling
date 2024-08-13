@@ -10,7 +10,7 @@ source("../utils/plotting_functions.R")
 source("functions_translation.R")
 source("CrossValidationUtilFunctions.R")
 
-### Load in-vitro and in-vivo datasets and plit for Cross-Validation-----------------------------------------
+### Load in-vitro and in-vivo datasets and split for Cross-Validation-----------------------------------------
 dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver","Govaere")
 ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
@@ -28,67 +28,6 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
-# Plot metadata of Govaere dataset to show cohort composition
-plt_metadata_Govaere <- data_list$Govaere$metadata %>%
-                        ggplot(aes(x = as.numeric(nas_score), y = as.numeric(Fibrosis_stage))) +
-                          geom_point(color = "steelblue", size = 2*size_dot, alpha = 0.1) +
-                          labs(x = "NAFLD score (NAS)", y = "Fibrosis stage")
-
-plt_metadata_Govaere <- add_theme(plt_metadata_Govaere)
-plt_metadata_Govaere <- ggExtra::ggMarginal(plt_metadata_Govaere, type = "histogram", fill = "steelblue")
-ggsave('../results/plot_files/plt_metadata_Govaere.png', plot = plt_metadata_Govaere,
-       device = "png",
-       height = 6,
-       width=6,
-       units = 'cm')
-
-# Plot PCA scores for MPS dataset
-plt_PCA_MPS <- data_list[[target_dataset]]$pca$x %>%
-                ggplot(aes(x = PC1, y = PC2)) +
-                geom_point(color = "indianred", size = size_dot) +
-                labs(x = paste0("MPS PC1 (", round(data_list[[target_dataset]]$pca$var_per[1],1), "%)"),
-                     y = paste0("MPS PC2 (", round(data_list[[target_dataset]]$pca$var_per[2],1), "%)"))
-
-plt_PCA_MPS <- add_theme(plt_PCA_MPS)
-ggsave('../results/plot_files/plt_PCA_MPS.png', plot = plt_PCA_MPS,
-       device = "png",
-       height = 4,
-       width=5,
-       units = 'cm')
-
-# Project human data on MPS PCs, save plot. Also save backprojected
-plt_PCA_human_project <- rbind(data.frame(x = Xh %*% Wm[,1], y = Xh %*% Wm[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
-                               data.frame(x = Xh %*% Wm[,1], y = Xh %*% Wm[,2], phenotype = "NAS", Score = Yh[,1])) %>%
-                          ggplot(aes(x = x, y = y, color = Score)) +
-                          geom_point(size = size_dot) +
-                          labs(x = "MPS PC1", y = "MPS PC2") +
-                          scale_color_viridis_c() +
-                          facet_wrap(~factor(phenotype), nrow = 1)
-
-plt_PCA_human_project <- add_theme(plt_PCA_human_project)
-
-ggsave('../results/plot_files/plt_PCA_human_project.png', plot = plt_PCA_human_project,
-       device = "png",
-       height = 6,
-       width=9,
-       units = 'cm')
-
-plt_PCA_human_backproject <- rbind(data.frame(x = Xh %*% Wm %*% t(Wm) %*% Wh[,1], y = Xh %*% Wm %*% t(Wm) %*% Wh[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
-                               data.frame(x = Xh %*% Wm %*% t(Wm) %*% Wh[,1], y = Xh %*% Wm %*% t(Wm) %*% Wh[,2], phenotype = "NAS", Score = Yh[,1])) %>%
-  ggplot(aes(x = x, y = y, color = Score)) +
-  geom_point(size = size_dot) +
-  labs(x = "Human LV1", y = "Human LV2") +
-  scale_color_viridis_c() +
-  facet_wrap(~factor(phenotype), nrow = 1)
-
-plt_PCA_human_backproject <- add_theme(plt_PCA_human_backproject)
-
-ggsave('../results/plot_files/plt_PCA_human_backproject.png', plot = plt_PCA_human_backproject,
-       device = "png",
-       height = 6,
-       width=9,
-       units = 'cm')
-                          
 
 ### Step 1: Determine number of LVs to keep for PLSR modeling--------------------------------------------
 ### Split into Train - Validation -Test
@@ -130,10 +69,10 @@ Yh_test <- Yh[-best_sample,]
 Xh_test <- Xh[-best_sample,]
 Yh <- Yh[best_sample,]
 Xh <- Xh[best_sample,]
-saveRDS(Xh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
-saveRDS(Yh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
-saveRDS(Xh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
-saveRDS(Yh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
+# saveRDS(Xh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
+# saveRDS(Yh,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
+# saveRDS(Xh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
+# saveRDS(Yh_test,'../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
 
 ### Perform 10-fold-cross-validation to tune the number of LVs of PLSR
 ### Take the best # of LVs on average across all validation sets
@@ -292,6 +231,13 @@ ggplot(plotting_df,aes(x=LVs,y=mu,color=set)) +
   facet_wrap(~metric,scales = 'free_y')
 
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.png',
+       width = 16,
+       height = 9,
+       units = 'in',
+       dpi=600)
+
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.eps',
+       device = cairo_ps,
        width = 16,
        height = 9,
        units = 'in',
@@ -517,6 +463,13 @@ ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multi
        units = 'in',
        dpi=600)
 
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr_multiple_partitions.eps',
+       device = cairo_ps,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi=600)
+
 ### After selecting 8 LVs as the tuned parameter re-fit with only those
 ### But also calculate shuffled and null models performance
 val_mae <- NULL
@@ -629,52 +582,61 @@ plotting_performance_df <- performance_df %>%
   mutate(metric=ifelse(metric=='r','pearson`s r',metric))
 plotting_performance_df$set <- factor(plotting_performance_df$set,
                                       levels = c('train','validation','test','shuffle Y','shuffle X','random X'))
-(ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
+p <- (ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
     scale_y_continuous(n.breaks = 15)+
     geom_hline(yintercept = avg_mae,linetype='dashed',color='black',lwd=1)+
-    annotate('text',x=3,y=1.75,size=6,label = 'error from the mean of the data')+
+    annotate('text',x=3,y=1.95,size=6,label = 'error from the mean of the data')+
     xlab('')+
     theme(text = element_text(size=20,family = 'Arial'),
           legend.position = 'none',
-          axis.text.x = element_text(size=16),
+          axis.text.x = element_text(size=20),
           strip.text = element_text(face = 'bold'),
           panel.grid.major.y = element_line(linewidth = 1))+
-    stat_compare_means(comparisons = list(c('test','shuffle Y'),
+    stat_compare_means(comparisons = list(c('validation','test'),
+                                          c('test','shuffle Y'),
                                           c('test','shuffle X'),
                                           c('test','random X')),
                        method = 'wilcox',label = 'p.signif',
                        tip.length = 0.01,
-                       label.y = c(1.3,1.4,1.5)) +
-    facet_wrap(~metric)) +
+                       label.y = c(1,1.5,1.6,1.7)) +
+    facet_wrap(~metric)) /
   (ggboxplot(plotting_performance_df %>% filter(metric!='MAE'),x='set',y='value',color = 'set',add='jitter')+
      scale_y_continuous(breaks = seq(-0.5,1,0.1))+
      # geom_hline(yintercept = 0,linetype='dashed',color='black',lwd=1)+
      xlab('')+
      theme(text = element_text(size=20,family = 'Arial'),
            legend.position = 'none',
-           axis.text.x = element_text(size=16),
+           axis.text.x = element_text(size=20),
            strip.text = element_text(face = 'bold'),
            panel.grid.major.y = element_line(linewidth = 1))+
-     stat_compare_means(comparisons = list(c('test','shuffle Y'),
+     stat_compare_means(comparisons = list(c('validation','test'),
+                                           c('test','shuffle Y'),
                                            c('test','shuffle X'),
                                            c('test','random X')),
                         method = 'wilcox',label = 'p.signif',
                         tip.length = 0.01,
-                        label.y = c(0.75,0.85,0.95)) +
+                        label.y = c(0.75,0.75,0.85,0.95)) +
      facet_wrap(~metric))
-
+print(p)
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.png',
-       width = 14,
+       plot = p,
+       width = 12,
        height = 9,
        units = 'in',
        dpi = 600)
-
+ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.eps',
+       plot = p,
+       device = cairo_ps,
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
 ### Since we do not overfit to validation now perform cross-validation with this dataset-------------
 ### Where you calculate validation and train performance of:
 ### a) human data PLSR to predict NAS,Fibrosis
-### b) back-projected human data PLSR to predict NAS, Fibrosis
-### c) back-projected human data PLSR to predict NAS, Fibrosis with translatable combination of MPS PCs
-### d) c) back-projected human data PLSR to predict NAS, Fibrosis with optimal direction
+### b) truncated human data PLSR to predict NAS, Fibrosis
+### c) truncated human data PLSR to predict NAS, Fibrosis with translatable combination of MPS PCs
+### d) c) truncated human data PLSR to predict NAS, Fibrosis with optimal direction
 num_folds <- 10
 loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
 num_LVS <- 8
@@ -760,22 +722,33 @@ performance_1 <- cross_validation_complete_pipeline(Wm,
 # saveRDS(performance_1,'../results/performance_df_human_plsr.rds')
 #Plot
 performance_1 <- performance_1 %>% mutate(type = ifelse(type=='model',set,type))
+performance_1 <- performance_1 %>% filter(metric=='r') %>% select(-metric)
 performance_1$type <- factor(performance_1$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
-ggboxplot(performance_1,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.75,1,0.25))+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+performance_1 <- performance_1 %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+ggboxplot(performance_1,x='type',y='value',color='type',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1))+
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=28,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
-        strip.text = element_text(face = 'bold'),
+        axis.text.x = element_text(size=22),
+        # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('test','shuffle Y'),
+  stat_compare_means(comparisons = list(c('train','test'),
+                                        c('test','shuffle Y'),
                                         c('test','shuffle X'),
                                         c('test','random X')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     label.y = c(0.82, 0.87, 0.92))
-ggsave('../results/performance_df_just_human_plsr.png',
+                     label.y = c(0.9,0.75, 0.8, 0.85),
+                     size=7)+
+  facet_wrap(~phenotype,nrow = 2)
+ggsave('../figures/performance_df_just_human_plsr.png',
+       height = 9,
+       width = 12,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/performance_df_just_human_plsr.eps',
+       device = cairo_ps,
        height = 9,
        width = 12,
        units = 'in',
@@ -791,12 +764,14 @@ performance_2 <- cross_validation_complete_pipeline(Wm,
 # saveRDS(performance_2,'../results/performance_df_human_backprojected.rds')
 performance_2$type <- factor(performance_2$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
 performance_2$set <- factor(performance_2$set ,levels=c('train','test'))
+performance_2 <- performance_2 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
@@ -804,7 +779,8 @@ ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
                                         c('model','shuffle Bh')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     step.increase = 0.04)
+                     step.increase = 0.04,
+                     size=6)
 ggsave('../results/performance_df_just_human_backprojected.png',
        height = 9,
        width = 12,
@@ -822,18 +798,21 @@ performance_3 <- cross_validation_complete_pipeline(Wm,
 #Plot
 performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W'))
 performance_3$set <- factor(performance_3$set ,levels=c('train','test'))
+performance_3 <- performance_3 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_3,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle W')),
                      method = 'wilcox',#label = 'p.signif',
-                     tip.length = 0.01)
+                     tip.length = 0.01,
+                     size=6)
 ggsave('../results/performance_df_just_human_backprojected_retrained.png',
        height = 9,
        width = 12,
@@ -851,12 +830,14 @@ performance_4 <- cross_validation_complete_pipeline(Wm,
 #Plot
 performance_4$type <- factor(performance_4$type ,levels=c('model','shuffle W','shuffle Bh'))
 performance_4$set <- factor(performance_4$set ,levels=c('train','test'))
+performance_4 <- performance_4 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
@@ -864,7 +845,8 @@ ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
                                         c('model','shuffle Bh')),
                      method = 'wilcox',#label = 'p.signif',
                      tip.length = 0.01,
-                     step.increase = 0.04)
+                     step.increase = 0.04,
+                     size=6)
 ggsave('../results/performance_df_translatable_lvs.png',
        height = 9,
        width = 12,
@@ -882,21 +864,24 @@ performance_5 <- cross_validation_complete_pipeline(Wm,
 #plot
 performance_5$type <- factor(performance_5$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_5$set <- factor(performance_5$set ,levels=c('train','test'))
+performance_5 <- performance_5 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_5,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(round(min(performance_5$r),1),1,0.1),
                      limits = c(NA,1.15))+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle Wopt'),
                                         c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
+                     method = 'wilcox',
                      tip.length = 0.01,
-                     step.increase = 0.04)
+                     step.increase = 0.04,
+                     size=6)
 
 ggsave('../results/performance_df_optimal_direction.png',
        height = 9,
@@ -914,20 +899,22 @@ performance_6 <- cross_validation_complete_pipeline(Wm,
 
 performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
+performance_6 <- performance_6 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+  ungroup() %>% select(-value,-phenotype) %>% unique()
 ggboxplot(performance_6,x='type',y='r',color='type',add='jitter') +
   scale_y_continuous(breaks = seq(round(min(performance_6$r),1),1,0.1),
                      limits = c(NA,1.15))+
-  xlab('')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  xlab('')+ylab('pearson`s correlation')+
+  theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
-        axis.text.x = element_text(size=16),
+        axis.text.x = element_text(size=18),
         strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   facet_wrap(~set,scales = 'free')+
   stat_compare_means(comparisons = list(c('model','shuffle Wopt'),
                                         c('model','shuffle Bh')),
-                     method = 'wilcox',label = 'p.signif',
-                     tip.length = 0.01)# ,label.y = c(0.82, 0.87, 0.92)
+                     method = 'wilcox',
+                     tip.length = 0.01,size=6)# ,label.y = c(0.82, 0.87, 0.92)
 
 ggsave('../results/performance_df_analytical.png',
        height = 9,
@@ -952,105 +939,166 @@ performance_all <- rbind(performance_1,
                          performance_5,
                          performance_6)
 ### Select what to show in the figure
-performance_all_plot <- performance_all %>% 
+performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-metric) %>% mutate(r=value) %>% select(-value)%>%
   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
                      ifelse(type=='model',TRUE,FALSE))) %>% 
   filter(keep==TRUE) %>% select(-keep) %>%
-  mutate(approach = ifelse(task=='human_plsr','PLSR',
-                        ifelse(task=='human_backprojected','backprojected',
-                               ifelse(task=='human_backprojected_retrained','backprojected retrained',
-                                      ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
-                                             ifelse(task=='analytical_optimal','analytical Wopt',
-                                             'Wopt')))))) %>%
-  mutate(approach = ifelse(approach=='PLSR',
+  mutate(approach = ifelse(task=='human_plsr','human genes',
+                           ifelse(task=='human_backprojected','truncated',
+                                  ifelse(task=='human_backprojected_retrained','truncated re-trained',
+                                         ifelse(task=='human_backprojected_into_translatable_lvs','translatable LVs',
+                                                ifelse(task=='analytical_optimal','optimized MPS',
+                                                       'Wopt')))))) %>%
+  mutate(approach = ifelse(approach=='human genes',
                            ifelse(type=='model',approach,type),
                            approach)) %>%
   select(-type,-task)
 
+performance_all_truncated <- performance_all_plot %>%
+  filter(approach %in% c('truncated','truncated re-trained','human genes'))
+performance_all_truncated$approach <- factor(performance_all_truncated$approach,
+                                        levels = c('human genes',
+                                                   'truncated',
+                                                   'truncated re-trained'))
+performance_all_truncated <- performance_all_truncated %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+performance_all_truncated$phenotype <- factor(performance_all_truncated$phenotype)
+performance_all_truncated$phenotype <- factor(performance_all_truncated$phenotype,
+                                         levels = rev(levels(performance_all_truncated$phenotype)))
+
+
+performance_all_plot <- performance_all_plot %>%
+  filter(approach %in% c('human genes','truncated','optimized MPS','shuffle X'))
 performance_all_plot$approach <- factor(performance_all_plot$approach,
-                                        levels = c('PLSR',
-                                                   'backprojected',
-                                                   'backprojected retrained',
-                                                   'translatable LVs',
-                                                   'Wopt',
-                                                   'analytical Wopt',
+                                        levels = c('human genes',
+                                                   'truncated',
+                                                   'optimized MPS',
                                                    'shuffle X'))
+performance_all_plot <- performance_all_plot %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+# performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,levels = c('NAS','Fibrosis stage'))
+performance_all_plot$phenotype <- factor(performance_all_plot$phenotype)
+performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,
+                                         levels = rev(levels(performance_all_plot$phenotype)))
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
-  scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(0.4,NA))+
-  xlab('')+
-  ggtitle('10-fold Train')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(NA,1.02))+
+  xlab('')+ ylab('pearson`s correlation') +
+  ggtitle('10-fold train performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
         plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(size=16,angle = 25),
-        strip.text = element_text(face = 'bold'),
+        axis.text.x = element_text(size=26), #angle = 25
+        # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
-                                        c('backprojected','backprojected retrained'),
-                                        c('PLSR','backprojected'),
-                                        c('analytical Wopt','backprojected'),
-                                        # c('PLSR','Wopt'),
-                                        c('PLSR','analytical Wopt')),
+  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+                                        c('human genes','truncated'),
+                                        c('optimized MPS','truncated')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.5,0.7,0.9,0.9,0.95))
+                     label.y = c(0.98,0.94,0.94),
+                     size = 6)+
+  facet_wrap(~phenotype,nrow = 2)
 print(p_train)  
-ggsave('../results/approaches_comparison_training.png',
+ggsave('../figures/approaches_comparison_training.png',
        plot = p_train,
-       height = 9,
+       height = 10,
        width = 12,
        units = 'in',
        dpi=600)
 
 p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(approach!='Wopt'),
                     x='approach',y='r',color='approach',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.5,1,0.1))+
-  xlab('')+
-  ggtitle('10-fold Test')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  scale_y_continuous(breaks = seq(-0.5,1,0.15),limits = c(NA,1.05))+
+  xlab('')+ylab('pearson`s correlation') +
+  # ggtitle('10-fold test performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
-        plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(size=16,angle = 25),
-        strip.text = element_text(face = 'bold'),
+        axis.text.y = element_text(size=22),
+        # plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=24), #angle = 25
+        # strip.text = element_text(face = 'bold'),
+        panel.spacing = unit(0, "lines"),
         panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('backprojected','translatable LVs'),
-                                        c('backprojected','backprojected retrained'),
-                                        c('PLSR','backprojected'),
-                                        c('analytical Wopt','backprojected'),
-                                        # c('PLSR','Wopt'),
-                                        c('PLSR','analytical Wopt')),
+  stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
+                                        c('human genes','truncated'),
+                                        c('optimized MPS','truncated'),
+                                        c('optimized MPS','shuffle X')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.75,0.8,0.85,0.85,0.95))
+                     label.y = c(0.9,0.8,0.8,0.8),
+                     size = 8)+
+  facet_wrap(~phenotype,nrow = 2)
 print(p_test)  
-ggsave('../results/approaches_comparison_10foldtest.png',
+ggsave('../figures/approaches_comparison_10foldtest.png',
        plot = p_test,
        height = 9,
+       width = 11,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/approaches_comparison_10foldtest.eps',
+       plot = p_test,
+       device = cairo_ps,
+       height = 9,
+       width = 11,
+       units = 'in',
+       dpi=600)
+
+### Compare the trincated versions only
+p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train') %>% filter(approach!='Wopt'),
+                     x='approach',y='r',color='approach',add='jitter') +
+  scale_y_continuous(n.breaks = 10,limits = c(NA,NA))+
+  xlab('')+ ylab('pearson`s correlation') +
+  ggtitle('10-fold train performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=26), #angle = 25
+        # strip.text = element_text(face = 'bold'),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  stat_compare_means(comparisons = list(c('truncated','truncated re-trained'),
+                                        c('truncated','human genes'),
+                                        c('human genes','truncated re-trained')),
+                     method = 'wilcox',
+                     tip.length = 0.01,
+                     label.y = c(0.7,0.95,1),
+                     size = 6)+
+  facet_wrap(~phenotype,nrow = 2)
+print(p_train_truncated)  
+ggsave('../figures/truncated_all_genes_comparison_training.png',
+       plot = p_train_truncated,
+       height = 10,
        width = 12,
        units = 'in',
        dpi=600)
 
-
-# Jose's rewrite of plot for conference
-
-p_test2 <- ggboxplot(performance_all_plot %>% filter(set=='test') %>% filter(approach %in% c("PLSR", "shuffle X")),
-                    x='approach',y='r',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.5,1,0.1))+
-  labs(x = NULL, y = "Mean Pearson correlation") +
-  stat_compare_means(comparisons = list(c('PLSR','shuffle X')),
+p_test_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='test')%>% filter(approach!='Wopt'),
+                    x='approach',y='r',color='approach',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.1,1,0.1),limits = c(NA,1.05))+
+  xlab('')+ylab('pearson`s correlation') +
+  # ggtitle('10-fold test performance in predicting phenotype')+
+  theme(text = element_text(size=26,family = 'Arial'),
+        legend.position = 'none',
+        axis.text.y = element_text(size=22),
+        # plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size=24), #angle = 25
+        # strip.text = element_text(face = 'bold'),
+        panel.spacing = unit(0, "lines"),
+        panel.grid.major.y = element_line(linewidth = 1)) +
+  stat_compare_means(comparisons = list(c('truncated','truncated re-trained'),
+                                        c('truncated','human genes'),
+                                        c('human genes','truncated re-trained')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.95),
-                     size = size_annotation) +
-  ylim(c(-0.7, 1.1))
+                     label.y = c(0.7,0.8,0.9),
+                     size = 6)+
+  facet_wrap(~phenotype,nrow = 2)
+print(p_test_truncated)  
+ggsave('../figures/truncated_all_genes_comparison_10foldtest.png',
+       plot = p_test_truncated,
+       height = 10,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
-p_test2 <- add_theme(p_test2)
-ggsave('../results/plot_files/plt_CV_plsr_test_all.png', plot = p_test2,
-       device = "png",
-       height = 6,
-       width=5,
-       units = 'cm')
 
 ### See how training performance converges
 ### when including incrementally the extra basis--------------------------------------------------------------------
@@ -1066,6 +1114,7 @@ test_r_basis_1 <- NULL
 test_r_all_extra_bases <- NULL
 
 df_scatterPlot <- data.frame()
+df_scatterPlot_backproj <- data.frame()
 
 for (j in 1:num_folds){
   print(paste0('Begun fold ',j))
@@ -1111,6 +1160,17 @@ for (j in 1:num_folds){
   Thm_train <- x_train %*% Wm %*% t(Wm) %*% Wh
   Th_val<- x_val %*% Wh
   Thm_val <- x_val %*% Wm %*% t(Wm) %*% Wh
+  
+  ## backprojecting
+  y_hat_test_backproj <- cbind(1, Thm_val)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+  df_scatterPlot_backproj <- rbind(df_scatterPlot_backproj,
+                                   left_join(data.frame(y_val) %>% 
+                                               mutate(id = seq(1,nrow(y_val))) %>% 
+                                               gather('phenotype','true',-id),
+                                             data.frame(y_hat_test_backproj) %>% 
+                                               mutate(id = seq(1,nrow(y_hat_test_backproj))) %>% 
+                                               gather('phenotype','prediction',-id)) %>%
+                                     select(-id))
   
   ### shuffled features model
   x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
@@ -1170,22 +1230,43 @@ cor_results <- df_scatterPlot %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
-
 ggplot(df_scatterPlot,aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05) + 
-  geom_abline(slope=1,intercept = 0)+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = cor_results, 
             aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-              hjust = 0, vjust =  1.5, size = 6, family = 'Arial') +
+              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
   facet_wrap(~phenotype,scales = 'free')+
-  theme_pubr(base_family = 'Arial',base_size=20)+
-  theme(text = element_text(family = 'Arial',size=20),
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
         panel.grid.major = element_line())
-ggsave('../results/10foldTest_Scatterplot_human_plsr.png',
+ggsave('../figures/10foldTest_Scatterplot_human_plsr.png',
           height = 6,
           width=9,
           units = 'in',
           dpi=600)
+
+# repreat for backprojection
+cor_resultst_backproj <- df_scatterPlot_backproj %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value))
+ggplot(df_scatterPlot_backproj,aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+  geom_text(data = cor_resultst_backproj, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
+        panel.grid.major = element_line())
+ggsave('../figures/10foldTest_Scatterplot_backprojecting.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
 
 ## scatter plot for using all the data
 plsr_model <- opls(x = Xh, 
@@ -1202,111 +1283,221 @@ all_scatter_plot <- left_join(data.frame(Yh) %>%
                               data.frame(Y_pred) %>% 
                                 mutate(id = seq(1,nrow(Y_pred))) %>% 
                                 gather('phenotype','prediction',-id)) %>%
-  select(-id)
+  select(-id)%>% 
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 all_cor_results <- all_scatter_plot %>%
   group_by(phenotype) %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
-         p_value = map_dbl(cor_test, ~ .x$p.value))
-
-
-plt_plsr_scatter_all <- all_scatter_plot %>% 
-                        ggplot(aes(x = true,y=prediction)) +
-                        geom_jitter(width = 0.05, color = "steelblue", size = size_dot) + 
-                        geom_abline(slope=1,intercept = 0, linetype = 2)+
-                        geom_text(data = all_cor_results, 
-                                  aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-                                  hjust = 0, vjust =  1.5, size = size_annotation) +
-                        facet_wrap(~phenotype,scales = 'free', labeller = labeller(phenotype = c(fibrosis = "Fibrosis stage", NAS = "NAS"))) +
-                        labs(x = "Measured", y = "Prediction")
-
-plt_plsr_scatter_all <- add_theme(plt_plsr_scatter_all)
-
-
-ggsave('../results/AllData_Scatterplot_human_plsr.png',
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
+  ylab('Predicted') + xlab('Measured')+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+  geom_text(data = all_cor_results, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=28)+
+  theme(text = element_text(family = 'Arial',size=28),
+        panel.grid.major = element_line())
+ggsave('../figures/AllData_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
        units = 'in',
        dpi=600)
-
-ggsave('../results/plot_files/plt_plsr_scatter_all.pdf', plot = plt_plsr_scatter_all,
-       device = "pdf",
+ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
+  ylab('Predicted') + xlab('Measured')+
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+  geom_text(data = all_cor_results, 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=28)+
+  theme(text = element_text(family = 'Arial',size=28),
+        plot.title = element_text(hjust = 0.5,face = 'bold'),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(face='bold'),
+        panel.grid.major = element_line())
+ggsave('../figures/AllData_Scatterplot_human_plsr.eps',
+       device = cairo_ps,
        height = 6,
-       width=9,
-       units = 'cm')
+       width=12,
+       units = 'in',
+       dpi=600)
 
-ggsave('../results/plot_files/plt_plsr_scatter_all.png', plot = plt_plsr_scatter_all,
-       device = "png",
-       height = 6,
-       width=9,
-       units = 'cm')
-
-# Plot scores on latent variables colored by phenotype
-plt_plsr_scores_all <- rbind(data.frame(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2], phenotype = "Fibrosis stage", Score = Yh[,2]),
-                             data.frame(x = Xh %*% Wh[,1], y = Xh %*% Wh[,2], phenotype = "NAS", Score = Yh[,1])) %>%
-                        ggplot(aes(x = x, y = y, color = Score)) +
-                          geom_point(size = size_dot) +
-                          labs(x = "Human LV1", y = "Human LV2") +
-                          scale_color_viridis_c() +
-                          facet_wrap(~factor(phenotype), nrow = 1)
-
-plt_plsr_scores_all <- add_theme(plt_plsr_scores_all)
-
-ggsave('../results/plot_files/plt_plsr_scores_all.png', 
-       plot = plt_plsr_scores_all,
-       device = "png",
-       height = 6,
-       width=9,
-       units = 'cm')
-
-
-# Plot training data after projection-backprojection
-Y_pred_back <- predict(plsr_model, Xh %*% Wm %*% t(Wm))
-
-all_scatter_plot_back <- left_join(data.frame(Yh) %>% 
+# repeat for backprojection
+# Get Wh of PLSR
+Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
+rownames(Wh) <- colnames(Xh)
+colnames(Wh) <- colnames(plsr_model@weightMN)
+for (ii in 1:nrow(plsr_model@weightMN)){
+  Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
+}
+Th <- Xh %*% Wm %*% t(Wm) %*% Wh
+Y_pred_backproj <- cbind(1, Th)  %*% rbind(apply(Yh,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+Y_pred_backproj_retrained <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
+for (i in 1:ncol(Yh)){
+  train_data <- cbind(Yh[,i], Th)
+  colnames(train_data)[1] <- 'V1'
+  mod_retrain <- lm(V1 ~., data = as.data.frame(train_data))
+  Y_pred_backproj_retrained[,i] <- predict(mod_retrain)
+}
+colnames(Y_pred_backproj_retrained) <- colnames(Y_pred_backproj)
+all_scatter_plot_backproj <- left_join(data.frame(Yh) %>% 
                                 mutate(id = seq(1,nrow(Yh))) %>% 
                                 gather('phenotype','true',-id),
-                              data.frame(Y_pred_back) %>% 
-                                mutate(id = seq(1,nrow(Y_pred_back))) %>% 
+                              data.frame(Y_pred_backproj) %>% 
+                                mutate(id = seq(1,nrow(Y_pred_backproj))) %>% 
                                 gather('phenotype','prediction',-id)) %>%
-                                select(-id)
-
-all_cor_results_back <- all_scatter_plot_back %>%
-                        group_by(phenotype) %>%
-                        summarise(cor_test = list(cor.test(true, prediction))) %>%
-                        mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
-                                p_value = map_dbl(cor_test, ~ .x$p.value))
-  
-plt_plsr_scatter_all_backproject <- all_scatter_plot_back %>% 
-                                      ggplot(aes(x = true,y=prediction)) +
-                                      geom_jitter(width = 0.05, color = "steelblue", size = size_dot) + 
-                                      geom_abline(slope=1,intercept = 0, linetype = 2)+
-                                      geom_text(data = all_cor_results_back, 
-                                                aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-                                                hjust = 0, vjust =  1.5, size = size_annotation) +
-                                      facet_wrap(~phenotype,scales = 'free', labeller = labeller(phenotype = c(fibrosis = "Fibrosis stage", NAS = "NAS"))) +
-                                      labs(x = "Measured", y = "Prediction") +
-                                      ggh4x::facetted_pos_scales(y = list(scale_y_continuous(limits = c(0, 4)),
-                                                                          scale_y_continuous(limits = c(0, 8))))
-                                         
-
-plt_plsr_scatter_all_backproject <- add_theme(plt_plsr_scatter_all_backproject)
-
-ggsave('../results/plot_files/plt_plsr_scatter_all_backproject.png', 
-       plot = plt_plsr_scatter_all_backproject,
-       device = "png",
+  select(-id) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+all_cor_results_backproj <- all_scatter_plot_backproj %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+  geom_jitter(width = 0.05,color='#4682B4') + 
+  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+  geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
+            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+  ylab('Predicted') + xlab('Measured')+
+  ylim(c(0,4))+
+  facet_wrap(~phenotype,scales = 'free')+
+  theme_pubr(base_family = 'Arial',base_size=25)+
+  theme(text = element_text(family = 'Arial',size=25),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(face='bold'),
+        panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=25)+
+     theme(text = element_text(family = 'Arial',size=25),
+           axis.title.x = element_text(hjust = -0.6,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = NULL,
+    theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
        height = 6,
        width=9,
-       units = 'cm')                        
+       units = 'in',
+       dpi=600)
+(ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+    geom_jitter(width = 0.05,color='#4682B4') + 
+    geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+    geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
+              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+    ylab('Predicted') + xlab('Measured')+
+    ylim(c(0,4))+
+    facet_wrap(~phenotype,scales = 'free')+
+    theme_pubr(base_family = 'Arial',base_size=28)+
+    theme(text = element_text(family = 'Arial',size=28),
+          plot.title = element_text(hjust = 0.5,face = 'bold'),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(face='bold'),
+          # axis.title.y = element_blank(),
+          panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=28)+
+     theme(text = element_text(family = 'Arial',size=28),
+           # axis.title.x = element_text(hjust = -0.4,face='bold'),
+           axis.title.x = element_blank(),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = NULL,
+    theme = theme(plot.title = element_text(size = 28, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.eps',
+       device = cairo_ps,
+       height = 6,
+       width=12,
+       units = 'in',
+       dpi=600)
 
-
+### plot scatterplot when re-training Bh
+all_scatter_plot_backproj_retrained <- left_join(data.frame(Yh) %>% 
+                                         mutate(id = seq(1,nrow(Yh))) %>% 
+                                         gather('phenotype','true',-id),
+                                       data.frame(Y_pred_backproj_retrained) %>% 
+                                         mutate(id = seq(1,nrow(Y_pred_backproj_retrained))) %>% 
+                                         gather('phenotype','prediction',-id)) %>%
+  select(-id) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+all_cor_results_backproj_retrained <- all_scatter_plot_backproj_retrained %>%
+  group_by(phenotype) %>%
+  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
+         p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+(ggplot(all_scatter_plot_backproj_retrained %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
+    geom_jitter(width = 0.05,color='#4682B4') + 
+    geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+    geom_text(data = all_cor_results_backproj_retrained%>% filter(phenotype=='Fibrosis stage'), 
+              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+    ylab('Predicted') + xlab('Measured')+
+    ylim(c(0,4))+
+    facet_wrap(~phenotype,scales = 'free')+
+    theme_pubr(base_family = 'Arial',base_size=25)+
+    theme(text = element_text(family = 'Arial',size=25),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(face='bold'),
+          panel.grid.major = element_line()))+
+  (ggplot(all_scatter_plot_backproj_retrained %>% filter(phenotype!='Fibrosis stage'),aes(x = true,y=prediction)) +
+     geom_jitter(width = 0.05,color='#4682B4') + 
+     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+     geom_text(data = all_cor_results_backproj_retrained%>% filter(phenotype!='Fibrosis stage'), 
+               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
+               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+     ylab('Predicted') + xlab('Measured')+
+     ylim(c(0,8))+
+     facet_wrap(~phenotype,scales = 'free')+
+     theme_pubr(base_family = 'Arial',base_size=25)+
+     theme(text = element_text(family = 'Arial',size=25),
+           axis.title.x = element_text(hjust = -0.6,face='bold'),
+           axis.title.y = element_blank(),
+           panel.grid.major = element_line())) + 
+  plot_annotation(
+    title = NULL,
+    theme = theme(plot.title = element_text(size = 25, family = "Arial", hjust = 0.5,face='bold'))
+  )
+ggsave('../figures/AllData_backproj_retrained_Scatterplot_human_plsr.png',
+       height = 6,
+       width=9,
+       units = 'in',
+       dpi=600)
 ### Now see convergence of performance
 train_performance_res <- rbind(data.frame(r = train_r,
                                           fold = seq(1,length(train_r)),
                                           model = rep('PLSR',length(train_r))),
                                data.frame(r = train_r_translatables,
                                           fold = seq(1,length(train_r_translatables)),
-                                          model = rep('translatable LVs',length(train_r_translatables))),
+                                          model = rep('translatable PCs',length(train_r_translatables))),
                                data.frame(r = train_r_basis_1,
                                           fold = seq(1,length(train_r_basis_1)),
                                           model = rep('PCs + extra LV1',length(train_r_basis_1))),
@@ -1324,7 +1515,7 @@ test_performance_res <- rbind(data.frame(r = test_r,
                                           model = rep('PLSR',length(test_r))),
                                data.frame(r = test_r_translatables,
                                           fold = seq(1,length(test_r_translatables)),
-                                          model = rep('translatable LVs',length(test_r_translatables))),
+                                          model = rep('translatable PCs',length(test_r_translatables))),
                                data.frame(r = test_r_basis_1,
                                           fold = seq(1,length(test_r_basis_1)),
                                           model = rep('PCs + extra LV1',length(test_r_basis_1))),
@@ -1341,7 +1532,7 @@ all_performance_res <- rbind(train_performance_res,
                              test_performance_res)
 all_performance_res$model <- factor(all_performance_res$model,
                                     levels = c('PLSR',
-                                               'translatable LVs',
+                                               'translatable PCs',
                                                'PCs + extra LV1',
                                                'PCs + extra LV1 + extra LV2'))
 
@@ -1367,7 +1558,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mu_plsr_train + 0.03,
            label="human PLSR train performance", 
            hjust = 0 , 
-           size=7)+
+           size=9)+
   ### test performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1382,7 +1573,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mu_plsr_test + 0.03,
            label="human PLSR test performance", 
            hjust = 0 , 
-           size=7)+
+           size=9)+
   ### random performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1397,17 +1588,23 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mean(test_r_shuffled) + 0.03,
            label="shuffled model performance", 
            hjust = 0 , 
-           size=7)+
+           size=9)+
   geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
-  theme_pubr(base_family = 'Arial',base_size = 20)+
-  theme(text = element_text(family = 'Arial',size = 20),
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
         axis.title.x = element_blank(),
         axis.line.x = element_blank(),
         axis.line.y = element_line(linewidth = 0.75),
         panel.grid.major = element_line())
-ggsave('../results/required_extra_basis_to_retrieve_performance.png',
-       width = 12,
-       height = 9,
+ggsave('../figures/required_extra_basis_to_retrieve_performance.png',
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/required_extra_basis_to_retrieve_performance.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
        units = 'in',
        dpi = 600)
 
@@ -1727,7 +1924,6 @@ dev.off()
 ### Explore how analytical LVs change by: ----------------------
 ### a) Human data partition
 ### b) number of LVs used in PLSR of human genes
-### c) In-Vitro data partition (LOOCV of PCs perhaps)
 num_folds <- 10
 loc <- '../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/'
 num_LVS <- 8
@@ -1832,6 +2028,8 @@ partition_groups <- substr(colnames(ordered_matrix),13,15)
 partition_groups[grep('_i',partition_groups)] <- '1'
 partition_groups <- as.numeric(partition_groups)
 groups_col <- data.frame(LV = lv_groups,partition=partition_groups)
+iteration_groups_cols <- str_split_fixed(colnames(ordered_matrix),'iter',2)
+iteration_groups_cols <- as.numeric(iteration_groups_cols[,2])
 
 partition_groups <- substr(rownames(ordered_matrix),13,15)
 partition_groups[grep('_i',partition_groups)] <- '1'
@@ -1868,4 +2066,60 @@ ggsave('../results/cosine_similarity_PC_extra_basis.png',
        height = 9,
        units = 'in',
        dpi=600)
+
+groups_col <- groups_col %>% mutate(iteration_groups = iteration_groups_cols)
+groups_col <- groups_col %>% rownames_to_column('var') %>% select(var,partition,iteration_groups,LV)
+iteration_groups <- str_split_fixed(rownames(ordered_matrix),'iter',2)
+iteration_groups <- as.numeric(iteration_groups[,2])
+plot_df <- as.data.frame(ordered_matrix) %>%
+  mutate(partition = partition_groups) %>% mutate(LV = lv_groups) %>% mutate(iteration_groups=iteration_groups) %>%
+  gather('var','sim',-partition,-LV,-iteration_groups)
+plot_df <- left_join(plot_df,groups_col,by='var')
+plot_df <- plot_df %>% 
+  mutate(keep = ifelse(partition.x==partition.y & iteration_groups.x==iteration_groups.y & LV.x==LV.y,
+                       FALSE,TRUE)) %>% filter(keep == TRUE) %>%
+  select(-keep) %>% mutate(comparison = paste0(LV.x,'/',LV.y)) %>%
+  mutate(keep = ifelse(LV.x!=LV.y & partition.x==partition.y & iteration_groups.x==iteration_groups.y,
+                       ifelse(LV.x=='LV1',TRUE,FALSE),
+                       TRUE)) %>% filter(keep == TRUE) %>%
+  select(-keep) %>% filter(partition.x==partition.y) %>%
+  select(comparison,partition.x,iteration_groups.x,sim) %>%
+  mutate(comparison = ifelse(comparison=="LV2/LV1","LV1/LV2",comparison)) %>%
+  unique()
+colnames(plot_df) <- c('comparison','partition','iteration','sim')
+# cos_sim_all <- cos_sim_all %>% 
+#   mutate(comparison = ifelse(grepl('star1',extra_basis),'LV1/PCs','LV2/PCs')) %>%
+#   select(comparison,partition,iteration,sim) 
+# plot_df <- rbind(plot_df,cos_sim_all)
+plot_df <- plot_df %>% group_by(comparison,partition) %>% 
+  mutate(abs_mu = mean(abs(sim))) %>% mutate(abs_se = sd(abs(sim))/sqrt(max(iteration_groups))) %>%
+  mutate(mu = mean(sim)) %>% mutate(se = sd(sim)/sqrt(max(iteration_groups))) %>%
+  ungroup()
+ggplot(plot_df %>% select(comparison,partition,mu,se) %>% unique(),
+       aes(x = partition,y = mu,color = comparison)) +
+  scale_x_continuous(breaks = seq(0,1,0.2))+
+  scale_y_continuous(breaks = seq(0,1,0.1))+
+  geom_point(size=1.5)+
+  geom_line(lwd = 0.75)+
+  geom_errorbar(aes(ymax = mu + se,ymin = mu - se),
+                width = 0.05,size=0.75)+
+  xlab('data partition (%)')+
+  ylab('cosine similarity')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line())
+ggsave('../figures/cosine_similarity_PC_extra_basis_convergence_plot.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/cosine_similarity_PC_extra_basis_convergence_plot.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
 ### b) number of LVs used in PLSR of human genes
