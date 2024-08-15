@@ -721,38 +721,7 @@ performance_1 <- cross_validation_complete_pipeline(Wm,
                                                     LVs = num_LVS)
 # saveRDS(performance_1,'../results/performance_df_human_plsr.rds')
 #Plot
-performance_1 <- performance_1 %>% mutate(type = ifelse(type=='model',set,type))
-performance_1 <- performance_1 %>% filter(metric=='r') %>% select(-metric)
-performance_1$type <- factor(performance_1$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
-performance_1 <- performance_1 %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
-ggboxplot(performance_1,x='type',y='value',color='type',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1))+
-  xlab('')+ylab('pearson`s correlation')+
-  theme(text = element_text(size=28,family = 'Arial'),
-        legend.position = 'none',
-        axis.text.x = element_text(size=22),
-        # strip.text = element_text(face = 'bold'),
-        panel.grid.major.y = element_line(linewidth = 1)) +
-  stat_compare_means(comparisons = list(c('train','test'),
-                                        c('test','shuffle Y'),
-                                        c('test','shuffle X'),
-                                        c('test','random X')),
-                     method = 'wilcox',#label = 'p.signif',
-                     tip.length = 0.01,
-                     label.y = c(0.9,0.75, 0.8, 0.85),
-                     size=7)+
-  facet_wrap(~phenotype,nrow = 2)
-ggsave('../figures/performance_df_just_human_plsr.png',
-       height = 9,
-       width = 12,
-       units = 'in',
-       dpi=600)
-ggsave('../figures/performance_df_just_human_plsr.eps',
-       device = cairo_ps,
-       height = 9,
-       width = 12,
-       units = 'in',
-       dpi=600)
+
 
 # Task b)
 performance_2 <- cross_validation_complete_pipeline(Wm,
