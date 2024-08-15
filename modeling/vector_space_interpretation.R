@@ -55,6 +55,7 @@ plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE,top=10){
 
 pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
   net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
+  colnames(net_prog)[3] <- 'mor'
   extra_basis_paths <- decoupleR::run_viper(W, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
   PC_space_paths <- decoupleR::run_viper(W_PCspace, net_prog,minsize = 1,verbose = TRUE)
   PC_space_paths <- PC_space_paths %>% select(source,c('pc_activity'='score'))
