@@ -338,68 +338,7 @@ for (theta in thetas){
 #        units = 'in',
 #        dpi=600)
 
-scatter_box_plot <- function(df,legend_title,
-                             font_size =20,font_family = 'Arial',
-                             point_shape = 21,point_size=2.8,point_stroke=1.2,
-                             x_axis='LV extra 1',y_axis='LV extra 2',
-                             box_y_width = 0.2,jitter_y_width=0.1,
-                             jitter_x_height = 0.2,
-                             theme_use = 'minimal',
-                             plotting=TRUE){
-  if (theme_use=='bw'){
-    th <- ggplot2::theme_bw(base_size = font_size, base_family = font_family)
-  }else{
-    th <- ggplot2::theme_minimal(base_size = font_size, base_family = font_family)
-  }
-  scatter_plot <- ggplot(df, aes(x = V1, y = V2, fill = pheno)) +
-    geom_point(size = point_size, shape = point_shape, stroke = point_stroke) +
-    scale_fill_viridis_c() +
-    xlab(x_axis) +
-    ylab(y_axis) +
-    labs(fill=legend_title)+
-    th +
-    theme(
-      text = element_text(size = font_size, family = font_family),
-      legend.position = 'top',
-    )
-  
-  # Boxplot for V1 (x-axis)
-  boxplot_x <- ggplot(df, aes(x = V1, y = "", color = pheno)) +
-    geom_boxplot(outliers = FALSE) +
-    geom_jitter(height = jitter_x_height)+
-    scale_color_viridis_c() +
-    theme_minimal(base_size = font_size, base_family = font_family) +
-    theme(
-      axis.title = element_blank(),
-      axis.text = element_blank(),
-      axis.ticks = element_blank(),
-      panel.grid = element_blank(),
-      legend.position = "none",
-    )
-  
-  # Boxplot for V2 (y-axis)
-  boxplot_y <- ggplot(df, aes(x = "", y = V2, color = pheno)) +
-    geom_boxplot(outliers = FALSE,width = box_y_width) +
-    geom_jitter(width=jitter_y_width)+
-    scale_color_viridis_c() +
-    theme_minimal(base_size = font_size, base_family = font_family) +
-    theme(
-      axis.text = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title = element_blank(),
-      panel.grid = element_blank(),
-      legend.position = "none",
-    )
-  # Combine plots for NAS
-  combo1 <- scatter_plot + boxplot_y + plot_layout(widths = c(3, 1))
-  combo2 <- boxplot_x + plot_spacer() + plot_layout(widths = c(3, 1))
-  combined_plot <- (combo1) / (combo2) +
-    plot_layout(heights = c(4, 1))
-  if (plotting==TRUE){
-    print(combined_plot)
-  }
-  return(combined_plot)
-}
+
 # ggMarginal(scatter_plot,type = 'box', groupColour = TRUE, groupFill = TRUE)
 combined_plot_nas <- scatter_box_plot(Zh %>% mutate(pheno=NAS),'NAS')
 combined_plot_fibrosis <- scatter_box_plot(Zh %>% mutate(pheno=fibrosis),'Fibrosis stage')
