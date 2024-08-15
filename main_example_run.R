@@ -17,7 +17,8 @@ source('modeling/functions_translation.R')
 source("utils/plotting_functions.R")
 source("modeling/vector_space_interpretation.R")
 
-### Load the all the data to be used-----------------------
+################################################################################
+## Load the all the data to be used
 dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
 ref_dataset <- "Govaere"
 target_dataset <- "Kostrzewski"
@@ -251,10 +252,8 @@ plt_PLSR_backproject <- ggplot(invivo_plsr_backprj,aes(x=V1,y=V2,color=normed_sc
 saveRDS(plt_PLSR_backproject, "Figures/plt_PLSR_backproject.rds")
 
 
-
-
-
-# Find extra basis
+################################################################################
+## Find extra latent variables
 phi <- Wh %*% Bh
 Wm_opt <- analytical_solution_opt(y=Yh,
                                   W_invitro = Wm,
