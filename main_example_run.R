@@ -49,6 +49,7 @@ pheno_stats <- as.data.frame(cbind(Yh,sex_inferred))
 colnames(pheno_stats) <- c('NAS','fibrosis','sex')
 pheno_stats$NAS <- as.numeric(pheno_stats$NAS)
 pheno_stats$fibrosis <- as.numeric(pheno_stats$fibrosis)
+## Supplementary Figure X for disease scores comparisons between male and female samples
 ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>% 
             mutate(phenotype= ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)),
           x='sex',y='score',add='jitter')+
@@ -75,96 +76,13 @@ ggplot(invitro_pca,aes(x=PC1,y=PC2)) +
   theme(text = element_text(size=30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
         axis.line = element_line(linewidth = 4))
+### part of figure 3a
 ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invitro_pca.eps'),
        device = cairo_ps,
        height = 5,
        width = 5,
        units = 'in',
        dpi = 600)
-
-
-### Check current TF and pathway activity in the data------------------------------
-net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-
-path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
-path_acitivity <- path_acitivity %>% select(c('Pathway'='source'),condition,score,p_value)
-path_acitivity <- left_join(path_acitivity,
-                            data_list$Kostrzewski$metadata %>% select(sampleName,treatment,TGF,LPS,Cholesterol,Fructose),
-                            by=c('condition'='sampleName'))
-path_acitivity <- left_join(path_acitivity,
-                            as.data.frame(Xm %*% Wm) %>% select(PC1,PC2) %>% rownames_to_column('condition'))
-# path_acitivity <- path_acitivity %>% filter(p_value<0.01)
-ggscatter(path_acitivity %>% mutate(p=ifelse(p_value<0.0001,'<0.0001',
-                                                     ifelse(p_value<0.001,'<0.001',
-                                                           ifelse(p_value<0.01,'<0.01',
-                                                                  ifelse(p_value<0.05,'<0.05',
-                                                                        'ns'))))) %>%
-            mutate(p = factor(p,levels = c('ns','<0.05','<0.01','<0.001','<0.0001'))) ,
-          x='PC1','PC2',fill = 'score',size ='p',shape=21) +
-  scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
-  theme(text = element_text(size=20,family='Arial'))+
-  facet_wrap(~Pathway)
-ggsave(paste0('results/',tolower(target_dataset),'_pathway_activity_in_pc_space.png'),
-       height = 12,
-       width = 16,
-       units = 'in',
-       dpi=600)
-
-ggscatter(left_join(path_acitivity,
-                    as.data.frame(Xm %*% Wm) %>% rownames_to_column('condition')) %>%
-            mutate(p=ifelse(p_value<0.0001,'<0.0001',
-                                              ifelse(p_value<0.001,'<0.001',
-                                                     ifelse(p_value<0.01,'<0.01',
-                                                            ifelse(p_value<0.05,'<0.05',
-                                                                   'ns'))))) %>%
-            mutate(p = factor(p,levels = c('ns','<0.05','<0.01','<0.001','<0.0001'))) %>%
-            gather('PC','value',-p,-condition,-score,-treatment,-TGF,-LPS,-Cholesterol,-Fructose,-Pathway,-p_value) %>%
-            filter(PC %in% c('PC1','PC2','PC3','PC4','PC5')) %>% filter(Pathway=='JAK-STAT'),
-          x='value',y='score',cor.coef = TRUE) +
-  # scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
-  theme(text = element_text(size=20,family='Arial'))+
-  facet_wrap(~PC)
-ggscatter(left_join(path_acitivity,
-                    as.data.frame(Xm %*% Wm) %>% rownames_to_column('condition')) %>%
-            mutate(p=ifelse(p_value<0.0001,'<0.0001',
-                                              ifelse(p_value<0.001,'<0.001',
-                                                     ifelse(p_value<0.01,'<0.01',
-                                                            ifelse(p_value<0.05,'<0.05',
-                                                                   'ns'))))) %>%
-            mutate(p = factor(p,levels = c('ns','<0.05','<0.01','<0.001','<0.0001'))) %>%
-            gather('PC','value',-p,-condition,-score,-treatment,-TGF,-LPS,-Cholesterol,-Fructose,-Pathway,-p_value) %>%
-            filter(PC %in% c('PC1','PC2','PC3','PC4','PC5')) %>% filter(Pathway=='TGFb'),
-          x='value',y='score',cor.coef = TRUE) +
-  # scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
-  theme(text = element_text(size=20,family='Arial'))+
-  facet_wrap(~PC)
-
-### Repeat for Wm_combo
-Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
-colnames(Wm_combo) <- c('TC1','TC2')
-path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
-path_acitivity <- path_acitivity %>% select(c('Pathway'='source'),condition,score,p_value)
-path_acitivity <- left_join(path_acitivity,
-                            data_list$Kostrzewski$metadata %>% select(sampleName,treatment,TGF,LPS,Cholesterol,Fructose),
-                            by=c('condition'='sampleName'))
-path_acitivity <- left_join(path_acitivity,
-                            as.data.frame(Xm %*% Wm_combo) %>% select(TC1,TC2) %>% rownames_to_column('condition'))
-ggscatter(path_acitivity %>% mutate(p=ifelse(p_value<0.0001,'<0.0001',
-                                             ifelse(p_value<0.001,'<0.001',
-                                                    ifelse(p_value<0.01,'<0.01',
-                                                           ifelse(p_value<0.05,'<0.05',
-                                                                  'ns'))))) %>%
-            mutate(p = factor(p,levels = c('ns','<0.05','<0.01','<0.001','<0.0001'))) ,
-          x='TC1','TC2',fill = 'score',size ='p',shape=21) +
-  scale_fill_gradient2(low='blue',high='green',midpoint = 0,mid='white') +
-  theme(text = element_text(size=20,family='Arial'))+
-  facet_wrap(~Pathway)
-ggsave(paste0('results/',tolower(target_dataset),'_pathway_activity_in_translatable_components.png'),
-       height = 12,
-       width = 16,
-       units = 'in',
-       dpi=600)
-
 
 ### Run PLSR and find extra basis--------------------------
 plsr_model <- opls(x = Xh, 
@@ -220,6 +138,7 @@ ggplot(invivo_plsr %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis s
         axis.line = element_line(linewidth = 4),
         legend.position = 'right')+
   facet_wrap(~phenotype)
+### figure 2e
 ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr.eps'),
        device = cairo_ps,
        height = 6,
@@ -227,10 +146,7 @@ ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr.eps'),
        units = 'in',
        dpi = 600)
 ### visualize sex seperation in PLSR
-# tt <- cbind(as.data.frame(Zh_plsr), 
-#             as.data.frame(sex_inferred) %>% select(c('sex'='V1'))) %>%
-#   gather('variable','value',-sex)
-# ggboxplot(tt,x='sex',y='value') + facet_wrap(~variable) + stat_compare_means()
+### Supplementary Figure X
 ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
                  as.data.frame(sex_inferred) %>% select(c('sex'='V1'))),
        aes(x=p1,y=p2,color=sex)) +
@@ -241,7 +157,10 @@ ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
   theme(text = element_text(size=30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
         axis.line = element_line(linewidth = 4),
-        legend.position = 'right')
+        legend.position = 'right')+
+  stat_ellipse(aes(color = sex),size=1.2) +
+  scale_color_viridis_d()+
+  scale_fill_viridis_d()
 ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr_sex_separete.eps'),
        device = cairo_ps,
        height = 6,
@@ -252,11 +171,7 @@ ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr_sex_sep
 ## visualize plsr for backprojected data
 # Extract the necessary matrices from the opls object
 P <- plsr_model@loadingMN  # Loadings matrix (P)
-# plsr_scores <- plsr_model@scoreMN    # Scores matrix (T)
 W <- plsr_model@weightMN   # Weights matrix (W)
-# C <- plsr_model@loadingYMN # Y-loadings matrix (C)
-# E <- plsr_model@residualsMN # Residuals matrix (E)
-# U <- plsr_model@orthoScoreMN # Orthogonal scores matrix (U)
 # Manually calculate the scores (T)
 # T = X * W * (P' * W)^-1
 Zh_plsr_backprj <- Xh %*% Wm %*% t(Wm)  %*% Wh %*% solve(t(P) %*% W)
@@ -287,6 +202,7 @@ invivo_plsr_all <- rbind(invivo_plsr %>% mutate(type = 'Original human data'),
                          invivo_plsr_backprj %>% mutate(type = 'Truncated human data'))
 invivo_plsr_all <- invivo_plsr_all %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 invivo_plsr_all <- invivo_plsr_all %>% mutate(Phenotype = Score) %>% select(-Score)
+## Part of figure 3a
 ggplot(invivo_plsr_all %>% group_by(phenotype) %>% mutate(scaled=Phenotype/max(Phenotype)) %>% ungroup(),
        aes(x=V1,y=V2,color=scaled)) + #%>% select(-phenotype,-Score) %>% unique()
   # geom_point(color='#FD0714',size=5)+
@@ -317,10 +233,6 @@ Wm_opt <- analytical_solution_opt(y=Yh,
                                   W_invitro = Wm,
                                   phi = phi)
 Wm_tot <- cbind(Wm, Wm_opt)
-# predict and evaluate briefly
-y_hat <- cbind(1, Xh %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(Yh,2,mean),Bh)
-plot(Yh[,1],y_hat[,1],xlab='True NAS',ylab='Predicted NAS',main=paste0('r = ',cor(Yh[,1],y_hat[,1])))
-plot(Yh[,2],y_hat[,2],xlab='True fibrosis',ylab='Predicted fibrosis',main=paste0('r = ',cor(Yh[,2],y_hat[,2])))
 
 ### Plot the directions of correlation with NAS ans Fibrosis in this space
 Zh <- as.data.frame(Xh %*% Wm_opt)
@@ -333,17 +245,7 @@ df <- data.frame()
 for (theta in thetas){
   u <- c(cos(theta * pi / 180),sin(theta * pi / 180))
   u <- as.matrix(u)
-  # proj <- u %*% t(u) # since it is unit norm vector
-  # tmp <- as.matrix(Zh %>% select(V1,V2))
-  # Z_proj <- tmp %*% proj
   Wproj <- Wm_opt %*% u
-  # if (theta %in% c(90,270)){
-  #   corr_nas <- cor(Z_proj[,2],Zh$NAS)
-  #   corr_fib <- cor(Z_proj[,2],Zh$fibrosis)
-  # }else{
-  #   corr_nas <- cor(Z_proj[,1],Zh$NAS)
-  #   corr_fib <- cor(Z_proj[,1],Zh$fibrosis)
-  # }
   Wtmp <- cbind(Wm,Wproj)
   Yhat <- cbind(1, Xh %*% Wtmp %*% t(Wtmp) %*% Wh) %*% rbind(apply(Yh,2,mean),Bh)
   corr_nas <- cor(Yhat[,1],Zh$NAS)
@@ -351,51 +253,7 @@ for (theta in thetas){
   df <- rbind(df,
               data.frame(theta = theta,phenotype = 'NAS',corr=corr_nas),
               data.frame(theta = theta,phenotype = 'fibrosis',corr=corr_fib))
-  # df_proj <- rbind(df_proj,
-  #                  data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'NAS',corr=corr_nas),
-  #                  data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'fibrosis',corr=corr_fib))
 }
-# p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>% 
-#                mutate(`absolute average`=0.5*(abs(NAS)+abs(fibrosis))) %>% 
-#                ungroup() %>% gather('phenotype','corr',-theta),
-#              aes(x=theta,y=corr,colour=phenotype)) +
-#   geom_line()+
-#   geom_point()+
-#   geom_hline(yintercept = 0) +
-#   scale_y_continuous(breaks = seq(-1,1,0.25))+
-#   scale_x_continuous(breaks = seq(0,360,30))+
-#   xlab(expression(theta*" (\u00B0)"))+
-#   ylab('correlation') +
-#   theme_minimal(base_size = 24,base_family = 'Arial')+
-#   theme(text = element_text(size=24,family='Arial'),
-#         legend.position = 'top',
-#         legend.text =  element_text(size=26))
-# 
-# p2 <- ggplot(df_proj,aes(x=LV_opt_1,y=LV_opt_2,fill=corr,colour=corr))+
-#   geom_segment(aes(x=0,y=0,xend =LV_opt_1,yend=LV_opt_2),
-#                arrow = arrow(length = unit(0.03, "npc")),size=1)+
-#   scale_fill_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
-#   scale_color_gradient2(low = 'blue',high = 'red',mid='white',midpoint = 0,limits = c(-1,1))+
-#   xlab('extra basis 1') + ylab('extra basis 2') +
-#   labs(fill = 'correlation',colour='correlation')+
-#   geom_hline(yintercept = 0) +
-#   geom_vline(xintercept = 0) +
-#   facet_wrap(~phenotype)+
-#   theme_minimal(base_size = 24,base_family = 'Arial')+
-#   theme(text = element_text(size=24,family='Arial'),
-#         strip.text=element_text(size=24),
-#         legend.position = 'right')
-# p1 / p2
-# ggsave(paste0('results/pc_loadings_scores_analysis/',
-#               tolower(ref_dataset),
-#               'optimal_space_phenotypes_correlations_directions',
-#               tolower(target_dataset),
-#               '.png'),
-#        height = 12,
-#        width = 12,
-#        units = 'in',
-#        dpi=600)
-
 scatter_box_plot <- function(df,legend_title,
                              font_size =20,font_family = 'Arial',
                              point_shape = 21,point_size=2.8,point_stroke=1.2,
@@ -458,25 +316,9 @@ scatter_box_plot <- function(df,legend_title,
   }
   return(combined_plot)
 }
-# ggMarginal(scatter_plot,type = 'box', groupColour = TRUE, groupFill = TRUE)
+### Figure 3d
 combined_plot_nas <- scatter_box_plot(Zh %>% mutate(pheno=NAS),'NAS')
 combined_plot_fibrosis <- scatter_box_plot(Zh %>% mutate(pheno=fibrosis),'Fibrosis stage')
-# p <- (ggplot(Zh ,aes(x=V1,y=V2,fill=NAS))+
-#     geom_point(size=2.8,shape=21,stroke=1.2)+
-#     scale_fill_viridis_c()+
-#     xlab('LV extra 1')+ylab('LV extra 2')+  
-#     theme_minimal(base_size=20,base_family = 'Arial')+
-#     theme(text= element_text(size=20,family = 'Arial'),
-#           legend.position = 'top')) +
-#   (ggplot(Zh ,aes(x=V1,y=V2,fill=fibrosis))+
-#      geom_point(size=2.8,shape=21,stroke=1.2)+
-#      scale_fill_viridis_c()+
-#      xlab('LV extra 1')+ylab('LV extra 2')+ 
-#      labs(fill='Fibrosis stage') +
-#      theme_minimal(base_size=20,base_family = 'Arial')+
-#      theme(text= element_text(size=20,family = 'Arial'),
-#            legend.position = 'top'))
-# print(p)
 ggsave(paste0('figures/projected_',
               tolower(ref_dataset),
               '_samples_on_extra_basis_NAS',
@@ -521,6 +363,7 @@ ggsave(paste0('figures/projected_',
        dpi=600)
 
 ## separation of sex in the extra basis
+## Figure 7c
 ggplot(left_join(Zh , as.data.frame(sex_inferred) %>% select(c('sex'='V1')) %>%rownames_to_column('sample')),
        aes(x=V1,y=V2,fill=sex,color=sex)) +
   geom_point(size=2.8,shape=21,stroke=1.2,color='black')+
@@ -589,6 +432,7 @@ df_mu_radial <- df %>% group_by(theta) %>% mutate(mu = mean(corr)) %>% ungroup()
 df_radial <- df %>% 
   mutate(x = corr*cos(theta), y = corr*sin(theta)) %>%
   mutate(phenotype = ifelse(phenotype == "fibrosis", "Fibrosis stage",phenotype)) #%>% mutate(theta = pi*theta/180)
+### Figure 5a
 plt_cor_radial <-   ggplot(df_radial %>% filter(theta<=90), 
                            aes(x = theta, y = corr, color = phenotype, group = phenotype)) + 
   geom_line(linewidth = 1.5) +
@@ -631,16 +475,7 @@ ggsave('figures/quarter_radial_correlation.eps',
        width = 9,
        units = 'in',
        dpi = 600)
-# plt_cor_radial2 <-   ggplot(df_radial, aes(x = theta/(360), y = corr, color = phenotype, group = phenotype)) + 
-#   geom_line(linewidth = 1.5) +
-#   theme(text = element_text(size = 20),
-#         axis.text.y = element_text(color = "black"),
-#         axis.text.x = element_text(color = "black"),
-#         legend.key.size = unit(size_legend, "cm")) +
-#   scale_color_brewer(palette = "Dark2") +
-#   labs(x = "Mixing proportion", y = "Pearson correlation", color = "Phenotype")
-# plt_cor_radial2 <-  add_theme(plt_cor_radial2,size_text=20)
-# print(plt_cor_radial2)
+
 
 ### Find translatable LV of the in vitro system
 ### Run evolutionary algorithm
