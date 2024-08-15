@@ -11,6 +11,7 @@ library(ggradar)
 library(ggiraphExtra)
 library(grid)
 library(ggExtra)
+library(matrixStats)
 source('modeling/CrossValidationUtilFunctions.R')
 source('modeling/functions_translation.R')
 source("utils/plotting_functions.R")
@@ -43,44 +44,30 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
-## print some statistics about NAS and fiborsis distribution between sexes
+# For supplementary data: Print some statistics about NAS and fibrosis distribution between sexes
 print(all(rownames(Xh)==rownames(sex_inferred)))
 pheno_stats <- as.data.frame(cbind(Yh,sex_inferred))
 colnames(pheno_stats) <- c('NAS','fibrosis','sex')
 pheno_stats$NAS <- as.numeric(pheno_stats$NAS)
 pheno_stats$fibrosis <- as.numeric(pheno_stats$fibrosis)
-ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>% 
-            mutate(phenotype= ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)),
-          x='sex',y='score',add='jitter')+
-  stat_compare_means(comparisons = list(c('male','female')),
-                     method='wilcox',
-                     size=6)+
-  facet_wrap(~phenotype,scales="free_y")+
-  theme(text = element_text(size=20,family='Arial'))
-ggsave(paste0('figures/',ref_dataset,'_study_stats.png'),
-       width = 9,
-       height = 6,
-       units = 'in',
-       dpi=600)
+
+plt_pheno_stats <- ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>% 
+                             mutate(phenotype= ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)),
+                              x='sex',y='score',add='jitter', add.params = list(size = size_dot), size = size_line)+
+                      stat_compare_means(comparisons = list(c('male','female')),
+                      method='wilcox',
+                      size = size_annotation)+
+                      facet_wrap(~phenotype,scales="free_y")
+saveRDS(plt_pheno_stats, "Figures/plt_pheno_stats.rds")
+
 
 ### Project in-vitro data to their group-derived PC space
 Zm <- Xm %*% Wm
-pc1_var <- round(100 * var(Zm[,c('PC1')])/sum(apply(Xm,2,var)),2) 
-pc2_var <- round(100 * var(Zm[,c('PC2')])/sum(apply(Xm,2,var)),2) 
-invitro_pca <- as.data.frame(Zm[,c('PC1','PC2')])
-ggplot(invitro_pca,aes(x=PC1,y=PC2)) +
-  geom_point(color='#FD0714',size=5)+
-  xlab(paste0('MPS PC1 (',pc1_var,'%)')) + ylab(paste0('MPS PC2 (',pc2_var,'%)')) +
-  theme_pubr(base_size = 30,base_family = 'Arial')+
-  theme(text = element_text(size=30,family = 'Arial'),
-        plot.title = element_text(hjust = 0.5),
-        axis.line = element_line(linewidth = 4))
-ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invitro_pca.eps'),
-       device = cairo_ps,
-       height = 5,
-       width = 5,
-       units = 'in',
-       dpi = 600)
+per_var <- round(100 * colVars(Zm)/sum(colVars(Xm)), 2)
+plt_PCA_MPS <- ggplot(data.frame(Zm), aes(x = PC1,y = PC2)) +
+                geom_point(color = '#FD0714',size = size_dot)+
+                xlab(paste0('MPS PC1 (',per_var[1],'%)')) + ylab(paste0('MPS PC2 (',per_var[2],'%)')) 
+saveRDS(plt_PCA_MPS, "Figures/plt_PCA_MPS.rds")
 
 
 ### Check current TF and pathway activity in the data------------------------------
@@ -174,7 +161,7 @@ plsr_model <- opls(x = Xh,
                    scaleC = "center",
                    fig.pdfC = "none",
                    info.txtC = "none")
-total_plsr_var <- sum(apply(plsr_model@scoreMN,2,var))/sum(apply(Xh,2,var))
+total_plsr_var <- sum(colVars(plsr_model@scoreMN))/sum(colVars(Xh))
 print(paste0('PLSR with 8 LVs accounts for ',round(100*total_plsr_var,2),'% of total variance'))
 
 # Get Wh of PLSR
@@ -201,55 +188,41 @@ mcor <- mcor %>% group_by(Var2) %>% mutate(avg_abs_cor = mean(abs(value))) %>% s
   unique()
 lvs <- mcor$LV[order(-mcor$avg_abs_cor)]
 lvs <- as.character(lvs[1:2])
+lv_vars <- round(100 * colVars(Zh_plsr)/sum(colVars(Xh)),2) 
 lv1_var <- round(100 * var(Zh_plsr[,c(lvs[1])])/sum(apply(Xm,2,var)),2) 
 lv2_var <- round(100 * var(Zh_plsr[,c(lvs[2])])/sum(apply(Xm,2,var)),2) 
 invivo_plsr <- as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])])
 invivo_plsr <- cbind(invivo_plsr,as.data.frame(Yh))
 invivo_plsr <- invivo_plsr %>% gather('phenotype','Score',-all_of(lvs))
 colnames(invivo_plsr)[1:2] <- c('V1','V2')
-ggplot(invivo_plsr %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
-         group_by(phenotype) %>% mutate(normed_score=Score/max(Score)),
-       aes(x=V1,y=V2,color=normed_score)) +
-  geom_point(size=5)+
-  scale_color_viridis_c()+
-  labs(color = 'Score')+
-  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
-  theme_pubr(base_size = 30,base_family = 'Arial')+
-  theme(text = element_text(size=30,family = 'Arial'),
-        plot.title = element_text(hjust = 0.5),
-        axis.line = element_line(linewidth = 4),
-        legend.position = 'right')+
-  facet_wrap(~phenotype)
-ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr.eps'),
-       device = cairo_ps,
-       height = 6,
-       width = 9,
-       units = 'in',
-       dpi = 600)
-### visualize sex seperation in PLSR
-# tt <- cbind(as.data.frame(Zh_plsr), 
-#             as.data.frame(sex_inferred) %>% select(c('sex'='V1'))) %>%
-#   gather('variable','value',-sex)
-# ggboxplot(tt,x='sex',y='value') + facet_wrap(~variable) + stat_compare_means()
-ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
-                 as.data.frame(sex_inferred) %>% select(c('sex'='V1'))),
-       aes(x=p1,y=p2,color=sex)) +
-  geom_point(size=5)+
-  scale_color_viridis_d()+
-  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
-  theme_pubr(base_size = 30,base_family = 'Arial')+
-  theme(text = element_text(size=30,family = 'Arial'),
-        plot.title = element_text(hjust = 0.5),
-        axis.line = element_line(linewidth = 4),
-        legend.position = 'right')
-ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr_sex_separete.eps'),
-       device = cairo_ps,
-       height = 6,
-       width = 9,
-       units = 'in',
-       dpi = 600)
+invivo_plsr <- invivo_plsr %>% 
+                mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
+                group_by(phenotype) %>% 
+                mutate(normed_score=Score/max(Score))
 
-## visualize plsr for backprojected data
+
+plt_PLSR_human <- ggplot(invivo_plsr, aes(x=V1,y=V2,color=normed_score)) +
+                    geom_point(size = size_dot)+
+                    scale_color_viridis_c()+
+                    labs(color = 'Score')+
+                    xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv_vars[1],'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv_vars[2],'%)')) +
+                    facet_wrap(~phenotype)
+saveRDS(plt_PCA_MPS, "Figures/plt_PLSR_human.rds")
+
+### visualize sex separation in PLSR
+plt_PLSR_sex <- ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
+                             as.data.frame(sex_inferred) %>% select(c('sex'='V1'))),
+                         aes(x=p1,y=p2,color=sex)) +
+  geom_point(size = size_dot)+
+  scale_color_viridis_d()+
+  stat_ellipse(size = size_line, show.legend = F) +
+  labs(color = 'Sex')+
+  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv_vars[1],'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv_vars[2],'%)'))
+
+saveRDS(plt_PLSR_sex, "Figures/plt_PLSR_sex.rds")
+
+
+## Visualize plsr for backprojected data
 # Extract the necessary matrices from the opls object
 P <- plsr_model@loadingMN  # Loadings matrix (P)
 # plsr_scores <- plsr_model@scoreMN    # Scores matrix (T)
@@ -264,52 +237,22 @@ invivo_plsr_backprj <- as.data.frame(Zh_plsr_backprj[,c(lvs[1],lvs[2])])
 invivo_plsr_backprj <- cbind(invivo_plsr_backprj,as.data.frame(Yh))
 invivo_plsr_backprj <- invivo_plsr_backprj %>% gather('phenotype','Score',-all_of(lvs))
 colnames(invivo_plsr_backprj)[1:2] <- c('V1','V2')
-ggplot(invivo_plsr_backprj,aes(x=V1,y=V2,color=Score)) +
-  # geom_point(color='#FD0714',size=5)+
-  geom_point(size=5)+
-  scale_color_viridis_c()+
-  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
-  theme_pubr(base_size = 30,base_family = 'Arial')+
-  theme(text = element_text(size=30,family = 'Arial'),
-        plot.title = element_text(hjust = 0.5),
-        axis.line = element_line(linewidth = 4),
-        legend.position = 'right')+
-  facet_wrap(~phenotype)
-ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_invivo_plsr_backproj.eps'),
-       device = cairo_ps,
-       height = 5,
-       width = 5,
-       units = 'in',
-       dpi = 600)
+invivo_plsr_backprj <- invivo_plsr_backprj %>%
+                        mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
+                        group_by(phenotype) %>% 
+                        mutate(normed_score=Score/max(Score))
+
+plt_PLSR_backproject <- ggplot(invivo_plsr_backprj,aes(x=V1,y=V2,color=normed_score)) +
+                        geom_point(size = size_dot)+
+                        scale_color_viridis_c()+
+                        labs(color = 'Score')+
+                        xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv_vars[1],'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv_vars[2],'%)')) +
+                        facet_wrap(~phenotype)
+saveRDS(plt_PLSR_backproject, "Figures/plt_PLSR_backproject.rds")
 
 
-invivo_plsr_all <- rbind(invivo_plsr %>% mutate(type = 'Original human data'),
-                         invivo_plsr_backprj %>% mutate(type = 'Truncated human data'))
-invivo_plsr_all <- invivo_plsr_all %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
-invivo_plsr_all <- invivo_plsr_all %>% mutate(Phenotype = Score) %>% select(-Score)
-ggplot(invivo_plsr_all %>% group_by(phenotype) %>% mutate(scaled=Phenotype/max(Phenotype)) %>% ungroup(),
-       aes(x=V1,y=V2,color=scaled)) + #%>% select(-phenotype,-Score) %>% unique()
-  # geom_point(color='#FD0714',size=5)+
-  geom_point(size=5)+
-  scale_x_continuous(limits = c(-50,60))+
-  scale_y_continuous(limits = c(-40,30))+
-  scale_color_viridis_c(breaks=seq(0,1,0.5))+
-  labs(color = 'Normalized score')+
-  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
-  theme_pubr(base_size = 30,base_family = 'Arial')+
-  theme(text = element_text(size=30,family = 'Arial'),
-        plot.title = element_text(hjust = 0.5),
-        axis.line = element_line(linewidth = 4),
-        strip.background = element_blank(),
-        legend.position = 'none')+
-  guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
-  facet_wrap(vars(type,phenotype),scales = 'free')
-ggsave(paste0('figures/',target_dataset,'_to_',ref_dataset,'_all_invivo_plsr_ontop2.eps'),
-       device = cairo_ps,
-       height = 12,
-       width = 12,
-       units = 'in',
-       dpi = 600)
+
+
 
 # Find extra basis
 phi <- Wh %*% Bh
