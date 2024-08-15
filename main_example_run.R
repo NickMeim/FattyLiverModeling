@@ -62,18 +62,9 @@ plt_pheno_stats <- ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>
 saveRDS(plt_pheno_stats, "Figures/plt_pheno_stats.rds")
 
 
-### Project in-vitro data to their group-derived PC space
-Zm <- Xm %*% Wm
-per_var <- round(100 * colVars(Zm)/sum(colVars(Xm)), 2)
-plt_PCA_MPS <- ggplot(data.frame(Zm), aes(x = PC1,y = PC2)) +
-                geom_point(color = '#FD0714',size = size_dot)+
-                xlab(paste0('MPS PC1 (',per_var[1],'%)')) + ylab(paste0('MPS PC2 (',per_var[2],'%)')) 
-saveRDS(plt_PCA_MPS, "Figures/plt_PCA_MPS.rds")
-
-
 ### Check current TF and pathway activity in the data------------------------------
 net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-
+colnames(net_prog)[3] <- 'mor'
 path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
 path_acitivity <- path_acitivity %>% select(c('Pathway'='source'),condition,score,p_value)
 path_acitivity <- left_join(path_acitivity,
@@ -202,13 +193,8 @@ invivo_plsr <- invivo_plsr %>%
                 mutate(normed_score=Score/max(Score))
 
 
-plt_PLSR_human <- ggplot(invivo_plsr, aes(x=V1,y=V2,color=normed_score)) +
-                    geom_point(size = size_dot)+
-                    scale_color_viridis_c()+
-                    labs(color = 'Score')+
-                    xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv_vars[1],'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv_vars[2],'%)')) +
-                    facet_wrap(~phenotype)
-saveRDS(plt_PCA_MPS, "Figures/plt_PLSR_human.rds")
+
+
 
 ### visualize sex separation in PLSR
 plt_PLSR_sex <- ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
@@ -223,33 +209,6 @@ plt_PLSR_sex <- ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1
 saveRDS(plt_PLSR_sex, "Figures/plt_PLSR_sex.rds")
 
 
-## Visualize plsr for backprojected data
-# Extract the necessary matrices from the opls object
-P <- plsr_model@loadingMN  # Loadings matrix (P)
-# plsr_scores <- plsr_model@scoreMN    # Scores matrix (T)
-W <- plsr_model@weightMN   # Weights matrix (W)
-# C <- plsr_model@loadingYMN # Y-loadings matrix (C)
-# E <- plsr_model@residualsMN # Residuals matrix (E)
-# U <- plsr_model@orthoScoreMN # Orthogonal scores matrix (U)
-# Manually calculate the scores (T)
-# T = X * W * (P' * W)^-1
-Zh_plsr_backprj <- Xh %*% Wm %*% t(Wm)  %*% Wh %*% solve(t(P) %*% W)
-invivo_plsr_backprj <- as.data.frame(Zh_plsr_backprj[,c(lvs[1],lvs[2])])
-invivo_plsr_backprj <- cbind(invivo_plsr_backprj,as.data.frame(Yh))
-invivo_plsr_backprj <- invivo_plsr_backprj %>% gather('phenotype','Score',-all_of(lvs))
-colnames(invivo_plsr_backprj)[1:2] <- c('V1','V2')
-invivo_plsr_backprj <- invivo_plsr_backprj %>%
-                        mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
-                        group_by(phenotype) %>% 
-                        mutate(normed_score=Score/max(Score))
-
-plt_PLSR_backproject <- ggplot(invivo_plsr_backprj,aes(x=V1,y=V2,color=normed_score)) +
-                        geom_point(size = size_dot)+
-                        scale_color_viridis_c()+
-                        labs(color = 'Score')+
-                        xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv_vars[1],'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv_vars[2],'%)')) +
-                        facet_wrap(~phenotype)
-saveRDS(plt_PLSR_backproject, "Figures/plt_PLSR_backproject.rds")
 
 
 ################################################################################
