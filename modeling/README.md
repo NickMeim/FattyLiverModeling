@@ -1,4 +1,4 @@
-## Machine learning and statistical analysis algorithms of the project
+## Machine learning and statistical analysis algorithms of the manuscript case study
 
 ## Scripts
 1. functions_translation.R : Contains functions to load and pre-process the raw data (normalize, scale, center, etc), perform PCA, and identify translatable or extra latent components using an evolutionary algorithm. ** Additionally it contains the function to identify extra latent vectors to span the human space, using an analytical solution.**
@@ -8,5 +8,7 @@
 5. CrossValidationProcess.R: The script that performs all cross-fold validation and evaluation tests.
 6. calculate_pairwise_GSEA_distances.R: Code to calculate all pairswise GSEA-based distances on the hallmark, TFs, KEGGS and GO Terms levels.
 7. distance_scores.R: The function used to calculate GSEA-based distance between to list of molecular signatures.
-8. Validate the performance in predicting fibrosis and NAS in two external clinical datasets, using the extra basis found with the Govaere clinical dataset and the Kostrzewski MPS liver model.
-9. L1000_pertubation_identification.R: Identify potential perturbations from the L1000 dataset.
+8. InterClinicalValidation.R: Validate the performance in predicting fibrosis and NAS in two external clinical datasets, using the extra basis found with the Govaere clinical dataset and the Kostrzewski MPS liver model.
+9. L1000_pertubation_identification.R: Identify potential perturbations from the L1000 dataset. 
+10. MLBenchmarksOfNasFibrosis.py: Python script to bechmark the performance of multiple other linear and non-linear ML models, as well as the loss of performance when backprojecting and the retrieval of performance when using the identified extra basis.
+11. multipleMLmodelsEval.R: R script to load the results of the previous script and visualize them.
