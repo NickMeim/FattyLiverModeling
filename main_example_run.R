@@ -59,7 +59,7 @@ plt_pheno_stats <- ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>
                       method='wilcox',
                       size = size_annotation)+
                       facet_wrap(~phenotype,scales="free_y")
-saveRDS(plt_pheno_stats, "Figures/plt_pheno_stats.rds")
+
 
 
 ### Check current TF and pathway activity in the data------------------------------
@@ -196,17 +196,7 @@ invivo_plsr <- invivo_plsr %>%
 
 
 
-### visualize sex separation in PLSR
-plt_PLSR_sex <- ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]), #c(lvs[1],lvs[2])
-                             as.data.frame(sex_inferred) %>% select(c('sex'='V1'))),
-                         aes(x=p1,y=p2,color=sex)) +
-  geom_point(size = size_dot)+
-  scale_color_viridis_d()+
-  stat_ellipse(size = size_line, show.legend = F) +
-  labs(color = 'Sex')+
-  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv_vars[1],'%)')) + ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv_vars[2],'%)'))
 
-saveRDS(plt_PLSR_sex, "Figures/plt_PLSR_sex.rds")
 
 
 
