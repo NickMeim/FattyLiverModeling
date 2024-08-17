@@ -44,7 +44,7 @@ livivtra_run <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
   Wm_opt <- analytical_solution_opt(y=Y_invivo,
                                     W_invitro = W_invitro,
                                     phi = phi)
-  Wm_tot <- cbind(Wm, Wm_opt)
+  Wm_tot <- cbind(W_invitro, Wm_opt)
 
   message('Calculating translatable components that contain most of the current predictive power...')
   ### Find translatable LV of the in vitro system
@@ -55,13 +55,40 @@ livivtra_run <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
                                   verbose = TRUE)
   Wm_combo <- Wm_combo$Wm_new
 
-  rownames(Wm_tot) <- rownames(Wm)
-  rownames(Wm_opt) <- rownames(Wm)
-  rownames(Wm_combo) <- rownames(Wm)
-  rownames(Wh) <- rownames(Wm)
+  rownames(Wm_tot) <- rownames(W_invitro)
+  rownames(Wm_opt) <- rownames(W_invitro)
+  rownames(Wm_combo) <- rownames(W_invitro)
+  rownames(Wh) <- rownames(W_invitro)
 
   # evaluate performance of plsr model, and truncation with W_invitro , with
   # Wm_combo, and W_opt
+  Th <- X_invivo %*% Wm_tot %*% t(Wm_tot) %*% Wh
+  Th0 <- X_invivo %*% W_invitro %*% t(W_invitro) %*% Wh
+  yhat <- predict(plsr_model,X_invivo)
+  yhat_extra_basis <- cbind(1, Th)  %*% rbind(apply(Y_invivo,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+  yhat_truncated <-  cbind(1, Th0)  %*% rbind(apply(Y_invivo,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
+  if (ncol(Y_invivo)>1){
+    r_model <- mean(diag(cor(yhat,Y_invivo)))
+    r_extra_basis <- mean(diag(cor(yhat_extra_basis,Y_invivo)))
+    r_truncated <- mean(diag(cor(yhat_truncated,Y_invivo)))
+    mae_model <- apply(abs(yhat-Y_invivo),2,mean)
+    mae_extra_basis <- apply(abs(yhat_extra_basis-Y_invivo),2,mean)
+    mae_truncated <- apply(abs(yhat_truncated-Y_invivo),2,mean)
+  }else{
+    r_model <- mean(cor(yhat,Y_invivo))
+    r_extra_basis <- mean(cor(yhat_extra_basis,Y_invivo))
+    r_truncated <- mean(cor(yhat_truncated,Y_invivo))
+    mae_model <- mean(abs(yhat-Y_invivo))
+    mae_extra_basis <- mean(abs(yhat_extra_basis-Y_invivo))
+    mae_truncated <- mean(abs(yhat_truncated-Y_invivo))
+  }
+
+  res_df = data.frame(r = c(r_model,r_extra_basis,r_truncated),
+                      MAE = c(mae_model,mae_extra_basis,mae_truncated),
+                      input = c('human features',
+                                'human features truncated via the original in vitro model',
+                                'human features truncated via the optimized in vitro model'),
+                      model = rep('PLSR',3))
 
   message('Done!')
   # put all results into a list object
