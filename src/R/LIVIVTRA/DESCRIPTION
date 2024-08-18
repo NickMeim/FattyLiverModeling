@@ -2,10 +2,15 @@ Package: LIVIVTRA
 Type: Package
 Title: What the Package Does (Title Case)
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Nikolaos Meimetis
+Maintainer: The package maintainer <meimetis@mit.edu>
+Description: This package train a PLSR or PLS-DA model to predict in vivo phenotype from molecular features.    Then it has the ability to identify an extra basis vector for the molecular space of an in vitro model so that the loss of performance when passing in vivo data through the in vitro pricipal component space is minimized.
+License: MIT + file LICENSE
+Imports:
+    tidyverse,
+    ropls,
+    caret,
+	stats,
+	ggplot2
 Encoding: UTF-8
 LazyData: true
