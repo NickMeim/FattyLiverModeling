@@ -1,4 +1,10 @@
 # Installation
+First install dependencies by starting R and entering:
+
+Then start R and enter:
+``` r
+remotes::install_github("NickMeim/FattyLiverModeling", subdir = "src/R/LIVIVTRA")
+```
 
 # Run
 

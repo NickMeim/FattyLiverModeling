@@ -25,14 +25,13 @@ Found the following significant warnings:
   Warning: package 'forcats' was built under R version 4.1.3
   Warning: package 'ggfortify' was built under R version 4.1.3
   Warning: package 'ggpubr' was built under R version 4.1.3
+  Warning: package 'RColorBrewer' was built under R version 4.1.3
 See 'C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling/src/R/LIVIVTRA.Rcheck/00install.out' for details.
 * checking installed package size ... OK
 * checking package directory ... OK
 * checking for future file timestamps ... OK
 * checking DESCRIPTION meta-information ... OK
-* checking top-level files ... NOTE
-Non-standard file/directory found at top level:
-  'omnipathr-log'
+* checking top-level files ... OK
 * checking for left-over files ... OK
 * checking index information ... OK
 * checking package subdirectories ... OK
@@ -46,9 +45,11 @@ Non-standard file/directory found at top level:
 * checking loading without being on the library search path ... OK
 * checking dependencies in R code ... WARNING
 'library' or 'require' calls not declared from:
-  'AnnotationDbi' 'EGSEAdata' 'fgsea' 'gage' 'org.Hs.eg.db' 'tidyverse'
+  'AnnotationDbi' 'EGSEAdata' 'caret' 'fgsea' 'gage' 'org.Hs.eg.db'
+  'ropls' 'tidyverse'
 'library' or 'require' calls in package code:
-  'AnnotationDbi' 'EGSEAdata' 'fgsea' 'gage' 'org.Hs.eg.db' 'tidyverse'
+  'AnnotationDbi' 'EGSEAdata' 'caret' 'fgsea' 'gage' 'org.Hs.eg.db'
+  'ropls' 'tidyverse'
   Please use :: or requireNamespace() instead.
   See section 'Suggested packages' in the 'Writing R Extensions' manual.
 * checking S3 generic/method consistency ... OK
@@ -106,6 +107,10 @@ HallmarksFastenrichment: no visible global function definition for
   'element_text'
 HallmarksFastenrichment: no visible global function definition for
   'unit'
+add_theme: no visible global function definition for 'theme_bw'
+add_theme: no visible global function definition for 'theme'
+add_theme: no visible global function definition for 'element_text'
+add_theme: no visible global function definition for 'unit'
 eval_f: no visible global function definition for '%>%'
 find_extra_basis: no visible global function definition for '%>%'
 livivtra_run: no visible global function definition for 'opls'
@@ -171,6 +176,19 @@ pathway_activity_interpretation: no visible global function definition
 pathway_activity_interpretation: no visible global function definition
   for 'element_text'
 pca_center: no visible global function definition for 'prcomp'
+plot_bars: no visible global function definition for
+  'position_jitterdodge'
+plot_bars: no visible global function definition for 'ggplot'
+plot_bars: no visible global function definition for 'geom_col'
+plot_bars: no visible global function definition for 'geom_point'
+plot_bars: no visible global function definition for 'geom_errorbar'
+plot_bars: no visible global function definition for 'position_dodge'
+plot_bars: no visible global function definition for
+  'scale_fill_manual'
+plot_bars: no visible global function definition for
+  'scale_fill_brewer'
+plot_bars: no visible global function definition for 'scale_x_discrete'
+plot_bars: no visible global function definition for 'labs'
 plot_gene_loadings: no visible global function definition for '%>%'
 plot_gene_loadings: no visible global function definition for
   'rownames_to_column'
@@ -192,50 +210,70 @@ plot_gene_loadings: no visible global function definition for
 plot_gene_loadings: no visible global function definition for 'theme'
 plot_gene_loadings: no visible global function definition for
   'element_text'
+plot_pca: no visible global function definition for 'prcomp'
+plot_pca: no visible global function definition for 'ggplot'
+plot_pca: no visible global function definition for 'aes_string'
+plot_pca: no visible global function definition for 'geom_point'
+plot_pca: no visible global function definition for 'labs'
+plot_pca: no visible global function definition for 'sd'
+plot_pca: no visible global function definition for '%>%'
+plot_pca: no visible global function definition for 'mutate'
+plot_pca: no visible binding for global variable 'PC1'
+plot_pca: no visible binding for global variable 'PC2'
+plot_pca: no visible global function definition for 'aes'
+plot_pca: no visible binding for global variable 'feature'
+plot_pca: no visible global function definition for 'geom_text_repel'
+plot_pca: no visible binding for global variable 'is.big'
+plot_pca: no visible global function definition for 'geom_vline'
+plot_pca: no visible global function definition for 'geom_hline'
+plot_pca: no visible global function definition for 'filter'
+plot_pca: no visible global function definition for 'theme'
+plot_scatter: no visible global function definition for 'aes'
+plot_scatter: no visible global function definition for 'modifyList'
+plot_scatter: no visible global function definition for 'ggplot'
+plot_scatter: no visible global function definition for 'geom_point'
+plot_scatter: no visible global function definition for 'labs'
+plot_scatter: no visible global function definition for
+  'position_jitter'
 process_datasets: no visible global function definition for 'rowVars'
-process_datasets: no visible global function definition for 'plot_bars'
 process_datasets: no visible global function definition for 'aes'
 process_datasets: no visible binding for global variable 'PC'
 process_datasets: no visible binding for global variable 'Var'
 process_datasets: no visible global function definition for
   'geom_vline'
-process_datasets: no visible global function definition for
-  'plot_scatter'
 rank_LV_MPS: no visible global function definition for 'predict'
 rank_LV_MPS: no visible global function definition for 'lm'
 Undefined global functions or variables:
-  %>% Hallmark LV PC Pathway Var activity aes arrange condition cor
-  createMultiFolds egsea.data element_text fgsea filter gather gene
-  geom_bar geom_point geom_text geom_text_repel geom_vline ggplot
-  ggtitle group_by left_join lm median msigdb mutate opls p.adj p_value
-  padj plot_bars plot_scatter prcomp predict reorder rnorm rowVars
-  rownames_to_column scale_fill_gradient2 scale_x_continuous score
-  select significant statistic str_replace_all str_split theme
+  %>% Hallmark LV PC PC1 PC2 Pathway Var activity aes aes_string
+  arrange condition cor createMultiFolds egsea.data element_text
+  feature fgsea filter gather gene geom_bar geom_col geom_errorbar
+  geom_hline geom_point geom_text geom_text_repel geom_vline ggplot
+  ggtitle group_by is.big labs left_join lm median modifyList msigdb
+  mutate opls p.adj p_value padj position_dodge position_jitter
+  position_jitterdodge prcomp predict reorder rnorm rowVars
+  rownames_to_column scale_fill_brewer scale_fill_gradient2
+  scale_fill_manual scale_x_continuous scale_x_discrete score sd select
+  significant statistic str_replace_all str_split theme theme_bw
   theme_minimal theme_pubr unit var xlab ylab
 Consider adding
   importFrom("stats", "cor", "filter", "lm", "median", "prcomp",
-             "predict", "reorder", "rnorm", "var")
+             "predict", "reorder", "rnorm", "sd", "var")
+  importFrom("utils", "modifyList")
 to your NAMESPACE file.
-* checking Rd files ... OK
-* checking Rd metadata ... OK
-* checking Rd line widths ... OK
-* checking Rd cross-references ... OK
 * checking for missing documentation entries ... WARNING
 Undocumented code objects:
-  'HallmarksFastenrichment' 'analytical_solution_opt' 'eval_f'
-  'find_extra_basis' 'get_translatable_LV' 'livivtra_run'
-  'livivtra_run_CV' 'optim_function_evolutionary'
-  'pathway_activity_interpretation' 'pca_center' 'plot_gene_loadings'
-  'process_datasets' 'rank_LV_MPS'
+  'HallmarksFastenrichment' 'add_theme' 'analytical_solution_opt'
+  'color_palette' 'eval_f' 'find_extra_basis' 'get_translatable_LV'
+  'livivtra_run' 'livivtra_run_CV' 'optim_function_evolutionary'
+  'pathway_activity_interpretation' 'pca_center' 'plot_bars'
+  'plot_gene_loadings' 'plot_pca' 'plot_scatter' 'process_datasets'
+  'rank_LV_MPS' 'size_annotation' 'size_col' 'size_dot' 'size_error'
+  'size_legend' 'size_line' 'size_text'
 All user-level objects in a package should have documentation entries.
 See chapter 'Writing R documentation files' in the 'Writing R
 Extensions' manual.
-* checking for code/documentation mismatches ... OK
-* checking Rd \usage sections ... OK
-* checking Rd contents ... OK
-* checking for unstated dependencies in examples ... OK
-* checking examples ... OK
+* checking examples ... NONE
 * checking for non-standard things in the check directory ... OK
 * checking for detritus in the temp directory ... OK
 * DONE
-Status: 3 WARNINGs, 2 NOTEs
+Status: 3 WARNINGs, 1 NOTE
