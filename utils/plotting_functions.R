@@ -254,3 +254,36 @@ scatter_box_plot <- function(df,legend_title,
   }
   return(combined_plot)
 }
+
+# Function 5: Bar plots for pathway activity. Assumes only one condition is there, but can
+# facet externally
+
+plot_pwy_activity <- function(pwy_act_table, plt_lim = NULL, show_fill_legend = F){
+  # Set plot limits
+  if (is.null(plt_lim)){
+    plt_lim = max(abs(pwy_act_table$score)) + 0.5
+    }
+  
+  # Annotate pvals with asterisks
+  pwy_act_table <- pwy_act_table %>%
+                    mutate(annot = ifelse(p_value <= 0.0001, "****",
+                                          ifelse(p_value <= 0.001,"***",
+                                                 ifelse(p_value<=0.01,"**",
+                                                        ifelse(p_value<=0.05,'*',
+                                                               ifelse(p_value<=0.1,'\u2219',
+                                                                        'ns'))))))
+  # Make plot
+  plt <- pwy_act_table %>%
+          ggplot(aes(x = score,y = reorder(Pathway, score),fill = score, label = annot)) + 
+            geom_bar(stat = 'identity', show.legend = show_fill_legend) +
+            scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
+                               midpoint = 0,limits = c(-plt_lim,plt_lim))+
+            scale_x_continuous(n.breaks = 8,limits = c(-plt_lim,plt_lim))+
+            labs(y = "Pathway", x = "Activity score", fill = "Activity score") +
+            geom_text(aes(x = ifelse(score < 0, score - 0.2, score + 0.2)),
+                      size = size_annotation,
+                      color = 'black',
+                      angle = 90) 
+  
+  return(plt)
+}

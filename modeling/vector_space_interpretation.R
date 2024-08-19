@@ -68,55 +68,7 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
     mutate(p.adj = p_value*length(unique(extra_basis_paths$Pathway))) %>%
     mutate(p.adj = ifelse(p.adj>1,1,p.adj))
   
-  p <- (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
-            filter (condition=='V1'),
-          aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
-      scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
-                           midpoint = 0,limits = c(-lim,lim))+
-      scale_x_continuous(n.breaks = 8,limits = c(-lim,lim))+
-      ggtitle('LV extra 1')+
-      ylab('Pathway')+
-      geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
-                                   ifelse(p_value <= 0.001,"***",
-                                          ifelse(p_value<=0.01,"**",
-                                                 ifelse(p_value<=0.05,'*',
-                                                        ifelse(p_value<=0.1,'\u2219',
-                                                               'ns'))))),
-                    x = ifelse(activity < 0, activity - 0.2, activity + 0.2)),
-                size = 6,
-                color = 'black',
-                angle=90) +                                   
-        theme_minimal(base_size = 24,base_family = 'Arial')+
-      theme(text = element_text(size = 24,family = 'Arial'),
-            legend.position = 'right',
-            plot.title = element_text(hjust = 0.5))) +
-    (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
-              filter (condition=='V2'),
-            aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
-       ggtitle('LV extra 2')+
-       ylab('Pathway')+
-       scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
-                            midpoint = 0,limits = c(-lim,lim))+
-       scale_x_continuous(n.breaks = 8,limits = c(-lim,lim))+
-       geom_text(aes(label = ifelse(p_value <= 0.0001, "****",
-                                    ifelse(p_value <= 0.001,"***",
-                                           ifelse(p_value<=0.01,"**",
-                                                  ifelse(p_value<=0.05,'*',
-                                                         ifelse(p_value<=0.1,'\u2219',
-                                                                'ns'))))),
-                     x = ifelse(activity < 0, activity - 0.2, activity + 0.2)),
-                 size = 6,
-                 color = 'black',
-                 angle=90) +                                   
-       theme_minimal(base_size = 24,base_family = 'Arial')+
-       theme(text = element_text(size = 24,family = 'Arial'),
-             legend.position = 'right',
-             plot.title = element_text(hjust = 0.5),
-             axis.title.y = element_blank())) 
-  if (plotting==TRUE){
-    print(p)
-  }
-  return(list(figure=p,extra_basis_paths))
+  return(extra_basis_paths)
 }
 
 TF_activity_interpretation <- function(W,W_PCspace,regulon,plotting=TRUE,lim=6){
