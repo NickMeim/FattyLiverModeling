@@ -5,6 +5,19 @@
 root_dir <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling"
 setwd(root_dir)
 source("./utils/plotting_functions.R")
+target_dataset <- "Kostrzewski"
+
+#################################################################################
+### Load results
+
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+
+
+
+
+
 
 #################################################################################
 ### Panel - MPS PCA plot
@@ -90,11 +103,25 @@ plt_TC_MPS <- data.frame(x = Xm %*% Wm_TC[,1], y = Xm %*% Wm_TC[,2], TGFb = data
 
 plt_TC_MPS <- add_theme(plt_TC_MPS) + theme(legend.position = "top")
 
+#################################################################################
+### Panel - Pathway activity of TCs
+Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
+translatable_components_progenies <- pathway_activity_interpretation(Wm_combo, Wm)
+
+plt_pwy_TC1 <- plot_pwy_activity(translatable_components_progenies %>% filter(condition == "LV_data1"), plt_lim = 16, show_fill_legend = T)
+plt_pwy_TC1 <- add_theme(plt_pwy_TC1)
+
+plt_pwy_TC2 <- plot_pwy_activity(translatable_components_progenies %>% filter(condition == "LV_data2"), plt_lim = 16, show_fill_legend = T)
+plt_pwy_TC2 <- add_theme(plt_pwy_TC2)
+
 ### Save panels as figures
 ggsave(filename = "./Figures/figure3/plt_PCA_MPS.pdf", plot = plt_PCA_MPS, units = "cm", width = 5, height = 5)
 ggsave(filename = "./Figures/figure3/plt_PLSR_backproject.pdf", plot = plt_PLSR_backproject, units = "cm", width = 8, height = 5)
 ggsave(filename = "./Figures/figure3/plt_PLSR_training_back.pdf", plot = plt_PLSR_training_back, units = "cm", width = 8, height = 5)
 ggsave(filename = "./Figures/figure3/plt_TC_prediction.pdf", plot = plt_TC_prediction, units = "cm", width = 8, height = 5)
 ggsave(filename = "./Figures/figure3/plt_TC_MPS.pdf", plot = plt_TC_MPS, units = "cm", width = 5, height = 6)
+ggsave(filename = "./Figures/figure3/plt_pwy_TC1.pdf", plot = plt_pwy_TC1, units = "cm", width = 7, height = 6)
+ggsave(filename = "./Figures/figure3/plt_pwy_TC2.pdf", plot = plt_pwy_TC2, units = "cm", width = 7, height = 6)
 
 
