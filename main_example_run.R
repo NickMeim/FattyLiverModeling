@@ -64,7 +64,6 @@ plt_pheno_stats <- ggboxplot(pheno_stats %>% gather('phenotype','score',-sex) %>
 
 ### Check current TF and pathway activity in the data------------------------------
 net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-colnames(net_prog)[3] <- 'mor'
 path_acitivity <- decoupleR::run_viper(t(Xm), net_prog,minsize = 1,verbose = FALSE)
 path_acitivity <- path_acitivity %>% select(c('Pathway'='source'),condition,score,p_value)
 path_acitivity <- left_join(path_acitivity,
@@ -165,6 +164,9 @@ for (ii in 1:nrow(plsr_model@weightMN)){
 }
 # Get regression coefficients
 Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
+# Save
+saveRDS(file = paste0('results/Wh_',tolower(target_dataset),'.rds'), object = Wh)
+saveRDS(file = paste0('results/PLSR_model_',tolower(target_dataset),'.rds'), object = plsr_model)
 
 ### Plot human PLSR space and projected truncated data
 Zh_plsr <- plsr_model@scoreMN
@@ -289,8 +291,7 @@ for (theta in thetas){
 
 
 # ggMarginal(scatter_plot,type = 'box', groupColour = TRUE, groupFill = TRUE)
-combined_plot_nas <- scatter_box_plot(Zh %>% mutate(pheno=NAS),'NAS')
-combined_plot_fibrosis <- scatter_box_plot(Zh %>% mutate(pheno=fibrosis),'Fibrosis stage')
+
 # p <- (ggplot(Zh ,aes(x=V1,y=V2,fill=NAS))+
 #     geom_point(size=2.8,shape=21,stroke=1.2)+
 #     scale_fill_viridis_c()+
@@ -531,51 +532,7 @@ ggsave('figures/AllData_TCs_Scatterplot_MPS_nas.eps',
        width=9,
        units = 'in',
        dpi=600)
-# ptc <- (ggplot(df_tc %>% filter(phenotype!='NAS'),aes(x=x,y=y,fill=Score))+
-#           geom_point(size=2.8,shape=21,stroke=1.2)+
-#           scale_fill_viridis_c()+
-#           xlab('MPS TC1')+ylab('MPS TC2')+  
-#           labs(fill='Fibrosis stage')+
-#           theme_bw(base_size=28,base_family = 'Arial')+
-#           theme(text= element_text(size=28,family = 'Arial'),
-#                 axis.title.x = element_blank(),
-#                 legend.position = 'top')) +
-#   (ggplot(df_tc%>% filter(phenotype =='NAS') ,aes(x=x,y=y,fill=Score))+
-#      geom_point(size=2.8,shape=21,stroke=1.2)+
-#      scale_fill_viridis_c()+
-#      labs(fill='NAS') +
-#      xlab('MPS TC1')+ylab('MPS TC2')+  
-#      theme_bw(base_size=28,base_family = 'Arial')+
-#      theme(text= element_text(size=28,family = 'Arial'),
-#            axis.title.y = element_blank(),
-#            axis.title.x = element_text(hjust = -0.8),
-#            legend.position = 'top'))
-# print(ptc)
-# ggsave('figures/AllData_TCs_Scatterplot_human.eps',
-#        plot = ptc,
-#        device = cairo_ps,
-#        height = 6,
-#        width=12,
-#        units = 'in',
-#        dpi=600)
-# take a look also at invitro separation in the TCs
-df_tc_mps <- data.frame(x = Xm %*% Wm_combo[,1], y = Xm %*% Wm_combo[,2], TGF = data_list[[target_dataset]]$metadata$TGF)
-ptc_mps <- ggplot(df_tc_mps,aes(x=x,y=y,fill=TGF))+
-          geom_point(size=2.8,shape=21,stroke=1.2)+
-          scale_fill_manual(values = c('#66C2A5','#FC8D62'))+
-          xlab('MPS TC1')+ylab('MPS TC2')+  
-          theme_bw(base_size=28,base_family = 'Arial')+
-          theme(text= element_text(size=28,family = 'Arial'),
-                plot.title = element_text(hjust = 0.5,face='bold'),
-                legend.position = 'top')
-print(ptc_mps)
-ggsave('figures/AllData_TCs_Scatterplot_MPS.eps',
-       plot = ptc_mps,
-       device = cairo_ps,
-       height = 6,
-       width=6,
-       units = 'in',
-       dpi=600)
+
 
 ## take a look also at performance of back-projection through the TCs
 Th <- Xh %*% Wm_combo %*% t(Wm_combo) %*% Wh
@@ -590,12 +547,14 @@ all_scatter_plot_backproj <- left_join(data.frame(Y_pred_truncated) %>%
                                          gather('phenotype','prediction',-id)) %>%
   select(-id) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+
 all_cor_results_backproj <- all_scatter_plot_backproj %>%
   group_by(phenotype) %>%
   summarise(cor_test = list(cor.test(true, prediction))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+
 (ggplot(all_scatter_plot_backproj %>% filter(phenotype=='Fibrosis stage'),aes(x = true,y=prediction)) +
     geom_jitter(width = 0.05,color='#4682B4') + 
     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+

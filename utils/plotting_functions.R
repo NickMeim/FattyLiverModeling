@@ -14,13 +14,14 @@ loadfonts(device = "win")
 
 ### Palettes and styles for plot elements
 font_family = "sans"
-size_dot = 1 # dot size for plots
+size_dot = 1.1 # dot size for plots
 size_error = 0.4 # size (thickness of line) for error bars
 size_text = 9
 size_col = 0.1 # Thickness of line for barplots
 size_legend = 0.3 # size of legend boxes in cm
 size_line = 0.6 # thickness of lines
 size_annotation = 3 # size for asterisks and other annotations
+size_stroke = 0.1 # Thickness of stroke for dot plots
 color_palette = "Set2" # Palette to be used. Choose from the Color Brewer palettes
 
 
