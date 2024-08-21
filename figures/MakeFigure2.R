@@ -32,12 +32,14 @@ plt_PLSR_CV <- ggplot(performance_PLSR, aes(x = type, y = value, color = type, f
                                    method = 'wilcox',#label = 'p.signif',
                                    tip.length = 0.025,
                                    label.y = c(1.1,0.8, 1.1, 0.95),
-                                   size = size_annotation*0.7)+
+                                   size = size_annotation*0.5)+
                 facet_wrap(~phenotype, nrow = 2) +
                 labs(x = NULL, y = "Pearson correlation") +
                 scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1.3)) +
                 scale_color_brewer(palette = "Dark2") +
-                scale_fill_brewer(palette = "Dark2")
+                scale_fill_brewer(palette = "Dark2") +
+                scale_x_discrete(labels = c("train" = "train\ndata", "test" = "test\ndata", "shuffle Y" = "shuffle\nY",
+                                           "shuffle X" = "shuffle\nX", "random X" = "random\nX"))
 
 plt_PLSR_CV <- add_theme(plt_PLSR_CV)
 
@@ -58,14 +60,17 @@ plt_PLSR_training <- add_theme(plt_PLSR_training)
 plt_PLSR_human <- ggplot(invivo_plsr, aes(x=V1,y=V2,fill=normed_score)) +
                   geom_point(size = size_dot, shape = 21, color = "black", stroke = size_stroke)+
                   scale_fill_viridis_c()+
-                  labs(color = 'Score')+
+                  labs(fill = 'Score')+
                   xlab(paste0('Human LV1 (',lv_vars[1],'%)')) + ylab(paste0('Human LV2 (',lv_vars[2],'%)')) +
                   facet_wrap(~phenotype)
 
 plt_PLSR_human <- add_theme(plt_PLSR_human)
 
 ### Save panels as figures
-ggsave(filename = "./Figures/figure2/plt_pheno_cor.pdf", plot = plt_pheno_cor, units = "cm", width = 5, height = 5)
-ggsave(filename = "./Figures/figure2/plt_PLSR_CV.pdf", plot = plt_PLSR_CV, units = "cm", width = 8, height = 8)
-ggsave(filename = "./Figures/figure2/plt_PLSR_training.pdf", plot = plt_PLSR_training, units = "cm", width = 8, height = 5)
-ggsave(filename = "./Figures/figure2/plt_PLSR_human.pdf", plot = plt_PLSR_human, units = "cm", width = 8, height = 5)
+ggsave(filename = "./Figures/figure2/plt_pheno_cor.pdf", plot = plt_pheno_cor, units = "cm", width = 6, height = 5)
+ggsave(filename = "./Figures/figure2/plt_PLSR_CV.pdf", plot = plt_PLSR_CV, units = "cm", width = 6, height = 6)
+ggsave(filename = "./Figures/figure2/plt_PLSR_training.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 5)
+ggsave(filename = "./Figures/figure2/plt_PLSR_human.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 5)
+# Save short versions of PLSR for figure 3
+ggsave(filename = "./Figures/figure3/plt_PLSR_training_short.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 4)
+ggsave(filename = "./Figures/figure3/plt_PLSR_human_short.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 4)
