@@ -14,6 +14,11 @@ analytical_solution_opt <- function(y,W_invitro,phi){
   return(Wopt)
 }
 
+# Scale fector to unit norm
+norm_v <- function(V){
+  return(V/sqrt(sum(V^2)))
+}
+
 # Function for loading datasets and appending them to a list
 load_datasets <- function(dataset_names, dir_data){
   # Look at files in data directory
