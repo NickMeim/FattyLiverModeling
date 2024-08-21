@@ -527,3 +527,64 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=T
 
   
 }
+
+# Function to get translatable components for two phenotypes - semi analytical solution
+get_translatable_LV_2phenotype <- function(Xh, Yh, Wh, Wm, Bh){
+  # Get mean of phenotypes
+  Yh_mean <- colMeans(Yh)
+  # Center phenotypes
+  for (ii in 1:ncol(Yh)){
+    Yh[,ii] <- Yh[,ii] - Yh_mean[ii]
+  }
+  
+  # Get predicted phenotypes (centered) with all PCs
+  # Find translatable components
+  Yh_pred <- Xh %*% Wm %*% t(Wm) %*% Wh %*% Bh
+  # Auxiliary matrices
+  Xhat <- Xh %*% Wm
+  phi <- t(Wm) %*% Wh %*% Bh
+  
+  # Initialize optimal weights alpha
+  alpha_opt <- NULL
+  
+  # The TCs seemed to be spanned by the columns of phi, so we use those as a first estimate.
+  # If phenotypes are fully independent this will be the final solution with no particular ordering
+  alpha_0 <- apply(phi, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
+  
+  # Find a single vector that provides a good tradeoff in predicting all phenotypes
+  # NOTE: Line search for the case of two phenotypes to find an optimal tradeoff.
+  # TO DO: Extend search to multiple phenotypes - only covering case of two for now
+  w <- seq(0,1,0.01)
+  error_TC <- matrix(0, nrow = length(w), ncol = 2)
+  for (ii in 1:length(w)){
+    v <- w[ii]*alpha_0[,1] + (1-w[ii])*alpha_0[,2]
+    v <- norm_v(v) # Normalize combination
+    error_TC[ii,1] <- sum( (Yh_pred[,1] - Xhat %*% v %*% (t(v) %*% phi[,1]))^2 )
+    error_TC[ii,2] <- sum( (Yh_pred[,2] - Xhat %*% v %*% (t(v) %*% phi[,2]))^2 )
+  }
+  # Normalize each column by the variance of each phenotype
+  error_TC[,1] <- error_TC[,1]/var(Yh_pred[,1])
+  error_TC[,2] <- error_TC[,2]/var(Yh_pred[,2])
+  # Find optimal combo (for more phenotypes a grid search might not be the best solution)
+  w_min <- w[min(rowSums(error_TC)) == rowSums(error_TC)]
+  # Append optimal solution as the first TC
+  alpha_opt <- cbind(alpha_opt, norm_v(w_min*alpha_0[,1] + (1-w_min)*alpha_0[,2]))
+  
+  # For two phenotypes a second TC is enough and can be calculated directly to be orthogonal to
+  # the first one but still be spanned by phi1 and phi2. For more phenotypes (i.e. components)
+  # we can find a new set of basis by doing regression on each deflated phenotype
+  # i.e. lm(Xhat %*% phi - Xhat %*% alpha_opt %*% t(alpha_opt) %*% phi ~ Xhat - 1)
+  
+  # For now, simply get the second TC as an orthogonal vector. Analytical solution
+  c1 <- w_min + (1-w_min)*as.numeric(t(alpha_0[,1]) %*% alpha_0[,2])
+  c2 <- w_min*as.numeric(t(alpha_0[,2]) %*% alpha_0[,1]) + (1-w_min)
+  
+  alpha_opt <- cbind(alpha_opt,
+                     norm_v(c2*alpha_0[,1] - c1*alpha_0[,2]))
+  
+  # Convert to TCs and return
+  Wm_TC <- Wm %*% alpha_opt
+  colnames(Wm_TC) <- paste0("TC", 1:ncol(Wm_TC))
+  return(Wm_TC)
+  
+}
