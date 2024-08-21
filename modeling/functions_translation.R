@@ -405,7 +405,7 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
 # Function to get representative latent variables that are translatable linear combinations of 
 # the PCs of the data
 # TO DO: can be extended to use CV to determine optimal number of translatable LVs
-get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=TRUE){
+get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=TRUE, base_err = 1){
   # If there is a single candidate vector, then we simply return it
   if (ncol(Wm) == 1){
     return(list(Wm_new = Wm))
@@ -436,7 +436,6 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=T
   # thresh <- 0.01
   # th <- 0.25
   # counter <- 1
-  base_err <- 1
   # Iterate and add latent variables until the error metric does not improve by more than 1%
   while ((dErrorY > base_err) & (ii<ncol(Bh)+2)){
     # if (flag){
@@ -511,7 +510,7 @@ get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=T
     # }
   }
   # After exiting it means the last component was unnecessary, so we exclude it and convert to matrix
-  if((dErrorY <= 1)){
+  if((dErrorY <= base_err)){
     Wm_new <- matrix(data = Wm_new[,-ii], ncol = ii - 1)
   }
   colnames(Wm_new) <- paste0(LV_lab,1:ncol(Wm_new))
