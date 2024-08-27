@@ -1,7 +1,7 @@
 HallmarksFastenrichment <- function(signature_ids,
                            gene_ids,
                            measurements,
-                           order_columns =T,
+                           axis_lab,
                            pval_adjustment=T,
                            n_permutations=1000){
 
@@ -12,15 +12,15 @@ HallmarksFastenrichment <- function(signature_ids,
   library(EGSEAdata)
   library(AnnotationDbi)
   library(org.Hs.eg.db)
+  library(ggfortify)
+  library(ggplot2)
+  library(ggpubr)
+  library(ggsignif)
+  library(ggrepel)
+  library(patchwork)
 
   sig_ids <- as.character(signature_ids)
 
-  # make sure its in correct order
-  if (order_columns==T){
-    measurements <- measurements[as.character(gene_ids),sig_ids]
-  }else{
-    measurements <- measurements[as.character(gene_ids),]
-  }
   if (length(sig_ids)<2){
     measurements <- as.matrix(measurements)
   }
@@ -109,7 +109,7 @@ HallmarksFastenrichment <- function(signature_ids,
              geom_bar(stat = 'identity') +
              scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
              xlab('Normalized Enrichment Score') + ylab('Hallmark')+
-             ggtitle(paste0('Hallmarks enriched in LV extra ',i))+
+             ggtitle(paste0('Hallmarks enriched in ',axis_label ,' ',i))+
              theme_minimal(base_family = 'Arial',base_size = 18)+
              theme(text = element_text(family = 'Arial',size=18),
                    axis.text.y = element_text(size=18),

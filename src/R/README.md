@@ -1,5 +1,16 @@
 # Installation
 First install dependencies by starting R and entering:
+install.packages("BiocManager")
+BiocManager::install(c("cmapR","rhdf5","dorothea"," org.Hs.eg.db ","hgu133a.db","AnnotationDbi","fgsea","topGO","EGSEAdata","GO.db"))
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("ggrepel")
+install.packages("ggpubr")
+install.packages("caret")
+install.packages("patchwork")
+install.packages("devtools")
+devtools::install_github("thomasp85/patchwork")
+BiocManager::install('saezlab/decoupleR')
 
 Then start R and enter:
 ``` r

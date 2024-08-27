@@ -9,7 +9,14 @@ library(patchwork)
 
 plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE,top=10){
   # n_lvs <- ncol(loadings)
-  loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% select(gene,selection)
+  library(tidyverse)
+  library(ggfortify)
+  library(ggplot2)
+  library(ggpubr)
+  library(ggsignif)
+  library(ggrepel)
+  library(patchwork)
+  loadings <- as.data.frame(loadings) %>% rownames_to_column('gene') %>% dplyr::select(gene,selection)
   loadings$significant <- ''
   loadings$significant[order(-abs(loadings[,selection]))[1:top]] <- loadings$gene[order(-abs(loadings[,selection]))[1:top]]
   loadings <- loadings[order(loadings[,selection]),]
@@ -28,13 +35,20 @@ plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE,top=10){
 }
 
 pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
+  library(tidyverse)
+  library(ggfortify)
+  library(ggplot2)
+  library(ggpubr)
+  library(ggsignif)
+  library(ggrepel)
+  library(patchwork)
   colnames(W) <- paste0('V',seq(1,ncol(W)))
   net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-  extra_basis_paths <- decoupleR::run_viper(W, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
+  extra_basis_paths <- decoupleR::run_viper(W, net_prog,minsize = 1,verbose = TRUE) %>% dplyr::select(-statistic)
   PC_space_paths <- decoupleR::run_viper(W_PCspace, net_prog,minsize = 1,verbose = TRUE)
-  PC_space_paths <- PC_space_paths %>% select(source,c('pc_activity'='score'))
+  PC_space_paths <- PC_space_paths %>% dplyr::select(source,c('pc_activity'='score'))
   PC_space_paths <- PC_space_paths$pc_activity
-  extra_basis_paths <- extra_basis_paths %>% select(-p_value)
+  extra_basis_paths <- extra_basis_paths %>% dplyr::select(-p_value)
   colnames(extra_basis_paths)[1] <- 'Pathway'
 
   extra_basis_paths <- extra_basis_paths %>% group_by(condition,Pathway) %>%
@@ -45,7 +59,7 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
 
   plots <- NULL
   for (i in 1:ncol(W)){
-    p <- (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>%
+    p <- (ggplot(extra_basis_paths %>% dplyr::select(c('activity'='score'),Pathway,p_value,condition) %>%
               filter (condition==paste0('V',i)),
             aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
        scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',

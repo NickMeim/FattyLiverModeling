@@ -27,6 +27,11 @@ color_palette = "Set2" # Palette to be used. Choose from the Color Brewer palett
 # Function 0 - Simply add style to an existing plot. Useful when
 # interfacing with plots produced by other packages
 add_theme <- function(plt,size_text=9){
+  library(RColorBrewer)
+  library(ggpubr)
+  library(tidyverse, quietly = T)
+  library(ggfortify, quietly = T)
+  library(ggrepel)
   plt <- plt +
         theme_bw() +
         theme(text = element_text(size = size_text),
@@ -44,18 +49,23 @@ plot_bars <- function(data_bar, mapping_bar, data_points = NULL, mapping_points 
                       palette = color_palette, extra_args = NULL, pos_points = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.9)){
 
 
+  library(RColorBrewer)
+  library(ggpubr)
+  library(tidyverse, quietly = T)
+  library(ggfortify, quietly = T)
+  library(ggrepel)
   # Create plot - column, individual points, and error bar
   plt <- ggplot(data = data_bar, mapping = mapping_bar) +
           geom_col(position = col_pos, size = size_col, color = "black")
-          
-  
+
+
   if (!is.null(data_points)){
     plt <- plt + geom_point(data = data_points, mapping = mapping_points,
                             size = size_dot, show.legend = extra_args$show.legend.pts,
                             color = "#666666",
                             position = pos_points)
   }
-  
+
   if (!is.null(data_error)){
     plt <- plt + geom_errorbar(data = data_error, mapping = mapping_error,
                                position = position_dodge(width=0.9), width = 0.25,
@@ -69,7 +79,7 @@ plot_bars <- function(data_bar, mapping_bar, data_points = NULL, mapping_points 
   else {
     fill_aes <- scale_fill_brewer(palette = palette, labels = plt_labs$fill_labs)
   }
-  
+
   # If there is an extra argument called fill, we override the fill of the bars
   if (!is.null(extra_args$fill)){
     plt$layers[[1]]$aes_params$fill <- extra_args$fill
@@ -97,6 +107,11 @@ plot_bars <- function(data_bar, mapping_bar, data_points = NULL, mapping_points 
 # Function 2: Dummy function for making simple XY scatter plots (ggplot wrapper)
 
 plot_scatter <- function(x, y, xlab = NULL, ylab = NULL, args_extra = NULL, aes_extra = NULL, xjitter = F, yjitter = F){
+  library(RColorBrewer)
+  library(ggpubr)
+  library(tidyverse, quietly = T)
+  library(ggfortify, quietly = T)
+  library(ggrepel)
   # Defaults
   size_dot <- 1
   def_color <- "steelblue"
@@ -109,7 +124,7 @@ plot_scatter <- function(x, y, xlab = NULL, ylab = NULL, args_extra = NULL, aes_
   if (!is.null(args_extra)){
     df <- cbind(df, as.data.frame(args_extra))
   }
-  
+
   # Define aesthetics
   aes_plt <- aes(x = x, y = y)
   if (!is.null(aes_extra)){
@@ -121,15 +136,15 @@ plot_scatter <- function(x, y, xlab = NULL, ylab = NULL, args_extra = NULL, aes_
   } else {
     # Plot defaults
     plt <- ggplot(df, mapping = aes_plt) +
-      geom_point(size = size_dot, color = def_color, 
+      geom_point(size = size_dot, color = def_color,
                  position = position_jitter(width = ifelse(xjitter, 0.1, 0),
                                             height = ifelse(yjitter, 0.1, 0))) +
       labs(x = xlab, y = ylab)
   }
-  
+
   # Add theme
   plt <- add_theme(plt)
-  
+
   return(plt)
 }
 
@@ -137,31 +152,36 @@ plot_scatter <- function(x, y, xlab = NULL, ylab = NULL, args_extra = NULL, aes_
 
 # Samples in columns, features in rows. Metadata has sample info to add aesthetics
 # aesthetics MUST correspond to a column in metadata
-plot_pca <- function(data, metadata = NULL, color_by = NULL, shape_by = NULL, 
+plot_pca <- function(data, metadata = NULL, color_by = NULL, shape_by = NULL,
                      scale_data = T, return_data = F, label_features = F){
+  library(RColorBrewer)
+  library(ggpubr)
+  library(tidyverse, quietly = T)
+  library(ggfortify, quietly = T)
+  library(ggrepel)
   # Do PCA and extract variances
   pca <- prcomp(t(data), scale. = scale_data)
   pca_var <- round(100*pca$sdev^2/sum(pca$sdev^2),2)
   # Dummy dataframe with metadata
   df <- cbind(metadata, pca$x)
   # Make plot - scores
-  plt <- ggplot(df, aes_string(x = "PC1", y = "PC2", 
+  plt <- ggplot(df, aes_string(x = "PC1", y = "PC2",
                                color = color_by, shape = shape_by)) +
     geom_point(size = 1.5) +
     labs(x = paste0("PC1 (",pca_var[1],"%)"),
          y = paste0("PC2 (",pca_var[2],"%)"))
-  
+
   # Make plot - loadings
   df <- data.frame(pca$rotation, feature = rownames(pca$rotation))
   sd_PC1 <- sd(df$PC1)
   sd_PC2 <- sd(df$PC2)
   df <- df %>% mutate(is.big = (abs(PC1) > 2*sd_PC1) | (abs(PC2) > 2*sd_PC2))
-  
+
   # Override if we want tolabel all loadings
   if (label_features == T){
     plt_load <- ggplot(df, aes(x = PC1, y = PC2, label = feature)) +
       geom_point(size = 1.5) +
-      geom_text_repel() 
+      geom_text_repel()
   }
   else {
     plt_load <- ggplot(df, aes(x = PC1, y = PC2, alpha = is.big, label = feature)) +
@@ -171,14 +191,14 @@ plot_pca <- function(data, metadata = NULL, color_by = NULL, shape_by = NULL,
       geom_hline(yintercept = 2*sd_PC2, color = "red", linetype = 2) +
       geom_hline(yintercept = -2*sd_PC2, color = "red", linetype = 2) +
       geom_text_repel(data = df %>% filter(is.big == T))
-    
+
   }
-  plt_load <- plt_load + 
+  plt_load <- plt_load +
     labs(x = paste0("PC1 (",pca_var[1],"%)"),
          y = paste0("PC2 (",pca_var[2],"%)")) +
     theme(legend.position = "none")
-  
-  
+
+
   if (return_data){
     return(list(data = pca, plt_score = plt, plt_load = plt_load))
   }

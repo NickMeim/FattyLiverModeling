@@ -3,4 +3,4 @@
 # Run
 
 # Example
-Open and run on a jupyter notebook the python_tutorial.ipynb to see an example usage of the package, from training a PLSR model to predict Y from X, to identifying an extra basis and interpreting the results.
+Run livivtra_main.py (or livivtra_cross_validation.py for a cross-validation example) to see how to use the LIVIVTRA approach in Python.

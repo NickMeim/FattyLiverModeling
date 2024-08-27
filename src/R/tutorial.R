@@ -42,7 +42,7 @@ tmp <- process_datasets(data_list, filter_variance = F)
 data_list <- tmp$data_list
 plt_list <- tmp$plt_list
 # Define matrices of interest
-Yh <- as.matrix(data_list[[ref_dataset]]$metadata  %>% select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
+Yh <- as.matrix(data_list[[ref_dataset]]$metadata  %>% dplyr::select(nas_score,Fibrosis_stage)) #keep both Fibrosis and NAS
 colnames(Yh) <- c('NAS','fibrosis')
 Xh <- data_list[[ref_dataset]]$data_center %>% t()
 if (ref_dataset=='Hoang'){
@@ -65,9 +65,6 @@ W_opt <- livivtra_results$W_opt
 W_tot <- livivtra_results$W_tot
 
 ### Visualize gene loadings-------------------------
-## valta mesa sta functions ayta
-library(ggrepel)
-library(ggpubr)
 p1 <- plot_gene_loadings(loadings = W_opt,
                              selection='V1',
                              y_lab = 'weight in extra LV1',
@@ -77,8 +74,19 @@ p2 <- plot_gene_loadings(loadings = W_opt,
                          y_lab = 'weight in extra LV2',
                          top=20)
 
+### Visualize gene loadings for existing translatable components TCs
+plot_translatable_gene_loadings_lv1 <- plot_gene_loadings(W_translatable,
+                                                          colnames(W_translatable)[1],
+                                                          'translatable LV1')
+plot_translatable_gene_loadings_lv2 <- plot_gene_loadings(W_translatable,
+                                                          colnames(W_translatable)[2],
+                                                          'translatable LV2')
+
 ### Visualize pathway activity-------------------------
 pathway_interpretation_results <- pathway_activity_interpretation(W_opt,Wm)
+
+### Visualize pathway activity for existing translatable components TCs
+pathway_interpretation_TCs_results <- pathway_activity_interpretation(W_translatable,Wm,lim = 15)
 
 ### Visualize Hallmark genesets enrichment-------------------------
 entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(W_opt), column = "ENTREZID", keytype = "SYMBOL")
@@ -90,23 +98,21 @@ rownames(meas) <- entrez_ids
 hallmarks_interpretation_results <- HallmarksFastenrichment(signature_ids = colnames(W_opt),
                                                           gene_ids = rownames(meas),
                                                           measurements = meas,
-                                                          order_columns = F, # REMOVE THAT FROM THE FUNCTION
+                                                          axis_lab = 'LV extra',
                                                           n_permutations=10000)
 
-p1 <- (ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES) %>%
-                filter(padj<=0.1),
-              aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+
-         geom_bar(stat = 'identity') +
-         # scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
-         scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0)+
-         xlab('Normalized Enrichment Score') + ylab('Hallmark')+
-         ggtitle('Hallmarks enriched in LV extra 1')+
-         theme_minimal(base_family = 'Arial',base_size = 18)+
-         theme(text = element_text(family = 'Arial',size=18),
-               axis.text.y = element_text(size=18),
-               plot.title = element_text(hjust = 0.5),
-               legend.key.size = unit(1.5, "lines"),
-               legend.position = 'none'))
+### Visualize Hallmark genesets enrichment for existing translatable components TCs
+entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(W_translatable), column = "ENTREZID", keytype = "SYMBOL")
+entrez_ids <- unname(entrez_ids)
+inds <- which(!is.na(entrez_ids))
+entrez_ids <- entrez_ids[inds]
+meas <- as.matrix(W_translatable[inds,])
+rownames(meas) <- entrez_ids
+hallmarks_interpretation_TCs_results <- HallmarksFastenrichment(signature_ids = colnames(W_translatable),
+                                                            gene_ids = rownames(meas),
+                                                            measurements = meas,
+                                                            axis_lab = 'TC',
+                                                            n_permutations=10000)
 
 ## Run cross validation---------------
 livivtra_CV_results <- livivtra_run_CV(Xh,Yh,Xm,Wm,num_folds = 10)

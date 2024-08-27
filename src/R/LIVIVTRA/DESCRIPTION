@@ -1,6 +1,6 @@
 Package: LIVIVTRA
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Identifies an extra basis to better predict in vivo phenotypes from in vitro models
 Version: 0.1.0
 Author: Nikolaos Meimetis
 Maintainer: The package maintainer <meimetis@mit.edu>
