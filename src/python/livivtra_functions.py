@@ -1,11 +1,51 @@
 import numpy as np
 import pandas as pd
-from sklearn.cross_decomposition import PLSRegression
-from scipy.stats import pearsonr
 
-def extra_basis_analytical_solution(x):
-    ## under constructions
-    return x
+from scipy.stats import percentileofscore
+
+def calculate_p_values(df1, df2):
+    p_values = pd.DataFrame(index=df1.index, columns=df1.columns)
+    
+    for feature in df1.columns:
+        for sample in df1.index:
+            # Absolute value of the feature in the current sample
+            value = abs(df1.loc[sample, feature])
+            # Distribution of the feature in the second matrix
+            distribution = df2[feature].abs()
+            # Calculate the percentile of the current value within the distribution
+            percentile = percentileofscore(distribution, value, kind='rank')
+            # p-value is the probability of finding a higher or equal absolute value
+            p_value = 1 - percentile / 100
+            p_values.loc[sample, feature] = p_value
+    
+    return p_values
+
+def p_value_label(p_value):
+    if p_value <= 0.0001:
+        return "****"
+    elif p_value <= 0.001:
+        return "***"
+    elif p_value <= 0.01:
+        return "**"
+    elif p_value <= 0.05:
+        return "*"
+    elif p_value <= 0.1:
+        return "\u2219"
+    else:
+        return "ns"
+
+def extra_basis_analytical_solution(y, W_invitro, phi):
+    Wopt = np.zeros((W_invitro.shape[0], y.shape[1]))  # Initialize Wopt with zeros
+    for i in range(y.shape[1]):
+        if i == 0:
+            alpha = W_invitro.T @ phi[:, i]
+            Wopt[:, i] = (phi[:, i] - W_invitro @ alpha) / np.sqrt(np.sum(phi[:, i]**2) - np.sum(alpha**2))
+        else:
+            Wnew = np.hstack((W_invitro, Wopt[:, :i]))  # Combine W_invitro and Wopt[:, :i]
+            alpha = Wnew.T @ phi[:, i]
+            Wopt[:, i] = (phi[:, i] - Wnew @ alpha) / np.sqrt(np.sum(phi[:, i]**2) - np.sum(alpha**2))
+    
+    return Wopt
 
 def pearson_r(y_true, y_pred):
     x = y_true
@@ -28,3 +68,4 @@ def pair_pearsonr(x, y, axis=0):
     r_den = np.sqrt((xm*xm).sum(axis=axis) * (ym*ym).sum(axis=axis))
     r = r_num / r_den
     return r
+

@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.cross_decomposition import PLSRegression
 from scipy.stats import pearsonr
 from pathlib import Path
-import livivtra_functions
+from livivtra_functions import *
 import argparse
 
 ### Initialize the parsed arguments

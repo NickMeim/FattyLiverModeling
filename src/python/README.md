@@ -1,4 +1,13 @@
 # Installation
+```bash
+# After installing anaconda create a conda environment:
+conda create -n livivtra
+conda activate livivtra
+conda install matplotlib
+conda install scikit-learn #it will also install scipy
+conda install seaborn
+conda install decoupler-py -c conda-forge
+```
 
 # Run
 
