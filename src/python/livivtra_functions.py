@@ -1,38 +1,7 @@
 import numpy as np
 import pandas as pd
-
-from scipy.stats import percentileofscore
-
-def calculate_p_values(df1, df2):
-    p_values = pd.DataFrame(index=df1.index, columns=df1.columns)
-    
-    for feature in df1.columns:
-        for sample in df1.index:
-            # Absolute value of the feature in the current sample
-            value = abs(df1.loc[sample, feature])
-            # Distribution of the feature in the second matrix
-            distribution = df2[feature].abs()
-            # Calculate the percentile of the current value within the distribution
-            percentile = percentileofscore(distribution, value, kind='rank')
-            # p-value is the probability of finding a higher or equal absolute value
-            p_value = 1 - percentile / 100
-            p_values.loc[sample, feature] = p_value
-    
-    return p_values
-
-def p_value_label(p_value):
-    if p_value <= 0.0001:
-        return "****"
-    elif p_value <= 0.001:
-        return "***"
-    elif p_value <= 0.01:
-        return "**"
-    elif p_value <= 0.05:
-        return "*"
-    elif p_value <= 0.1:
-        return "\u2219"
-    else:
-        return "ns"
+from matplotlib import pyplot as plt
+import seaborn as sns
 
 def extra_basis_analytical_solution(y, W_invitro, phi):
     Wopt = np.zeros((W_invitro.shape[0], y.shape[1]))  # Initialize Wopt with zeros
@@ -69,3 +38,30 @@ def pair_pearsonr(x, y, axis=0):
     r = r_num / r_den
     return r
 
+def visualize_paths_activity(scores,extra_basis,lim=8.0, cmap='vlag', figsize=(12, 8)):
+    i = extra_basis
+    # Filter data based on condition
+    filtered_data = scores[scores['condition'] == f'V{i}']
+    # Sort the data based on 'activity' from highest to lowest
+    filtered_data = filtered_data.sort_values(by='activity', ascending=False)
+
+    # Create the plot
+    plt.figure(figsize=figsize)
+
+    # Barplot
+    barplot = sns.barplot(
+        data=filtered_data,
+        x='activity',
+        y='Pathway',
+        palette=cmap
+    )
+    # Titles and labels
+    plt.title(f'LV extra {i}', fontsize=24, family='Arial')
+    plt.xlabel('Activity', fontsize=24, family='Arial')
+    plt.ylabel('Pathway', fontsize=24, family='Arial')
+    # Customize the font size and legend position
+    plt.xticks(fontsize=18, family='Arial')
+    plt.yticks(fontsize=18, family='Arial')
+    # Get the current figure
+    fig = plt.gcf()
+    return fig

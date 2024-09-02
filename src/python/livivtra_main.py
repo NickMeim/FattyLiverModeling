@@ -8,11 +8,7 @@ from livivtra_functions import *
 import pickle
 import argparse
 
-
 import decoupler as dc
-from matplotlib import pyplot as plt
-import seaborn as sns
-sns.set()
 
 
 ### Initialize the parsed arguments
@@ -87,72 +83,21 @@ pathway_scores,_ = dc.run_viper(
     min_n = 1,
     verbose=True
 )
-
-## calculate the same scores in the PCA space and visualize the pathway activity in the extra basis with a barplot
-invitro_pca_pathway_scores,_=dc.run_viper(
-    mat=Wm.T,
-    net=progeny,
-    source='source',
-    target='target',
-    weight=None,
-    min_n = 1,
-    verbose=True
-)
-
-p_vals = calculate_p_values(pathway_scores,invitro_pca_pathway_scores)
+# invitro_pca_pathway_scores,_=dc.run_viper(
+#     mat=Wm.T,
+#     net=progeny,
+#     source='source',
+#     target='target',
+#     weight=None,
+#     min_n = 1,
+#     verbose=True
+# )
 
 pathway_scores = pathway_scores.reset_index().rename(columns={'index':'condition'}).melt(id_vars='condition',var_name='Pathway', value_name='activity')
-p_vals = p_vals.reset_index().rename(columns={'index':'condition'}).melt(id_vars='condition',var_name='Pathway', value_name='p_value')
-pathway_scores = pd.merge(pathway_scores,p_vals, on=['condition','Pathway'])
 
-# Parameters
-i = 1
-lim = 15.0
+## Plot and save barplots
+fig_extra_basis_1 = visualize_paths_activity(pathway_scores,extra_basis = 1) 
+fig_extra_basis_1.savefig(res_dir+'pathways_extra_basis_1.pdf')
 
-# Filter data based on condition
-filtered_data = pathway_scores[pathway_scores['condition'] == f'V{i}']
-# Sort the data based on 'activity' from highest to lowest
-filtered_data = filtered_data.sort_values(by='activity', ascending=False)
-
-# Create a color palette from a colormap
-cmap = plt.get_cmap("coolwarm")
-norm = plt.Normalize(-lim, lim)
-sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-sm.set_array([])  # Only needed for the colorbar
-
-# Create the plot
-plt.figure(figsize=(12, 8))
-
-# Barplot
-barplot = sns.barplot(
-    data=filtered_data,
-    x='activity',
-    y='Pathway',
-    palette=filtered_data['activity'].apply(lambda x: cmap(norm(x)))  # Apply colormap
-)
-
-# Colorbar
-plt.colorbar(sm, label='Activity')
-
-for index, row in filtered_data.iterrows():
-    plt.text(
-        x=row['activity'] + 0.2 if row['activity'] >= 0 else row['activity'] - 0.2,
-        y=row['Pathway'],
-        s=p_value_label(row['p_value']),
-        ha='left' if row['activity'] >= 0 else 'right',
-        va='center',
-        size=12,
-        color='black',
-        rotation=90
-    )
-
-# Titles and labels
-plt.title(f'LV extra {i}', fontsize=24, family='Arial')
-plt.xlabel('Activity', fontsize=24, family='Arial')
-plt.ylabel('Pathway', fontsize=24, family='Arial')
-
-# Customize the font size and legend position
-plt.xticks(fontsize=18, family='Arial')
-plt.yticks(fontsize=18, family='Arial')
-
-# Show plot
+fig_extra_basis_2 = visualize_paths_activity(pathway_scores,extra_basis = 2) 
+fig_extra_basis_2.savefig(res_dir+'pathways_extra_basis_2.pdf')
