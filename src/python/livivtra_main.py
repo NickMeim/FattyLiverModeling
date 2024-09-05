@@ -44,9 +44,13 @@ pca_invitro.fit(X_invitro)
 Wm = pca_invitro.components_.T
 Wm = Wm[:,:-1]
 
+# Manually center Xh and Yh
+Xinvivo_centered = X_invivo - np.mean(X_invivo, axis=0)
+Yinvivo_centered = Y_invivo - np.mean(Y_invivo, axis=0)
+
 ### Fit PLSR model
 model = PLSRegression(n_components=num_LVs,scale=False)
-model.fit(X_invivo,Y_invivo)
+model.fit(Xinvivo_centered,Yinvivo_centered)
 
 ### Save the model
 # Save the model to a file
@@ -54,16 +58,13 @@ with open(res_dir+'model.pkl', 'wb') as f:
     pickle.dump(model, f)
 
 ### Get extra basis
-Wh = model.x_weights_
-Bh = model.y_weights_.T
-phi = Wh @ Bh
+phi = model.coef_.T # in PLSR in python this directly saved in the model
 Wm_opt = extra_basis_analytical_solution(y=Y_invivo,
                                          W_invitro = Wm,
                                          phi = phi)
 Wm_opt = pd.DataFrame(Wm_opt)
 Wm_opt.index = genes
 Wm_opt.columns=['V1','V2']
-
 Wm = pd.DataFrame(Wm)
 Wm.index = genes
 Wm.columns= ['PC'+str(i) for i in range(1,Wm.shape[1]+1)]
@@ -72,26 +73,32 @@ W_total = pd.concat([Wm,Wm_opt],axis=1)
 ### Save the extra basis and the PC loadings
 W_total.to_csv(res_dir+'W_total.csv')
 
+### Interpret extra basis pathways
 progeny = dc.get_progeny(organism='human', top=500)
-progeny = progeny.loc[:,['source','target']]
+progeny = progeny.loc[:,['source','target','weight']]
+# pathway_scores= dc.decouple(
+#     methods= ['mlm', 
+#               'ulm', 
+#               'viper', 
+#               'wsum'],
+#     mat=Wm_opt.T,
+#     net=progeny,
+#     source='source',
+#     target='target',
+#     weight='weight',
+#     min_n = 5,
+#     verbose=True
+# )
+# pathway_scores = pathway_scores['consensus_estimate']
 pathway_scores,_ = dc.run_viper(
     mat=Wm_opt.T,
     net=progeny,
     source='source',
     target='target',
     weight=None,
-    min_n = 1,
+    min_n = 5,
     verbose=True
 )
-# invitro_pca_pathway_scores,_=dc.run_viper(
-#     mat=Wm.T,
-#     net=progeny,
-#     source='source',
-#     target='target',
-#     weight=None,
-#     min_n = 1,
-#     verbose=True
-# )
 
 pathway_scores = pathway_scores.reset_index().rename(columns={'index':'condition'}).melt(id_vars='condition',var_name='Pathway', value_name='activity')
 

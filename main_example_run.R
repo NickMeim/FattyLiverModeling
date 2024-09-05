@@ -755,7 +755,7 @@ Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
 Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
 Wm_combo <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 extra_basis_pathway_activity <- pathway_activity_interpretation(Wm_opt,
-                                                                Wm_tot[,1:47])
+                                                                Wm)
 ggsave(paste0('figures/progenies_only_optimal_loadings_',
               tolower(target_dataset),
               '_barplot_LV1.png'),

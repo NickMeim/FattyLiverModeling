@@ -54,6 +54,7 @@ plot_gene_loadings <- function(loadings,selection,y_lab,plotting=TRUE,top=10){
 }
 
 pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
+  colnames(W) <- paste0('LV',seq(1,ncol(W)))
   net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
   extra_basis_paths <- decoupleR::run_viper(W, net_prog,minsize = 1,verbose = TRUE) %>% select(-statistic)
   PC_space_paths <- decoupleR::run_viper(W_PCspace, net_prog,minsize = 1,verbose = TRUE)
@@ -69,7 +70,7 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
     mutate(p.adj = ifelse(p.adj>1,1,p.adj))
   
   p <- (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
-            filter (condition=='V1'),
+            filter (condition=='LV1'),
           aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
       scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
                            midpoint = 0,limits = c(-lim,lim))+
@@ -91,7 +92,7 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
             legend.position = 'right',
             plot.title = element_text(hjust = 0.5))) +
     (ggplot(extra_basis_paths %>% select(c('activity'='score'),Pathway,p_value,condition) %>% 
-              filter (condition=='V2'),
+              filter (condition=='LV2'),
             aes(x=activity,y=reorder(Pathway,activity),fill=activity)) + geom_bar(stat = 'identity') +
        ggtitle('LV extra 2')+
        ylab('Pathway')+

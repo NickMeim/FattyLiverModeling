@@ -1,3 +1,5 @@
+*.png
+test.R
 src/python/archived.py
 bioinformatics_analysis/*
 bioinformatics_analysis
