@@ -16,19 +16,6 @@ def extra_basis_analytical_solution(y, W_invitro, phi):
     
     return Wopt
 
-def pearson_r(y_true, y_pred):
-    x = y_true
-    y = y_pred
-    mx = torch.mean(x, dim=0)
-    my = torch.mean(y, dim=0)
-    xm, ym = x - mx, y - my
-    r_num = torch.sum(xm * ym,dim=0)
-    x_square_sum = torch.sum(xm * xm,dim=0)
-    y_square_sum = torch.sum(ym * ym,dim=0)
-    r_den = torch.sqrt(x_square_sum * y_square_sum)
-    r = r_num / r_den
-    return r #torch.mean(r)
-
 def pair_pearsonr(x, y, axis=0):
     mx = np.mean(x, axis=axis, keepdims=True)
     my = np.mean(y, axis=axis, keepdims=True)

@@ -13,15 +13,11 @@ import decoupler as dc
 
 ### Initialize the parsed arguments
 parser = argparse.ArgumentParser(description='Run different ML models')
-parser.add_argument('--X_invitro_path', action='store',help='file to load pre-processed (replicate merged) in vitro molecular features',
-                    default='../../optimization/X_Kostrzewski_grouped.csv')
-parser.add_argument('--X_invivo_path', action='store', help='file to load pre-processed in vivo molecular features',
-                    default='../../optimization/X_Govaere.csv')
-parser.add_argument('--Y_invivo_path', action='store', help='file to load in vivo phenotypes',
-                    default='../../optimization/Y_Govaere.csv')
-parser.add_argument('--res_dir', action='store', help='folder to save results of the analysis',
-                    default='../')
-parser.add_argument('--num_LVs', action='store', type=int,help='number of latent variables in the PLSR model',default=8)
+parser.add_argument('--X_invitro_path', action='store',help='file to load pre-processed (replicate merged) in vitro molecular features')
+parser.add_argument('--X_invivo_path', action='store', help='file to load pre-processed in vivo molecular features')
+parser.add_argument('--Y_invivo_path', action='store', help='file to load in vivo phenotypes')
+parser.add_argument('--num_LVs', action='store', type=int,help='number of latent variables in the PLSR model')
+parser.add_argument('--res_dir', action='store', help='folder to save results of the analysis')
 args = parser.parse_args()
 num_LVs = int(args.num_LVs)
 X_invitro_path = args.X_invitro_path
