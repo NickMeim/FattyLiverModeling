@@ -1,3 +1,5 @@
+src/matlab/*
+src/matlab
 *.png
 test.R
 src/python/archived.py
