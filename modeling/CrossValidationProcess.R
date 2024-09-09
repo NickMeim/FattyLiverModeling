@@ -947,6 +947,10 @@ performance_all_plot <- performance_all_plot %>% mutate(phenotype=ifelse(phenoty
 performance_all_plot$phenotype <- factor(performance_all_plot$phenotype)
 performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,
                                          levels = rev(levels(performance_all_plot$phenotype)))
+
+# Save data frame
+saveRDS(performance_all_plot,'../results/performanceall_plot.rds')
+
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(NA,1.02))+
@@ -1505,14 +1509,18 @@ all_performance_res$model <- factor(all_performance_res$model,
                                                'PCs + extra LV1',
                                                'PCs + extra LV1 + extra LV2'))
 
-ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
+# Save
+saveRDS(all_performance_res,'../results/all_performance_res.rds')
+
+plt_required_extra_basis <- 
+  ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
        aes(x=model,y=mu,color = set , group =set))+
   geom_point(size=1.5)+
   geom_line(lwd = 0.75)+
   geom_errorbar(aes(ymax = mu + std/sqrt(num_folds),ymin = mu - std/sqrt(num_folds)),
                 width = 0.05,size=0.75)+
   ylim(NA,1) +
-  ylab('pearson`s correlation')+
+  ylab('Pearson correlation')+
   ### train performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1527,7 +1535,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mu_plsr_train + 0.03,
            label="human PLSR train performance", 
            hjust = 0 , 
-           size=9)+
+           size=size_annotation)+
   ### test performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1542,7 +1550,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mu_plsr_test + 0.03,
            label="human PLSR test performance", 
            hjust = 0 , 
-           size=9)+
+           size=size_annotation)+
   ### random performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1557,7 +1565,7 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
            y=mean(test_r_shuffled) + 0.03,
            label="shuffled model performance", 
            hjust = 0 , 
-           size=9)+
+           size=size_annotation)+
   geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
   theme_pubr(base_family = 'Arial',base_size = 27)+
   theme(text = element_text(family = 'Arial',size = 27),
@@ -1565,6 +1573,9 @@ ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std
         axis.line.x = element_blank(),
         axis.line.y = element_line(linewidth = 0.75),
         panel.grid.major = element_line())
+
+plt_required_extra_basis <- add_theme(plt_required_extra_basis)
+
 ggsave('../figures/required_extra_basis_to_retrieve_performance.png',
        width = 14,
        height = 10.5,
