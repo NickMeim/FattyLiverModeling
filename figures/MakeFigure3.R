@@ -122,6 +122,7 @@ ggsave(filename = "./Figures/figure3/plt_pwy_TC2.pdf", plot = plt_pwy_TC2, units
 #################################################################################
 ### Alternative: Using analytical approach for TCs
 Wm_TC_new <- get_translatable_LV_2phenotype(Xh, Yh, Wh, Wm, Bh)
+Wm_TC_new <- Wm_TC_new$Wm_TC
 per_var <- round(100*colVars(Xm %*% Wm_TC_new)/sum(colVars(Xm)),2)
 plt_TC_MPS_analytical <- data.frame(x = Xm %*% Wm_TC_new[,1], y = Xm %*% Wm_TC_new[,2], TGFb = data_list$Kostrzewski$metadata$TGF) %>%
                           ggplot(aes(x = x, y= y, color = TGFb, fill = TGFb)) +
@@ -133,8 +134,6 @@ plt_TC_MPS_analytical <- data.frame(x = Xm %*% Wm_TC_new[,1], y = Xm %*% Wm_TC_n
 
 plt_TC_MPS_analytical <- add_theme(plt_TC_MPS_analytical) + theme(legend.position = "top")
 ggsave(filename = "./Figures/figure3/plt_TC_MPS_analytical.pdf", plot = plt_TC_MPS_analytical, units = "cm", width = 4, height = 5.5)
-
-
 
 translatable_components_progenies <- pathway_activity_interpretation(Wm_TC_new, Wm)
 
@@ -163,7 +162,7 @@ plt_TC_prediction_analytical_Fib <- rbind(Ypred_TC1,Ypred_TC2) %>%
                                 ggplot(aes(x = fibrosis_full + mean(Yh[,2]), y = fibrosis + mean(Yh[,2]))) +
                                   geom_abline(intercept = 0, slope = 1, linewidth = 1, color = "black", linetype = 2) +
                                   geom_point(size = size_dot, shape = 21, stroke = size_stroke, fill = "steelblue", color = "black") +
-                                  stat_cor(color = "black", size = size_annotation*0.7) +
+                                  stat_cor(aes(label = ..r.label..), color = "black", size = size_annotation*0.7) +
                                   facet_wrap(~cond, ncol = 1) +
                                   labs(x = "Prediction with all PCs", y = "Prediction with TCs only")
 
@@ -171,14 +170,14 @@ plt_TC_prediction_analytical_NAS <- rbind(Ypred_TC1,Ypred_TC2) %>%
                                     ggplot(aes(x = NAS_full + mean(Yh[,1]), y = NAS + mean(Yh[,1]))) +
                                     geom_abline(intercept = 0, slope = 1, linewidth = 1, color = "black", linetype = 2) +
                                     geom_point(size = size_dot, shape = 21, stroke = size_stroke, fill = "steelblue", color = "black") +
-                                    stat_cor(color = "black", size = size_annotation*0.7) +
+                                    stat_cor(aes(label = ..r.label..), color = "black", size = size_annotation*0.7) +
                                     facet_wrap(~cond, ncol = 1) +
                                     labs(x = "Prediction with all PCs", y = "Prediction with TCs only")
 
 
 
 ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_NAS.pdf", 
-       plot = add_theme(plt_TC_prediction_analytical_NAS), units = "cm", width = 4, height = 5) 
+       plot = add_theme(plt_TC_prediction_analytical_NAS), units = "cm", width = 3, height = 4.5) 
 
 ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_Fib.pdf", 
-       plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 4, height = 5)   
+       plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 3.2, height = 4.5)   
