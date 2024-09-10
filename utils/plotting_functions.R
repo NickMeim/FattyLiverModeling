@@ -259,7 +259,7 @@ scatter_box_plot <- function(df,legend_title,
 # Function 5: Bar plots for pathway activity. Assumes only one condition is there, but can
 # facet externally
 
-plot_pwy_activity <- function(pwy_act_table, plt_lim = NULL, show_fill_legend = F){
+plot_pwy_activity <- function(pwy_act_table, plt_lim = NULL, show_fill_legend = F, offset_annot = 2, n.breaks = 8){
   # Set plot limits
   if (is.null(plt_lim)){
     plt_lim = max(abs(pwy_act_table$score)) + 1
@@ -273,14 +273,14 @@ plot_pwy_activity <- function(pwy_act_table, plt_lim = NULL, show_fill_legend = 
                                                         ifelse(p_value<=0.05,'*',
                                                                ifelse(p_value<=0.1,'\u2022', #\u2219
                                                                         'ns')))))) %>%
-                   mutate(offset = ifelse(annot == 'ns', 2, 1))
+                   mutate(offset = ifelse(annot == 'ns', offset_annot, 0.5*offset_annot))
   # Make plot
   plt <- pwy_act_table %>%
           ggplot(aes(x = score,y = reorder(Pathway, score),fill = score, label = annot)) + 
             geom_bar(stat = 'identity', show.legend = show_fill_legend, color = "black", size = size_col) +
             scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
                                midpoint = 0,limits = c(-plt_lim,plt_lim))+
-            scale_x_continuous(n.breaks = 8,limits = c(-plt_lim,plt_lim))+
+            scale_x_continuous(n.breaks = n.breaks,limits = c(-plt_lim,plt_lim))+
             labs(y = "Pathway", x = "Activity score", fill = "Score") +
             geom_text(aes(x = ifelse(score < 0, score - offset, score + offset)),
                       color = 'black', size = size_annotation*0.7,

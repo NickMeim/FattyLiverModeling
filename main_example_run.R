@@ -248,6 +248,8 @@ for (theta in thetas){
   #                  data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'NAS',corr=corr_nas),
   #                  data.frame(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1],phenotype = 'fibrosis',corr=corr_fib))
 }
+# Save
+saveRDS(df, paste0("results/df_correlation_radial_", tolower(target_dataset), ".rds"))
 # p1 <- ggplot(df %>% spread('phenotype','corr') %>% group_by(theta) %>% 
 #                mutate(`absolute average`=0.5*(abs(NAS)+abs(fibrosis))) %>% 
 #                ungroup() %>% gather('phenotype','corr',-theta),
@@ -481,6 +483,9 @@ Wm_combo <- get_translatable_LV(Xh, Yh, Wh, Wm,
                               verbose = TRUE)
 Wm_combo <- Wm_combo$Wm_new
 rownames(Wm_combo) <- rownames(Wm)
+
+# Print percentage of variance captured in TC
+print(paste0("Total variance captured in TCs: ", round(sum(colVars(Xm %*% Wm_combo))/sum(colVars(Xm))*100,2), " (%)"))
 
 ### Save found result
 rownames(Wm_tot) <- rownames(Wm)
@@ -778,11 +783,10 @@ for (theta in thetas){
   # W_proj <- Wm_opt %*% proj
   W_proj <- Wm_opt %*% u
   extra_basis_pathway_activity <- pathway_activity_interpretation(W_proj,
-                                                                  Wm,
-                                                                  plotting = FALSE)
+                                                                  Wm)
   
-  tmp <- extra_basis_pathway_activity[[2]]
-  tmp <- tmp %>% filter(condition == 'V1') %>% ungroup() %>% 
+  
+  tmp <- extra_basis_pathway_activity %>% filter(condition == 'V1') %>% ungroup() %>% 
     select(Pathway,score) %>% mutate(LV_opt_1 = u[1,1],LV_opt_2 =u[2,1]) %>%
     mutate(theta = theta)
   df <- rbind(df,
@@ -790,6 +794,8 @@ for (theta in thetas){
 }
 df_plot <- df %>% select(Pathway,theta,score) %>% mutate(score = abs(score)) %>% filter(theta<=90) %>%
   spread('theta','score')
+# Save
+saveRDS(df_plot, paste0("results/df_pwy_radial_", tolower(target_dataset),"_.rds"))
 # df_plot <- df %>% select(Pathway,theta,score) %>% mutate(score = abs(score)) %>% 
 #   mutate(score = ifelse(theta<=90,score,NA)) %>%
 #   spread('theta','score')
@@ -940,6 +946,10 @@ df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HAL
 df_msig <- df_msig %>% mutate(Hallmark=str_replace_all(Hallmark,'_',' '))
 df_msig <- df_msig %>% mutate(Hallmark = tolower(Hallmark)) %>% 
   mutate(Hallmark = paste0(toupper(substr(Hallmark, 1, 1)), tolower(substr(Hallmark, 2, nchar(Hallmark)))))
+# Save
+saveRDS(df_msig, paste0("results/hallmark_enrichment_", tolower(target_dataset),"_LVopt.rds" ))
+
+
 p1 <- (ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES) %>%
                 filter(padj<=0.1),
               aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+ 
@@ -1019,6 +1029,11 @@ df_msig_tcs <- df_msig_tcs %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MS
 df_msig_tcs <- df_msig_tcs %>% mutate(Hallmark=str_replace_all(Hallmark,'_',' '))
 df_msig_tcs <- df_msig_tcs %>% mutate(Hallmark = tolower(Hallmark)) %>% 
   mutate(Hallmark = paste0(toupper(substr(Hallmark, 1, 1)), tolower(substr(Hallmark, 2, nchar(Hallmark)))))
+
+# Save
+saveRDS(df_msig_tcs, paste0("results/hallmark_enrichment_", tolower(target_dataset),"_TC.rds" ))
+
+
 p1 <- (ggplot(df_msig_tcs %>% filter(LV=='V1') %>% arrange(NES) %>%
                 filter(padj<=0.1),
               aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+ 
@@ -1095,6 +1110,9 @@ resp_net <- merge(resp_net, metadata_human, by = "Response_ID")
 
 ### Run analysis with ChemPert
 extra_basis_inferred_perts <- perturnation_activity_inference(Wm_opt,metadata_human,dorotheaData,resp_net)
+saveRDS(extra_basis_inferred_perts, paste0("results/extra_basis_", tolower(target_dataset),"_inferred_perts.rds"))
+
+extra_TC_inferred_perts <- perturnation_activity_inference(Wm_combo,metadata_human,dorotheaData,resp_net)
 
 ggsave(paste0('figures/optimal_LV_1_',
               tolower(target_dataset),
