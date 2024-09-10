@@ -9,7 +9,7 @@ target_dataset <- "Kostrzewski"
 
 #################################################################################
 ### Load results
-Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
+Wm <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
 Wm_TC <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_combo.rds'))
 Wh <- readRDS(file = paste0('results/Wh_',tolower(target_dataset),'.rds'))
 plsr_model <- readRDS(file = paste0('results/PLSR_model_',tolower(target_dataset),'.rds'))
