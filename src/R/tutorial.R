@@ -1,5 +1,5 @@
 library(tidyverse)
-library(LIVIVTRA)
+library(LIV2Trans)
 library(AnnotationDbi)
 library(org.Hs.eg.db)
 # Function for loading datasets and appending them to a list
@@ -59,10 +59,10 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
 ## Run main function with all the data---------------
-livivtra_results <- livivtra_run(Xh,Yh,Xm,Wm)
-W_translatable <- livivtra_results$W_translatable
-W_opt <- livivtra_results$W_opt
-W_tot <- livivtra_results$W_tot
+liv2trans_results <- liv2trans_run(Xh,Yh,Xm,Wm)
+W_translatable <- liv2trans_results$W_translatable
+W_opt <- liv2trans_results$W_opt
+W_tot <- liv2trans_results$W_tot
 
 ### Visualize gene loadings-------------------------
 p1 <- plot_gene_loadings(loadings = W_opt,
@@ -115,4 +115,4 @@ hallmarks_interpretation_TCs_results <- HallmarksFastenrichment(signature_ids = 
                                                             n_permutations=10000)
 
 ## Run cross validation---------------
-livivtra_CV_results <- livivtra_run_CV(Xh,Yh,Xm,Wm,num_folds = 10)
+liv2trans_CV_results <- liv2trans_run_CV(Xh,Yh,Xm,Wm,num_folds = 10)

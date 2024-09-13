@@ -14,7 +14,7 @@ BiocManager::install('saezlab/decoupleR')
 
 Then start R and enter:
 ``` r
-remotes::install_github("NickMeim/FattyLiverModeling", subdir = "src/R/LIVIVTRA")
+remotes::install_github("NickMeim/FattyLiverModeling", subdir = "src/R/LIV2Trans")
 ```
 
 # Run

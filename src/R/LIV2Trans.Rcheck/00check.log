@@ -1,0 +1,279 @@
+* using log directory 'C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling/src/R/LIV2Trans.Rcheck'
+* using R version 4.1.2 (2021-11-01)
+* using platform: x86_64-w64-mingw32 (64-bit)
+* using session charset: ISO8859-1
+* using options '--no-manual --as-cran'
+* checking for file 'LIV2Trans/DESCRIPTION' ... OK
+* checking extension type ... Package
+* this is package 'LIV2Trans' version '1.0.1'
+* package encoding: UTF-8
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking serialization versions ... OK
+* checking whether package 'LIV2Trans' can be installed ... WARNING
+Found the following significant warnings:
+  Warning: package 'tidyverse' was built under R version 4.1.3
+  Warning: package 'tibble' was built under R version 4.1.3
+  Warning: package 'readr' was built under R version 4.1.3
+  Warning: package 'purrr' was built under R version 4.1.3
+  Warning: package 'dplyr' was built under R version 4.1.3
+  Warning: package 'forcats' was built under R version 4.1.3
+  Warning: package 'RColorBrewer' was built under R version 4.1.3
+  Warning: package 'ggpubr' was built under R version 4.1.3
+  Warning: package 'ggfortify' was built under R version 4.1.3
+See 'C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling/src/R/LIV2Trans.Rcheck/00install.out' for details.
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking R files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking loading without being on the library search path ... OK
+* checking dependencies in R code ... WARNING
+'::' or ':::' import not declared from: 'dplyr'
+'library' or 'require' calls not declared from:
+  'AnnotationDbi' 'EGSEAdata' 'RColorBrewer' 'caret' 'fgsea' 'gage'
+  'ggfortify' 'ggplot2' 'ggpubr' 'ggrepel' 'ggsignif' 'org.Hs.eg.db'
+  'patchwork' 'ropls' 'tidyverse'
+'library' or 'require' calls in package code:
+  'AnnotationDbi' 'EGSEAdata' 'RColorBrewer' 'caret' 'fgsea' 'gage'
+  'ggfortify' 'ggplot2' 'ggpubr' 'ggrepel' 'ggsignif' 'org.Hs.eg.db'
+  'patchwork' 'ropls' 'tidyverse'
+  Please use :: or requireNamespace() instead.
+  See section 'Suggested packages' in the 'Writing R Extensions' manual.
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... NOTE
+HallmarksFastenrichment: no visible global function definition for
+  'egsea.data'
+HallmarksFastenrichment: no visible binding for global variable
+  'msigdb'
+HallmarksFastenrichment: no visible global function definition for
+  'str_split'
+HallmarksFastenrichment: no visible binding for global variable 'fgsea'
+HallmarksFastenrichment: no visible global function definition for
+  '%>%'
+HallmarksFastenrichment: no visible global function definition for
+  'rownames_to_column'
+HallmarksFastenrichment: no visible global function definition for
+  'gather'
+HallmarksFastenrichment: no visible binding for global variable
+  'Hallmark'
+HallmarksFastenrichment: no visible global function definition for
+  'left_join'
+HallmarksFastenrichment: no visible global function definition for
+  'mutate'
+HallmarksFastenrichment: no visible global function definition for
+  'str_replace_all'
+HallmarksFastenrichment: no visible global function definition for
+  'ggplot'
+HallmarksFastenrichment: no visible global function definition for
+  'filter'
+HallmarksFastenrichment: no visible binding for global variable 'LV'
+HallmarksFastenrichment: no visible global function definition for
+  'arrange'
+HallmarksFastenrichment: no visible binding for global variable 'padj'
+HallmarksFastenrichment: no visible global function definition for
+  'aes'
+HallmarksFastenrichment: no visible global function definition for
+  'reorder'
+HallmarksFastenrichment: no visible global function definition for
+  'geom_bar'
+HallmarksFastenrichment: no visible global function definition for
+  'scale_fill_gradient2'
+HallmarksFastenrichment: no visible global function definition for
+  'xlab'
+HallmarksFastenrichment: no visible global function definition for
+  'ylab'
+HallmarksFastenrichment: no visible global function definition for
+  'ggtitle'
+HallmarksFastenrichment: no visible global function definition for
+  'theme_minimal'
+HallmarksFastenrichment: no visible global function definition for
+  'theme'
+HallmarksFastenrichment: no visible global function definition for
+  'element_text'
+HallmarksFastenrichment: no visible global function definition for
+  'unit'
+add_theme: no visible global function definition for 'theme_bw'
+add_theme: no visible global function definition for 'theme'
+add_theme: no visible global function definition for 'element_text'
+add_theme: no visible global function definition for 'unit'
+eval_f: no visible global function definition for '%>%'
+find_extra_basis: no visible global function definition for '%>%'
+liv2trans_run: no visible global function definition for 'opls'
+liv2trans_run: no visible global function definition for 'predict'
+liv2trans_run: no visible global function definition for 'cor'
+liv2trans_run_CV: no visible global function definition for
+  'createMultiFolds'
+liv2trans_run_CV: no visible global function definition for 'opls'
+liv2trans_run_CV: no visible global function definition for 'predict'
+liv2trans_run_CV: no visible global function definition for 'cor'
+optim_function_evolutionary: no visible global function definition for
+  'rnorm'
+optim_function_evolutionary: no visible global function definition for
+  'var'
+optim_function_evolutionary: no visible global function definition for
+  'median'
+pathway_activity_interpretation: no visible global function definition
+  for '%>%'
+pathway_activity_interpretation: no visible binding for global variable
+  'statistic'
+pathway_activity_interpretation: no visible binding for global variable
+  'p_value'
+pathway_activity_interpretation: no visible global function definition
+  for 'group_by'
+pathway_activity_interpretation: no visible binding for global variable
+  'condition'
+pathway_activity_interpretation: no visible binding for global variable
+  'Pathway'
+pathway_activity_interpretation: no visible global function definition
+  for 'mutate'
+pathway_activity_interpretation: no visible binding for global variable
+  'score'
+pathway_activity_interpretation: no visible binding for global variable
+  'p.adj'
+pathway_activity_interpretation: no visible global function definition
+  for 'ggplot'
+pathway_activity_interpretation: no visible global function definition
+  for 'filter'
+pathway_activity_interpretation: no visible global function definition
+  for 'aes'
+pathway_activity_interpretation: no visible binding for global variable
+  'activity'
+pathway_activity_interpretation: no visible global function definition
+  for 'reorder'
+pathway_activity_interpretation: no visible global function definition
+  for 'geom_bar'
+pathway_activity_interpretation: no visible global function definition
+  for 'scale_fill_gradient2'
+pathway_activity_interpretation: no visible global function definition
+  for 'scale_x_continuous'
+pathway_activity_interpretation: no visible global function definition
+  for 'ggtitle'
+pathway_activity_interpretation: no visible global function definition
+  for 'ylab'
+pathway_activity_interpretation: no visible global function definition
+  for 'geom_text'
+pathway_activity_interpretation: no visible global function definition
+  for 'theme_minimal'
+pathway_activity_interpretation: no visible global function definition
+  for 'theme'
+pathway_activity_interpretation: no visible global function definition
+  for 'element_text'
+pca_center: no visible global function definition for 'prcomp'
+plot_bars: no visible global function definition for
+  'position_jitterdodge'
+plot_bars: no visible global function definition for 'ggplot'
+plot_bars: no visible global function definition for 'geom_col'
+plot_bars: no visible global function definition for 'geom_point'
+plot_bars: no visible global function definition for 'geom_errorbar'
+plot_bars: no visible global function definition for 'position_dodge'
+plot_bars: no visible global function definition for
+  'scale_fill_manual'
+plot_bars: no visible global function definition for
+  'scale_fill_brewer'
+plot_bars: no visible global function definition for 'scale_x_discrete'
+plot_bars: no visible global function definition for 'labs'
+plot_gene_loadings: no visible global function definition for '%>%'
+plot_gene_loadings: no visible global function definition for
+  'rownames_to_column'
+plot_gene_loadings: no visible binding for global variable 'gene'
+plot_gene_loadings: no visible global function definition for 'ggplot'
+plot_gene_loadings: no visible global function definition for 'aes'
+plot_gene_loadings: no visible binding for global variable 'LV'
+plot_gene_loadings: no visible binding for global variable
+  'significant'
+plot_gene_loadings: no visible global function definition for
+  'geom_point'
+plot_gene_loadings: no visible global function definition for
+  'geom_text_repel'
+plot_gene_loadings: no visible global function definition for 'xlab'
+plot_gene_loadings: no visible global function definition for 'ylab'
+plot_gene_loadings: no visible global function definition for
+  'theme_pubr'
+plot_gene_loadings: no visible global function definition for 'theme'
+plot_gene_loadings: no visible global function definition for
+  'element_text'
+plot_pca: no visible global function definition for 'prcomp'
+plot_pca: no visible global function definition for 'ggplot'
+plot_pca: no visible global function definition for 'aes_string'
+plot_pca: no visible global function definition for 'geom_point'
+plot_pca: no visible global function definition for 'labs'
+plot_pca: no visible global function definition for 'sd'
+plot_pca: no visible global function definition for '%>%'
+plot_pca: no visible global function definition for 'mutate'
+plot_pca: no visible binding for global variable 'PC1'
+plot_pca: no visible binding for global variable 'PC2'
+plot_pca: no visible global function definition for 'aes'
+plot_pca: no visible binding for global variable 'feature'
+plot_pca: no visible global function definition for 'geom_text_repel'
+plot_pca: no visible binding for global variable 'is.big'
+plot_pca: no visible global function definition for 'geom_vline'
+plot_pca: no visible global function definition for 'geom_hline'
+plot_pca: no visible global function definition for 'filter'
+plot_pca: no visible global function definition for 'theme'
+plot_scatter: no visible global function definition for 'aes'
+plot_scatter: no visible global function definition for 'modifyList'
+plot_scatter: no visible global function definition for 'ggplot'
+plot_scatter: no visible global function definition for 'geom_point'
+plot_scatter: no visible global function definition for 'labs'
+plot_scatter: no visible global function definition for
+  'position_jitter'
+process_datasets: no visible global function definition for 'rowVars'
+process_datasets: no visible global function definition for 'aes'
+process_datasets: no visible binding for global variable 'PC'
+process_datasets: no visible binding for global variable 'Var'
+process_datasets: no visible global function definition for
+  'geom_vline'
+rank_LV_MPS: no visible global function definition for 'predict'
+rank_LV_MPS: no visible global function definition for 'lm'
+Undefined global functions or variables:
+  %>% Hallmark LV PC PC1 PC2 Pathway Var activity aes aes_string
+  arrange condition cor createMultiFolds egsea.data element_text
+  feature fgsea filter gather gene geom_bar geom_col geom_errorbar
+  geom_hline geom_point geom_text geom_text_repel geom_vline ggplot
+  ggtitle group_by is.big labs left_join lm median modifyList msigdb
+  mutate opls p.adj p_value padj position_dodge position_jitter
+  position_jitterdodge prcomp predict reorder rnorm rowVars
+  rownames_to_column scale_fill_brewer scale_fill_gradient2
+  scale_fill_manual scale_x_continuous scale_x_discrete score sd
+  significant statistic str_replace_all str_split theme theme_bw
+  theme_minimal theme_pubr unit var xlab ylab
+Consider adding
+  importFrom("stats", "cor", "filter", "lm", "median", "prcomp",
+             "predict", "reorder", "rnorm", "sd", "var")
+  importFrom("utils", "modifyList")
+to your NAMESPACE file.
+* checking for missing documentation entries ... WARNING
+Undocumented code objects:
+  'HallmarksFastenrichment' 'add_theme' 'analytical_solution_opt'
+  'color_palette' 'eval_f' 'find_extra_basis' 'get_translatable_LV'
+  'liv2trans_run' 'liv2trans_run_CV' 'optim_function_evolutionary'
+  'pathway_activity_interpretation' 'pca_center' 'plot_bars'
+  'plot_gene_loadings' 'plot_pca' 'plot_scatter' 'process_datasets'
+  'rank_LV_MPS' 'size_annotation' 'size_col' 'size_dot' 'size_error'
+  'size_legend' 'size_line' 'size_text'
+All user-level objects in a package should have documentation entries.
+See chapter 'Writing R documentation files' in the 'Writing R
+Extensions' manual.
+* checking examples ... NONE
+* checking for non-standard things in the check directory ... OK
+* checking for detritus in the temp directory ... OK
+* DONE
+Status: 3 WARNINGs, 1 NOTE
