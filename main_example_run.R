@@ -41,6 +41,9 @@ if (ref_dataset=='Hoang'){
   sex_inferred <- 1*(sex_inferred>0)
   sex_inferred <- ifelse(sex_inferred==1,'male','female')
 }
+# Save sex inferred
+saveRDS(sex_inferred, file = paste0("results/", tolower(ref_dataset),"_sex_inferred.rds"))
+# Get matrices of target dataset
 Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
