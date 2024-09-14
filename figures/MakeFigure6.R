@@ -58,7 +58,7 @@ plt_PLSR_sex <- ggplot(cbind(as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])]),
 plt_PLSR_sex <- add_theme(plt_PLSR_sex)
 
 ### Save panels as figures
-ggsave(filename = "./Figures/figure6/plt_pwy_dx_lean.pdf", plot = plt_pwy_dx_lean, units = "cm", width = 6, height = 5)
+ggsave(filename = "./Figures/figure6/plt_pwy_dx_lean.pdf", plot = plt_pwy_dx_lean, units = "cm", width = 5.5, height = 5)
 ggsave(filename = "./Figures/figure6/plt_hallmarks_dx_lean.pdf", plot = plt_hallmarks_dx_lean, units = "cm", width = 7, height = 5)
 ggsave(filename = "./Figures/figure6/plt_PLSR_sex.pdf", plot = plt_PLSR_sex, units = "cm", width = 6, height = 5)
 

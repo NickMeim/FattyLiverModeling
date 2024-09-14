@@ -92,24 +92,6 @@ ggsave(paste0('../figures/perturbed_tf_activity_',
        height = 6,
        dpi = 600)
 
-### Perform Progeny analysis using t-statistic OR directly dXs ---------------
-# dex_data <- top.table_lean %>% select(gene,logFC) %>% column_to_rownames('gene')
-dex_data <- t(dx_lean)
-net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
-# path_activities = decoupleR::run_viper(dex_data, net_prog,minsize = 1)
-path_activities <- pathway_activity_interpretation(dex_data,
-                                                   Wm,
-                                                   plotting = TRUE)
-path_activities <- path_activities$figure[[1]]
-path_activities <- path_activities + ggtitle('Patwhay activity') +
-  theme(text = element_text(size = 18,family = 'Arial'),
-        axis.title.y = element_blank(),
-        axis.text.y = element_text(size=19),
-        # plot.title = element_blank(),
-        plot.title = element_blank(),
-        legend.position = 'none')
-print(path_activities)
-
 ### Hallmarks GSEA using dX--------------------------------
 entrez_ids <- mapIds(org.Hs.eg.db, keys = rownames(dex_data), column = "ENTREZID", keytype = "SYMBOL")
 entrez_ids <- unname(entrez_ids)
@@ -130,6 +112,8 @@ colnames(msig_pval) <- c('Hallmark','padj')
 df_msig <- left_join(msig_nes,msig_pval)
 df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
 df_msig <- df_msig %>% mutate(Hallmark = str_replace_all(Hallmark,'_'," "))
+# Save
+saveRDS(df_msig, file = paste0("results/hallmark_enrichment_", tolower(target_dataset),"_dx_lean.rds"))
 p_msig <- ggplot(df_msig %>% #mutate(Hallmark=tolower(Hallmark)) %>% 
                    arrange(NES) %>% filter(padj<=0.1),
                  aes(x=NES,y=reorder(Hallmark,NES),fill=NES))+ 
