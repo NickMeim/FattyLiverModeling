@@ -55,3 +55,4 @@ preprocessing/X_wang.csv
 figures/*.png
 *.log
 *.pdf
+.Rhistory
