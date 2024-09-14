@@ -54,5 +54,5 @@ preprocessing/X_feaver.csv
 preprocessing/X_wang.csv
 figures/*.png
 *.log
-*.pdf
+figures/*.pdf
 .Rhistory
