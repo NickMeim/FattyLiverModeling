@@ -5,6 +5,7 @@
 root_dir <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling"
 setwd(root_dir)
 source("./utils/plotting_functions.R")
+target_dataset <- "Kostrzewski"
 
 #################################################################################
 ### Panel - Radial plots
