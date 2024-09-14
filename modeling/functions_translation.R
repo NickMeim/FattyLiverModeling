@@ -585,6 +585,6 @@ get_translatable_LV_2phenotype <- function(Xh, Yh, Wh, Wm, Bh){
   # Convert to TCs and return
   Wm_TC <- Wm %*% alpha_opt
   colnames(Wm_TC) <- paste0("TC", 1:ncol(Wm_TC))
-  return(Wm_TC)
+  return(list(Wm_TC = Wm_TC, alpha0 = alpha_0))
   
 }
