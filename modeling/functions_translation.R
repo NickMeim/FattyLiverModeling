@@ -207,7 +207,6 @@ eval_f <- function(x, T, X_hat, W_hat, mod_coefs = NULL){
 
 
 # Evolutionary-like algorithm to optimize the objective function - minimize error of correlation
-# TO DO - determine number of iterations with a stop criterion 
 optim_function_evolutionary <- function(Xh, Wh, Wm = NULL, theta, mod_coefs, num_it = 100, pop_size = 5){
   # Population size - a multiplier times the size of alpha (number of columns of theta)
   # Guarantee at least 40 points so that there can be four top points
@@ -283,7 +282,6 @@ optim_function_evolutionary <- function(Xh, Wh, Wm = NULL, theta, mod_coefs, num
 ### Rank LVs of MPS based on how their successive removal drops translation performance
 
 # It seems that a single pass is enough since contribution is additive, but check carefully
-# Talk to Nikos in case we need to do this with CV
 rank_LV_MPS <- function(Xh, Yh, Wh, Bm, Wm, retrain = FALSE){
   # Get error without removing LVs as a reference
   
@@ -329,7 +327,6 @@ rank_LV_MPS <- function(Xh, Yh, Wh, Bm, Wm, retrain = FALSE){
 
 # This function projects and backprojects a source dataset onto a target dataset
 # to assess how much predictive information is lost based on a regression model
-# To do: Extend with CV
 get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
   # Define projection matrices to make more readable
   Th <- Xh %*% Wh
@@ -337,7 +334,6 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
   
   # Estimate regression coefficients if not given and predict Y
   # variable for original space and filtered (backprojected) space
-  # TO DO: Extend to multiblock Y
   if (is.null(Bh)){
     Ypred <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
     Ypred_loss <- matrix(0,nrow = nrow(Yh),ncol = ncol(Yh))
@@ -399,133 +395,7 @@ get_info_loss <- function(Xh, Yh, Wh, Wm, Bh = NULL){
   
   plt_mod_project_fibrosis <- add_theme(plt_mod_project_fibrosis) + scale_color_brewer(palette = color_palette)
   
-  # TO DO: Add CV and some more statistics beyond the plot
   return(list(plt_mod_project,plt_mod_project_fibrosis))
-}
-
-
-
-
-
-# Function to get representative latent variables that are translatable linear combinations of 
-# the PCs of the data
-# TO DO: can be extended to use CV to determine optimal number of translatable LVs
-get_translatable_LV <- function(Xh, Yh, Wh, Wm, Bh, find_extra = FALSE,verbose=TRUE, base_err = 1){
-  # If there is a single candidate vector, then we simply return it
-  if (ncol(Wm) == 1){
-    return(list(Wm_new = Wm))
-  }
-  # Define a vector basis depending on whether we want an extra LV or a spanned LV
-  if (find_extra){
-    if(verbose){
-      print("Finding extra LVs outside of MPS data")
-    }
-    theta <- find_extra_basis(Wh, Wm, Xh, ncomp = ncol(Wh))
-    theta <- theta$theta
-    LV_lab <- "LV_extra"
-  } else {
-    if(verbose){
-      print("Finding translatable LVs in data")
-    }
-    # Set the PCs of the MPS (Wm) as a set of basis vectors
-    theta <- Wm
-    LV_lab <- "LV_data"
-  }
-  # Initialize a NULL matrix to store LVs
-  Wm_new <- NULL
-  # Store sum of squared error between predicted phenotype and prediction when filtering
-  ErrorY <- NULL
-  dErrorY <- 100
-  ii <- 0
-  # flag <- TRUE
-  # thresh <- 0.01
-  # th <- 0.25
-  # counter <- 1
-  # Iterate and add latent variables until the error metric does not improve by more than 1%
-  while ((dErrorY > base_err) & (ii<ncol(Bh)+2)){
-    # if (flag){
-    #   ii <- ii +1
-    # }
-    ii <- ii +1
-    # Find optimal weights to combine basis vectors - reduce population size multiplier
-    if(verbose){
-      print(paste0("Finding LV #",ii,"..."))
-    }
-    res_opt <- optim_function_evolutionary(Xh = Xh, Wh = Wh, Wm = Wm_new, 
-                                           theta = theta, mod_coefs = Bh, pop_size = 5)
-    if(verbose){
-      print("Done!")
-    }
-   
-    # Extract new latent variable
-    Wopt <- res_opt$Wopt
-    colnames(Wopt) <- paste0("LV_opt",ii)
-    
-    # Augment new basis 
-    # if ( (!is.null(Wm_new)) & (find_extra==TRUE)){
-    #   sim_cos <- lsa::cosine(cbind(Wm_new, Wopt))
-    #   sim_cos <- sim_cos[upper.tri(sim_cos)]
-    #   if (max(abs(sim_cos))<=thresh){
-    #     Wm_new <- cbind(Wm_new, Wopt)
-    #     # Calculate error
-    #     Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
-    #     ErrorY[ii] <- sum((Ypred - Yh)^2)
-    #     dErrorY <- ifelse(ii == 1, ErrorY[ii], 100*abs(ErrorY[ii] - ErrorY[ii-1])/ErrorY[ii])
-    #     flag <- TRUE
-    #   }else{
-    #     flag <- FALSE
-    #   }
-    # }else{
-    #   Wm_new <- cbind(Wm_new, Wopt)
-    #   # Calculate error
-    #   Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
-    #   ErrorY[ii] <- sum((Ypred - Yh)^2)
-    #   dErrorY <- ifelse(ii == 1, ErrorY[ii], 100*abs(ErrorY[ii] - ErrorY[ii-1])/ErrorY[ii])
-    # }
-    Wm_new <- cbind(Wm_new, Wopt)
-    # Calculate error
-    Ypred <- cbind(1, Xh %*% Wm_new %*% t(Wm_new) %*% Wh) %*% Bh
-    ErrorY[ii] <- sum((Ypred - Yh)^2)
-    dErrorY <- ifelse(ii == 1, ErrorY[ii], 100*abs(ErrorY[ii] - ErrorY[ii-1])/ErrorY[ii])
-    
-    # Find new basis for next iteration - find vectors orthogonal to the current new basis
-    # that will still span the MPS space
-    if(verbose){
-      print("Finding new vector basis...")
-    }
-    if (find_extra){
-      theta <- find_extra_basis(Wh, Wm, Xh, ncomp = ncol(Wh) - ii)
-    } else {
-      theta <- find_extra_basis(Wm, Wm_new, Xh, ncomp = ncol(Wm) - ii)
-    }
-    theta <- theta$theta
-    # Update index
-    # ii <- ii + 1
-    if(verbose){
-      print("Done!")
-    }
-    # counter <- counter +1
-    # if (counter==10){
-    #   thresh <- thresh + 0.05
-    #   counter <- 1
-    # }
-    # if (thresh>=th){
-    #   th <- th + 0.15
-    #   base_err <- base_err + 2
-    # }
-  }
-  # After exiting it means the last component was unnecessary, so we exclude it and convert to matrix
-  if((dErrorY <= base_err)){
-    Wm_new <- matrix(data = Wm_new[,-ii], ncol = ii - 1)
-  }
-  colnames(Wm_new) <- paste0(LV_lab,1:ncol(Wm_new))
-  rownames(Wm_new) <- rownames(Wm)
-  
-  return(list(Wm_new = Wm_new,
-              ErrorY = ErrorY))
- 
-
-  
 }
 
 # Function to get translatable components for two phenotypes - semi analytical solution
@@ -553,7 +423,6 @@ get_translatable_LV_2phenotype <- function(Xh, Yh, Wh, Wm, Bh){
   
   # Find a single vector that provides a good tradeoff in predicting all phenotypes
   # NOTE: Line search for the case of two phenotypes to find an optimal tradeoff.
-  # TO DO: Extend search to multiple phenotypes - only covering case of two for now
   w <- seq(0,1,0.01)
   error_TC <- matrix(0, nrow = length(w), ncol = 2)
   for (ii in 1:length(w)){
