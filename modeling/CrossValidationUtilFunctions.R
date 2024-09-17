@@ -25,7 +25,6 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                                         'human_backprojected',
                                                         'human_backprojected_retrained',
                                                         'human_backprojected_into_translatable_lvs',
-                                                        'human_backprojected_into_optimal_lvs',
                                                         'analytical_optimal'),
                                                LVs=9){
   val_mae <- matrix(0,nrow = folds,ncol = 2)
@@ -219,9 +218,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       train_mae_shuffle_w[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
     }else if (task=='human_backprojected_into_translatable_lvs'){
-      Wm_new <- get_translatable_LV(x_train, y_train, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh),
-                                    find_extra = FALSE)
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro,
+                                    rbind(apply(y_train,2,mean),Bh))
       Wm_new <- Wm_new$Wm_new
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
@@ -235,9 +233,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       W_invitro_suffled <- W_invitro[sample.int(nrow(W_invitro)),]
       rownames(W_invitro_suffled) <- rownames(W_invitro)
       colnames(W_invitro_suffled) <- colnames(W_invitro)
-      Wm_new <- get_translatable_LV(x_train, y_train, Wh, W_invitro_suffled,
-                                    rbind(apply(y_train,2,mean),Bh),
-                                    find_extra = FALSE)
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro_suffled,
+                                    rbind(apply(y_train,2,mean),Bh))
       Wm_new <- Wm_new$Wm_new
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
@@ -250,9 +247,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       ##shuffle x_train
       x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
       colnames(x_train_shuffled) <- colnames(x_train)
-      Wm_new <- get_translatable_LV(x_train_shuffled, y_train, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh),
-                                    find_extra = FALSE)
+      Wm_new <- get_translatable_LV_2phenotype(x_train_shuffled, y_train, Wh, W_invitro,
+                                    rbind(apply(y_train,2,mean),Bh))
       Wm_new <- Wm_new$Wm_new
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
@@ -262,9 +258,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       ### shuffled labels model
       y_train_shuffled <- y_train[sample.int(nrow(y_train)),]
       rownames(y_train_shuffled) <- rownames(y_train)
-      Wm_new <- get_translatable_LV(x_train, y_train_shuffled, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh),
-                                    find_extra = FALSE)
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train_shuffled, Wh, W_invitro,
+                                    rbind(apply(y_train,2,mean),Bh))
       Wm_new <- Wm_new$Wm_new
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
@@ -276,9 +271,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       rownames(Bshuffled) <- rownames(Bh)
       colnames(Bshuffled) <- colnames(Bh)
       Bshuffled <- rbind(apply(y_train,2,mean),Bshuffled)
-      Wm_new <- get_translatable_LV(x_train, y_train, Wh, W_invitro,
-                                    Bshuffled,
-                                    find_extra = FALSE)
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro,
+                                    Bshuffled)
       Wm_new <- Wm_new$Wm_new
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
@@ -288,58 +282,7 @@ cross_validation_complete_pipeline <- function(W_invitro,
       val_mae_shuffle_bh[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_bh[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
-    }else if (task=='human_backprojected_into_optimal_lvs'){
-      Wm_opt <- get_translatable_LV(x_train, y_train, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh),
-                                    find_extra = TRUE,
-                                    verbose = FALSE)
-      Wm_opt <- Wm_opt$Wm_new
-      colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
-      # Extend latent variables
-      Wm_tot <- cbind(W_invitro, Wm_opt)
-      # predict
-      y_hat_train <- cbind(1, x_train %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-      y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-      train_r[j,] <- diag(cor(y_hat_train,y_train))
-      val_r[j,] <- diag(cor(y_hat_test,y_val))
-      val_mae[j,] <- apply(abs(y_hat_test-y_val),2,mean)
-      train_mae[j,] <- apply(abs(y_hat_train-y_train),2,mean)
-      
-      ##shuffle W_opt
-      Wm_opt_suffled <- Wm_opt[sample.int(nrow(Wm_opt)),]
-      rownames(Wm_opt_suffled) <- rownames(Wm_opt_suffled)
-      colnames(Wm_opt_suffled) <- colnames(Wm_opt_suffled)
-      # Extend latent variables
-      Wm_tot <- cbind(W_invitro, Wm_opt_suffled) 
-      # predict
-      y_hat_train <- cbind(1, x_train %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-      y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-      train_r_shuffle_wopt[j,] <- diag(cor(y_hat_train,y_train))
-      val_r_shuffle_wopt[j,] <- diag(cor(y_hat_test,y_val))
-      val_mae_shuffle_wopt[j,] <- apply(abs(y_hat_test-y_val),2,mean)
-      train_mae_shuffle_wopt[j,] <- apply(abs(y_hat_train-y_train),2,mean)
-
-      ##shuffle Bh
-      Bshuffled <- Bh[sample.int(nrow(Bh)),]
-      rownames(Bshuffled) <- rownames(Bh)
-      colnames(Bshuffled) <- colnames(Bh)
-      Bshuffled <- rbind(apply(y_train,2,mean),Bshuffled)
-      Wm_opt <- get_translatable_LV(x_train, y_train, Wh, W_invitro,
-                                    Bshuffled,
-                                    find_extra = TRUE,
-                                    verbose = FALSE)
-      Wm_opt <- Wm_opt$Wm_new
-      colnames(Wm_opt) <- paste0(target_dataset,"_LVopt",1:ncol(Wm_opt))
-      # Extend latent variables
-      Wm_tot <- cbind(W_invitro, Wm_opt)
-      # predict
-      y_hat_train <- cbind(1, x_train %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-      y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-      train_r_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train))
-      val_r_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val))
-      val_mae_shuffle_bh[j,] <- apply(abs(y_hat_test-y_val),2,mean)
-      train_mae_shuffle_bh[j,] <- apply(abs(y_hat_train-y_train),2,mean)
-    } else if (task=='analytical_optimal'){
+    }else if (task=='analytical_optimal'){
       # phi <- cbind(1, Wh)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
       phi <- Wh %*% Bh
       # phi <- phi/sqrt(apply(phi^2,2,sum))

@@ -189,10 +189,8 @@ print(rf_fit$results)
 
 ### Find translatable LV of the in vitro system
 ### Run evolutionary algorithm
-Wm_combo <- get_translatable_LV(Xh, Yh, Wh, Wm,
-                              rbind(apply(Yh,2,mean),Bh),
-                              find_extra = FALSE,
-                              verbose = TRUE)
+Wm_combo <- get_translatable_LV_2phenotype(Xh, Yh, Wh, Wm,
+                              rbind(apply(Yh,2,mean),Bh))
 Wm_combo <- Wm_combo$Wm_new
 rownames(Wm_combo) <- rownames(Wm)
 
