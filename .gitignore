@@ -77,3 +77,6 @@ preprocessing/X_feaver.csv
 preprocessing/X_wang.csv
 figures/*.png
 figures/SupplementaryL1000.ai
+*.log
+figures/*.pdf
+.Rhistory
