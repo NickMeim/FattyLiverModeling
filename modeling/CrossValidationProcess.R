@@ -1489,7 +1489,15 @@ for (p in partitions){
                                                   unique() %>% select(sim) %>% mutate(sim = abs(sim)))),
              '\n'))
 }
+### Infer pathway activity with progeny
+net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
+rownames(Wm_opt_all) <- rownames(Wm)
+WPaths_opt_all <- decoupleR::run_viper(Wm_opt_all, net_prog,minsize = 1,verbose = TRUE)
+WPaths_opt_all <- WPaths_opt_all %>% dplyr::select(source,condition,score) %>%
+  spread(condition,score)
+WPaths_opt_all <- as.matrix(WPaths_opt_all %>% column_to_rownames('source'))
 # saveRDS(Wm_opt_all,'../results/Wm_opt_all_different_partitions.rds')
+# saveRDS(WPaths_opt_all,'../results/WPaths_opt_all_different_partitions.rds')
 # saveRDS(cos_sim_all,'../results/cosine_sim_all_different_partitions.rds')
 
 # Wm_opt_all <- readRDS('../results/Wm_opt_all_different_partitions.rds')
@@ -1596,5 +1604,272 @@ ggsave('../figures/cosine_similarity_PC_extra_basis_convergence_plot.eps',
        device = cairo_ps,
        width = 14,
        height = 10.5,
+       units = 'in',
+       dpi = 600)
+
+### Cumulative comparison
+plot_df <- as.data.frame(ordered_matrix) %>%
+  mutate(partition = partition_groups) %>% mutate(LV = lv_groups) %>% mutate(iteration_groups=iteration_groups)
+row_inds <- which(grepl('LVstar1',rownames(plot_df)) & grepl('_part1_',rownames(plot_df)))
+col_inds <- c(which(grepl('LVstar1',colnames(plot_df))))
+              # which(colnames(plot_df)=='partition'),
+              # which(colnames(plot_df)=='LV'),
+              # which(colnames(plot_df)=='iteration_groups'))
+LV1s_similarities <- plot_df[row_inds,col_inds]
+# LV1s_similarities[upper.tri(LV1s_similarities,diag = TRUE)] <- -100
+LV1s_similarities <- LV1s_similarities  %>% rownames_to_column('var.x') %>%
+  gather('var.y','sim',-var.x)
+# LV1s_similarities <- LV1s_similarities %>% filter(sim!=-100)
+LV1s_similarities <- LV1s_similarities %>% filter(var.x!=var.y)
+LV1s_similarities <- left_join(LV1s_similarities,
+                               groups_col,
+                               by=c('var.y'='var'))
+## Repeat for LV2
+row_inds <- which(grepl('LVstar2',rownames(plot_df)) & grepl('_part1_',rownames(plot_df)))
+col_inds <- c(which(grepl('LVstar2',colnames(plot_df))))
+LV2s_similarities <- plot_df[row_inds,col_inds]
+LV2s_similarities <- LV2s_similarities  %>% rownames_to_column('var.x') %>%
+  gather('var.y','sim',-var.x)
+LV2s_similarities <- LV2s_similarities %>% filter(var.x!=var.y)
+LV2s_similarities <- left_join(LV2s_similarities,
+                               groups_col,
+                               by=c('var.y'='var'))
+
+all_cumulative_similarity <- rbind(LV1s_similarities,LV2s_similarities)
+all_cumulative_similarity <- all_cumulative_similarity %>%
+  group_by(LV,partition) %>% mutate(mu = mean(sim))  %>%
+  mutate(std = sd(sim)) %>% ungroup()
+ggplot(all_cumulative_similarity %>% select(var.x,var.y,LV,partition,mu,std) %>% unique(),
+       aes(x=partition,y=mu,color = LV))+
+  scale_x_continuous(breaks = seq(0,1,0.1))+
+  scale_y_continuous(breaks = seq(0,1,0.1))+
+  geom_point(size=1.5)+
+  geom_line(lwd = 0.75)+
+  geom_errorbar(aes(ymax = mu + 3*std,ymin = mu - 3*std),
+                width = 0.05,size=0.75)+
+  xlab('data partition (%)')+
+  ylab('cosine similarity with 100% data partition')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line())
+ggsave('../figures/all_cumulative_similarity.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/all_cumulative_similarity.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
+
+
+
+#### Repeat for pathway activity similarity-----------------------------
+cos_optimal <- lsa::cosine(WPaths_opt_all)
+dend <- hclust(dist(cos_optimal))
+ordered_matrix <- cos_optimal[dend$order, dend$order]
+
+lv_groups <- ifelse(grepl('LVstar1',colnames(ordered_matrix)),'LV1','LV2')
+partition_groups <- substr(colnames(ordered_matrix),13,15)
+partition_groups[grep('_i',partition_groups)] <- '1'
+partition_groups <- as.numeric(partition_groups)
+groups_col <- data.frame(LV = lv_groups,partition=partition_groups)
+iteration_groups_cols <- str_split_fixed(colnames(ordered_matrix),'iter',2)
+iteration_groups_cols <- as.numeric(iteration_groups_cols[,2])
+
+partition_groups <- substr(rownames(ordered_matrix),13,15)
+partition_groups[grep('_i',partition_groups)] <- '1'
+partition_groups <- as.numeric(partition_groups)
+lv_groups <- ifelse(grepl('LVstar1',rownames(ordered_matrix)),'LV1','LV2')
+groups_row <- data.frame(LV = lv_groups,partition=partition_groups)
+
+rownames(groups_col) <- colnames(ordered_matrix)
+rownames(groups_row) <- rownames(ordered_matrix)
+
+pheatmap::pheatmap(ordered_matrix, 
+                   color = colorRampPalette(c("blue", "white", "red"))(100), 
+                   breaks = seq(-1, 1, length.out = 100),
+                   main = "Clustered Cosine Similarity Heatmap",
+                   annotation_col = groups_col,
+                   annotation_row = groups_row,
+                   fontsize = 18,
+                   show_colnames = FALSE,  
+                   show_rownames = FALSE,
+                   filename = '../results/pathway_activity_similarity.png',
+                   height = 12,
+                   width = 14,
+                   units = 'in',
+                   res=600
+)
+
+groups_col <- groups_col %>% mutate(iteration_groups = iteration_groups_cols)
+groups_col <- groups_col %>% rownames_to_column('var') %>% select(var,partition,iteration_groups,LV)
+iteration_groups <- str_split_fixed(rownames(ordered_matrix),'iter',2)
+iteration_groups <- as.numeric(iteration_groups[,2])
+plot_df <- as.data.frame(ordered_matrix) %>%
+  mutate(partition = partition_groups) %>% mutate(LV = lv_groups) %>% mutate(iteration_groups=iteration_groups) %>%
+  gather('var','sim',-partition,-LV,-iteration_groups)
+plot_df <- left_join(plot_df,groups_col,by='var')
+plot_df <- plot_df %>% 
+  mutate(keep = ifelse(partition.x==partition.y & iteration_groups.x==iteration_groups.y & LV.x==LV.y,
+                       FALSE,TRUE)) %>% filter(keep == TRUE) %>%
+  select(-keep) %>% mutate(comparison = paste0(LV.x,'/',LV.y)) %>%
+  mutate(keep = ifelse(LV.x!=LV.y & partition.x==partition.y & iteration_groups.x==iteration_groups.y,
+                       ifelse(LV.x=='LV1',TRUE,FALSE),
+                       TRUE)) %>% filter(keep == TRUE) %>%
+  select(-keep) %>% filter(partition.x==partition.y) %>%
+  select(comparison,partition.x,iteration_groups.x,sim) %>%
+  mutate(comparison = ifelse(comparison=="LV2/LV1","LV1/LV2",comparison)) %>%
+  unique()
+colnames(plot_df) <- c('comparison','partition','iteration','sim')
+plot_df <- plot_df %>% group_by(comparison,partition) %>% 
+  mutate(abs_mu = mean(abs(sim))) %>% mutate(abs_se = sd(abs(sim))/sqrt(max(iteration_groups))) %>%
+  mutate(mu = mean(sim)) %>% mutate(se = sd(sim)/sqrt(max(iteration_groups))) %>%
+  mutate(std = sd(sim)) %>%
+  ungroup()
+ggplot(plot_df %>% select(comparison,partition,mu,se) %>% unique(),
+       aes(x = partition,y = mu,color = comparison)) +
+  scale_x_continuous(breaks = seq(0,1,0.2))+
+  scale_y_continuous(breaks = seq(0,1,0.1))+
+  geom_point(size=1.5)+
+  geom_line(lwd = 0.75)+
+  geom_errorbar(aes(ymax = mu + se,ymin = mu - se),
+                width = 0.05,size=0.75)+
+  xlab('data partition (%)')+
+  ylab('cosine similarity')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line())
+ggsave('../figures/cosine_similarity_pathways_convergence_plot.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/cosine_similarity_pathways_convergence_plot.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
+
+### Cumulative comparison
+plot_df <- as.data.frame(ordered_matrix) %>%
+  mutate(partition = partition_groups) %>% mutate(LV = lv_groups) %>% mutate(iteration_groups=iteration_groups)
+row_inds <- which(grepl('LVstar1',rownames(plot_df)) & grepl('_part1_',rownames(plot_df)))
+col_inds <- c(which(grepl('LVstar1',colnames(plot_df))))
+LV1s_similarities <- plot_df[row_inds,col_inds]
+LV1s_similarities <- LV1s_similarities  %>% rownames_to_column('var.x') %>%
+  gather('var.y','sim',-var.x)
+LV1s_similarities <- LV1s_similarities %>% filter(var.x!=var.y)
+LV1s_similarities <- left_join(LV1s_similarities,
+                               groups_col,
+                               by=c('var.y'='var'))
+## Repeat for LV2
+row_inds <- which(grepl('LVstar2',rownames(plot_df)) & grepl('_part1_',rownames(plot_df)))
+col_inds <- c(which(grepl('LVstar2',colnames(plot_df))))
+LV2s_similarities <- plot_df[row_inds,col_inds]
+LV2s_similarities <- LV2s_similarities  %>% rownames_to_column('var.x') %>%
+  gather('var.y','sim',-var.x)
+LV2s_similarities <- LV2s_similarities %>% filter(var.x!=var.y)
+LV2s_similarities <- left_join(LV2s_similarities,
+                               groups_col,
+                               by=c('var.y'='var'))
+
+all_cumulative_similarity <- rbind(LV1s_similarities,LV2s_similarities)
+all_cumulative_similarity <- all_cumulative_similarity %>%
+  group_by(LV,partition) %>% mutate(mu = mean(sim))  %>%
+  mutate(std = sd(sim)) %>% ungroup()
+ggplot(all_cumulative_similarity,
+       aes(x=partition,y=mu,color = LV))+
+  scale_x_continuous(breaks = seq(0,1,0.1))+
+  scale_y_continuous(breaks = seq(0,1,0.1))+
+  geom_point(size=1.5)+
+  geom_line(lwd = 0.75)+
+  geom_errorbar(aes(ymax = mu + 3*std,ymin = mu - 3*std),
+                width = 0.05,size=0.75)+
+  xlab('data partition (%)')+
+  ylab('cosine similarity with 100% data partition')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line())
+ggsave('../figures/all_cumulative_similarity_pathways.png',
+       width = 12,
+       height = 9,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/all_cumulative_similarity_pathways.eps',
+       device = cairo_ps,
+       width = 14,
+       height = 10.5,
+       units = 'in',
+       dpi = 600)
+
+### Cumulative pathway activity
+activity_df <- as.data.frame(t(WPaths_opt_all))
+activity_df <- activity_df %>% rownames_to_column('var') %>%
+  gather('pathway','activity',-var)
+activity_df <- left_join(activity_df,groups_col)
+ggplot(activity_df %>% filter(LV=='LV1'),
+       aes(x=as.factor(partition),y=activity))+
+  ggtitle('extra LV 1')+
+  scale_y_continuous(breaks = seq(-10,10,2))+
+  geom_violin(fill = '#F8766D')+
+  xlab('data partition (%)')+
+  ylab('activity')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        plot.title = element_text(hjust = 0.5),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line()) +
+  facet_wrap(~pathway,ncol = 3,scales = 'free_y')
+ggsave('../figures/LV1_cumulative_singed_activity_pathways.png',
+       width = 18,
+       height = 18,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/LV1_cumulative_singed_activity_pathways.eps',
+       device = cairo_ps,
+       width = 16,
+       height = 16,
+       units = 'in',
+       dpi = 600)
+
+ggplot(activity_df %>% filter(LV=='LV2'),
+       aes(x=as.factor(partition),y=activity))+
+  ggtitle('extra LV 2')+
+  scale_y_continuous(breaks = seq(-10,10,2))+
+  geom_violin(fill = '#00BFC4')+
+  xlab('data partition (%)')+
+  ylab('activity')+
+  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
+  theme_pubr(base_family = 'Arial',base_size = 27)+
+  theme(text = element_text(family = 'Arial',size = 27),
+        plot.title = element_text(hjust = 0.5),
+        axis.line.x = element_blank(),
+        axis.line.y = element_line(linewidth = 0.75),
+        panel.grid.major = element_line()) +
+  facet_wrap(~pathway,ncol = 3,scales = 'free_y')
+ggsave('../figures/LV2_cumulative_singed_activity_pathways.png',
+       width = 18,
+       height = 18,
+       units = 'in',
+       dpi = 600)
+ggsave('../figures/LV2_cumulative_singed_activity_pathways.eps',
+       device = cairo_ps,
+       width = 16,
+       height = 16,
        units = 'in',
        dpi = 600)

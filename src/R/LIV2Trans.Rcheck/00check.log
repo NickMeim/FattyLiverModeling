@@ -116,6 +116,8 @@ add_theme: no visible global function definition for 'element_text'
 add_theme: no visible global function definition for 'unit'
 eval_f: no visible global function definition for '%>%'
 find_extra_basis: no visible global function definition for '%>%'
+get_translatable_LV_2phenotype: no visible global function definition
+  for 'var'
 liv2trans_run: no visible global function definition for 'opls'
 liv2trans_run: no visible global function definition for 'predict'
 liv2trans_run: no visible global function definition for 'cor'
@@ -264,7 +266,8 @@ to your NAMESPACE file.
 Undocumented code objects:
   'HallmarksFastenrichment' 'add_theme' 'analytical_solution_opt'
   'color_palette' 'eval_f' 'find_extra_basis' 'get_translatable_LV'
-  'liv2trans_run' 'liv2trans_run_CV' 'optim_function_evolutionary'
+  'get_translatable_LV_2phenotype' 'liv2trans_run' 'liv2trans_run_CV'
+  'norm_v' 'optim_function_evolutionary'
   'pathway_activity_interpretation' 'pca_center' 'plot_bars'
   'plot_gene_loadings' 'plot_pca' 'plot_scatter' 'process_datasets'
   'rank_LV_MPS' 'size_annotation' 'size_col' 'size_dot' 'size_error'
