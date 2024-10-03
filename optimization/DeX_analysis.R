@@ -44,7 +44,7 @@ invitro_metadata <- invitro_metadata[,1:13] %>% filter(Number_of_cues==0) %>% fi
 # Xm <- Xm[invitro_metadata$sampleName,]
 
 ## Load perturbation
-dx_lean <- data.table::fread('../results/optimized_mps/dx_lean_govaere_kostrzewski.csv') %>% select(-V1)
+dx_lean <- data.table::fread('../results/optimized_mps/dx_lean_govaere_kostrzewski_corrected.csv') %>% select(-V1)
 
 ### Visualize genes in dx ---------------
 dex_data <- t(dx_lean)
@@ -113,7 +113,7 @@ df_msig <- left_join(msig_nes,msig_pval)
 df_msig <- df_msig %>% mutate(Hallmark=substr(Hallmark, nchar('FL1000_MSIG_H_HALLMARK_')+1, nchar(Hallmark)))
 df_msig <- df_msig %>% mutate(Hallmark = str_replace_all(Hallmark,'_'," "))
 # Save
-saveRDS(df_msig, file = paste0("results/hallmark_enrichment_", tolower(target_dataset),"_dx_lean.rds"))
+saveRDS(df_msig, file = paste0("../results/hallmark_enrichment_", tolower(target_dataset),"_dx_lean.rds"))
 p_msig <- ggplot(df_msig %>% #mutate(Hallmark=tolower(Hallmark)) %>% 
                    arrange(NES) %>% filter(padj<=0.1),
                  aes(x=NES,y=reorder(Hallmark,NES),fill=NES))+ 
@@ -139,26 +139,26 @@ ggsave(paste0('../figures/hallmarks_',
        units = 'in',
        dpi = 600)
 
-combined_plot <- path_activities + p_msig#+
-  # plot_annotation(title = "Optimized MPS to maximize the total human variace captured",
-  #                 theme = theme(plot.title = element_text(size = 18, hjust = 0.5, family = 'Arial')))
-print(combined_plot)
-
-ggsave(paste0('../figures/perturbed_pathway_and_msig_',
-              tolower(target_dataset),
-              '_barplot.png'),
-       plot=combined_plot,
-       width = 18,
-       height = 9,
-       dpi = 600)
-setEPS()
-postscript(paste0('../figures/perturbed_pathway_and_msig_',
-                  tolower(target_dataset),
-                  '_barplot.eps'),
-           width = 18,
-           height = 9)
-print(combined_plot)
-dev.off()
+# combined_plot <- path_activities + p_msig#+
+#   # plot_annotation(title = "Optimized MPS to maximize the total human variace captured",
+#   #                 theme = theme(plot.title = element_text(size = 18, hjust = 0.5, family = 'Arial')))
+# print(combined_plot)
+# 
+# ggsave(paste0('../figures/perturbed_pathway_and_msig_',
+#               tolower(target_dataset),
+#               '_barplot.png'),
+#        plot=combined_plot,
+#        width = 18,
+#        height = 9,
+#        dpi = 600)
+# setEPS()
+# postscript(paste0('../figures/perturbed_pathway_and_msig_',
+#                   tolower(target_dataset),
+#                   '_barplot.eps'),
+#            width = 18,
+#            height = 9)
+# print(combined_plot)
+# dev.off()
 
 # # Project human samples onto DX and see if they separate sex------------------------
 # if (ref_dataset=='Hoang'){
@@ -166,7 +166,7 @@ dev.off()
 # }else if (ref_dataset=='Pantano') {
 #   sex_inferred <- data_list[[ref_dataset]]$metadata$Sex
 # }else{
-#   sex_inferred <- apply(as.matrix(Xh[,c('RPS4Y1')]),2,sign) 
+#   sex_inferred <- apply(as.matrix(Xh[,c('RPS4Y1')]),2,sign)
 #   sex_inferred <- 1*(sex_inferred>0)
 #   sex_inferred <- ifelse(sex_inferred==1,'male','female')
 # }

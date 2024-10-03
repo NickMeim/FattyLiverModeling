@@ -1,22 +1,32 @@
 ### Functions for making elements of figure 4 - Additional latent variables
 ### This function will load results from the pipeline to generate plots.
 ### These will be specific for the chosen datasets
-
-root_dir <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling"
-setwd(root_dir)
-source("./utils/plotting_functions.R")
+library(tidyverse)
+library(matrixStats)
+library(ggExtra)
+# root_dir <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling"
+# setwd(root_dir)
+source("../utils/plotting_functions.R")
 target_dataset <- "Kostrzewski"
-
+ref_dataset <-  "Govaere"
+dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
+processed_data_list <- readRDS(paste0('../results/processed_data_list_',
+                                      tolower(ref_dataset),'_',
+                                      tolower(target_dataset),'.rds'))
+Xh <- processed_data_list$Xh
+Yh <- processed_data_list$Yh
+sex_inferred <- processed_data_list$sex_inferred
+Xm <- processed_data_list$Xm
 #################################################################################
 ### Panel - Human data on LV extras
-Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_opt <- readRDS(paste0('../results/Wm_',tolower(target_dataset),'_extra.rds'))
 Zh <- as.data.frame(Xh %*% Wm_opt)
 Zh$NAS <- Yh[,1]
 Zh$fibrosis <- Yh[,2]
 Zh <- Zh %>% rownames_to_column('sample')
-combined_plot_nas <- scatter_box_plot_V2(Zh %>% mutate(pheno=NAS),'MAS', 
+combined_plot_nas <- scatter_box_plot_V2(Zh %>% mutate(pheno=NAS),'MAS',
                                       font_size = size_text, point_size = size_dot, point_stroke = size_stroke)
-combined_plot_fibrosis <- scatter_box_plot_V2(Zh %>% mutate(pheno=fibrosis),'Fibrosis stage', 
+combined_plot_fibrosis <- scatter_box_plot_V2(Zh %>% mutate(pheno=fibrosis),'Fibrosis stage',
                                            font_size = size_text, point_size = size_dot, point_stroke = size_stroke)
 
 combined_plot_nas <- add_theme(combined_plot_nas)
@@ -24,7 +34,7 @@ combined_plot_fibrosis <- add_theme(combined_plot_fibrosis) # Fix issue with PDF
 
 #################################################################################
 ### Panel - Cross validation of extended performance with LV extra
-performance_all_plot <- readRDS('results/performanceall_plot.rds')
+performance_all_plot <- readRDS('../results/performanceall_plot.rds')
 
 plt_p_test <- performance_all_plot %>% filter(set=='test' & approach!='Wopt') %>%
   ggplot(aes(x = approach, y = r, color = approach, fill = approach)) +
@@ -51,9 +61,14 @@ plt_p_test <- add_theme(plt_p_test) +
 
 #################################################################################
 ### Panel - Improvement in performance with each extra LV
-all_performance_res <- readRDS('results/all_performance_res.rds')
-
-plt_required_extra_basis <- 
+all_performance_res <- readRDS('../results/all_performance_res.rds')
+mu_plsr_train <- mean(all_performance_res$r[all_performance_res$set=='train' & all_performance_res$model=='PLSR'])
+sd_plsr_train<- sd(all_performance_res$r[all_performance_res$set=='train'& all_performance_res$model=='PLSR'])
+mu_plsr_test<- mean(all_performance_res$r[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
+sd_plsr_test<- sd(all_performance_res$r[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
+test_r_shuffled<- readRDS('../results/test_r_shuffled_cumulative_lvs.rds')
+num_folds <- length(unique(all_performance_res$fold))
+plt_required_extra_basis <-
   ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
          aes(x=model,y=mu,color = set , group =set))+
   geom_point(size=size_dot)+
@@ -66,52 +81,52 @@ plt_required_extra_basis <-
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
               aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
-                  ymin = mu_plsr_train - sd_plsr_train/sqrt(num_folds), 
-                  ymax = mu_plsr_train + sd_plsr_train/sqrt(num_folds)), 
+                  ymin = mu_plsr_train - sd_plsr_train/sqrt(num_folds),
+                  ymax = mu_plsr_train + sd_plsr_train/sqrt(num_folds)),
               fill = "#01B8BB", alpha = 0.25) +  # Shaded area
-  annotate("segment", x = 1, xend = 3, y = mu_plsr_train, 
-           yend = mu_plsr_train, 
+  annotate("segment", x = 1, xend = 3, y = mu_plsr_train,
+           yend = mu_plsr_train,
            color = "#01B8BB", linewidth = size_line,linetype='dashed') +
   annotate('text',x=1,
            y=mu_plsr_train + 0.03,
-           label="human PLSR train performance", 
-           hjust = 0 , 
+           label="human PLSR train performance",
+           hjust = 0 ,
            size=0.75*size_annotation)+
   ### test performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
               aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
-                  ymin = mu_plsr_test - sd_plsr_test/sqrt(num_folds), 
-                  ymax = mu_plsr_test + sd_plsr_test/sqrt(num_folds)), 
+                  ymin = mu_plsr_test - sd_plsr_test/sqrt(num_folds),
+                  ymax = mu_plsr_test + sd_plsr_test/sqrt(num_folds)),
               fill = "#E0766D", alpha = 0.25) +  # Shaded area
-  annotate("segment", x = 1, xend = 3, y = mu_plsr_test, 
-           yend = mu_plsr_test, 
+  annotate("segment", x = 1, xend = 3, y = mu_plsr_test,
+           yend = mu_plsr_test,
            color = "#E0766D", linewidth = size_line,linetype='dashed') +
   annotate('text',x=1,
            y=mu_plsr_test + 0.03,
-           label="human PLSR test performance", 
-           hjust = 0 , 
+           label="human PLSR test performance",
+           hjust = 0 ,
            size=0.75*size_annotation)+
   ### random performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
               aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
-                  ymin = mean(test_r_shuffled) - sd(test_r_shuffled)/sqrt(num_folds), 
-                  ymax = mean(test_r_shuffled) + sd(test_r_shuffled)/sqrt(num_folds)), 
+                  ymin = mean(test_r_shuffled) - sd(test_r_shuffled)/sqrt(num_folds),
+                  ymax = mean(test_r_shuffled) + sd(test_r_shuffled)/sqrt(num_folds)),
               fill = "#F564E3", alpha = 0.25) +  # Shaded area
-  annotate("segment", x = 1, xend = 3, y = mean(test_r_shuffled), 
-           yend = mean(test_r_shuffled), 
+  annotate("segment", x = 1, xend = 3, y = mean(test_r_shuffled),
+           yend = mean(test_r_shuffled),
            color = "#F564E3", linewidth = size_line,linetype='dashed') +
   annotate('text',x=1,
            y=mean(test_r_shuffled) + 0.03,
-           label="shuffled model performance", 
-           hjust = 0 , 
+           label="shuffled model performance",
+           hjust = 0 ,
            size=0.75*size_annotation)+
   geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75) +
   scale_x_discrete(labels=c('translatable\n PCs',
                             'PCs +\n extra LV1',
                             'PCs +\n extra LV1 and LV2'))
-   
+
 
 
 plt_required_extra_basis <- add_theme(plt_required_extra_basis) +
@@ -123,8 +138,8 @@ plt_required_extra_basis <- add_theme(plt_required_extra_basis) +
 
 #################################################################################
 ### Panel - LV extras are somewhat generalizable
-results_external_data <- readRDS("results/external_clinical_performance_of_extra_vector.rds") %>%
-                          pivot_longer(cols = 1:3, names_to = "model", values_to = "Pearson") 
+results_external_data <- readRDS("../results/external_clinical_performance_of_extra_vector.rds") %>%
+                          pivot_longer(cols = 1:3, names_to = "model", values_to = "Pearson")
 
 results_external_data$fold <- sapply(results_external_data$fold_ids, FUN = function(x){strsplit(x, ".", fixed = T) %>% unlist()})[1,]
 
@@ -151,7 +166,7 @@ plt_external_data <- results_external_data %>%
   scale_y_continuous(breaks = seq(0.25,1,0.25),limits = c(NA,1.2)) +
   scale_color_brewer(palette = "Dark2") +
   scale_fill_brewer(palette = "Dark2") +
-  scale_x_discrete(limits = c("PLSR", "PC", "extra.basis"), 
+  scale_x_discrete(limits = c("PLSR", "PC", "extra.basis"),
                    labels = c("extra.basis" = "Optimized\nMPS", "PC" = "Truncated\ndata", "PLSR" = "Human\ngenes"))
 
 plt_external_data <- add_theme(plt_external_data)
@@ -162,10 +177,10 @@ plt_external_data <- add_theme(plt_external_data)
 ### Panel - Pathway activity of TCs
 
 ### Save panels as figures
-ggsave(filename = "./Figures/figure4/plt_combined_NAS.pdf", plot = combined_plot_nas, units = "cm", width = 7, height = 5.5)
-ggsave(filename = "./Figures/figure4/plt_combined_Fib.pdf", plot = combined_plot_fibrosis, units = "cm", width = 7, height = 5.5)
-ggsave(filename = "./Figures/figure4/plt_required_extra_basis.pdf", plot = plt_required_extra_basis, units = "cm", width = 6, height = 6)
-ggsave(filename = "./Figures/figure4/plt_p_test.pdf", plot = plt_p_test, units = "cm", width = 8, height = 9)
-ggsave(filename = "./Figures/figure4/plt_external_data.pdf", plot = plt_external_data, units = "cm", width = 9, height = 6)
+ggsave(filename = "figure4/plt_combined_NAS.pdf", plot = combined_plot_nas, units = "cm", width = 7, height = 5.5)
+ggsave(filename = "figure4/plt_combined_Fib.pdf", plot = combined_plot_fibrosis, units = "cm", width = 7, height = 5.5)
+ggsave(filename = "figure4/plt_required_extra_basis.pdf", plot = plt_required_extra_basis, units = "cm", width = 6, height = 6)
+ggsave(filename = "figure4/plt_p_test.pdf", plot = plt_p_test, units = "cm", width = 8, height = 9)
+ggsave(filename = "figure4/plt_external_data.pdf", plot = plt_external_data, units = "cm", width = 9, height = 6)
 
 

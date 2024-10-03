@@ -717,6 +717,7 @@ performance_all <- rbind(performance_1,
                          performance_3,
                          performance_4,
                          performance_6)
+
 ### Select what to show in the figure
 performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-metric) %>% mutate(r=value) %>% select(-value)%>%
   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
@@ -757,7 +758,6 @@ performance_all_plot <- performance_all_plot %>% mutate(phenotype=ifelse(phenoty
 performance_all_plot$phenotype <- factor(performance_all_plot$phenotype)
 performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,
                                          levels = rev(levels(performance_all_plot$phenotype)))
-
 # Save data frame
 saveRDS(performance_all_plot,'../results/performanceall_plot.rds')
 
@@ -971,10 +971,8 @@ for (j in 1:num_folds){
   message('Finished running initial PLSR for humans')
   
   ### Get linear combinaiton of translatable LVs
-  Wm_new <- get_translatable_LV(x_train, y_train, Wh, Wm,
-                                rbind(apply(y_train,2,mean),Bh),
-                                find_extra = FALSE)
-  Wm_new <- Wm_new$Wm_new
+  Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, Wm,Bh)
+  Wm_new <- Wm_new$Wm_TC
   colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
   y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
   train_r_translatables[j] <- mean(diag(cor(y_hat_train,y_train)))
@@ -1321,6 +1319,7 @@ all_performance_res$model <- factor(all_performance_res$model,
 
 # Save
 saveRDS(all_performance_res,'../results/all_performance_res.rds')
+saveRDS(test_r_shuffled,'../results/test_r_shuffled_cumulative_lvs.rds')
 
 plt_required_extra_basis <- 
   ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),

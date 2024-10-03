@@ -1,12 +1,48 @@
 ### Functions for making elements of figure 2 - PLSR model
 ### This function will load results from the pipeline to generate plots.
 ### These will be specific for the chosen datasets
-
-root_dir <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling"
-setwd(root_dir)
-source("./utils/plotting_functions.R")
+library(tidyverse)
+library(matrixStats)
+library(ggExtra)
+# root_dir <- "C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling"
+# setwd(root_dir)
+source("../utils/plotting_functions.R")
 target_dataset <- "Kostrzewski"
-
+ref_dataset <-  "Govaere"
+processed_data_list <- readRDS(paste0('../results/processed_data_list_',
+                               tolower(ref_dataset),'_',
+                               tolower(target_dataset),'.rds'))
+Xh <- processed_data_list$Xh
+Yh <- processed_data_list$Yh
+sex_inferred <- processed_data_list$sex_inferred
+Xm <- processed_data_list$Xm
+Wm <- processed_data_list$Wm
+plsr_model <- readRDS( paste0('../results/PLSR_model_',tolower(ref_dataset),'.rds'))
+## Get LV projections
+Zh_plsr <- plsr_model@scoreMN
+mcor <- cor(cbind(Zh_plsr,Yh))
+mcor[upper.tri(mcor,diag = TRUE)] <- 100
+mcor <- reshape2::melt(mcor)
+mcor <- mcor %>% filter(value != 100)
+mcor <- mcor %>% mutate(keep = ifelse(Var1=='fibrosis' | Var2=='fibrosis' | Var1=='NAS' | Var2=='NAS',TRUE,FALSE)) %>%
+  filter(keep==TRUE) %>% select(-keep) %>%
+  mutate(keep = ifelse((Var1=='fibrosis' & Var2=='NAS') | (Var1=='NAS' & Var2=='fibrosis'),FALSE,TRUE))%>%
+  filter(keep==TRUE) %>% select(-keep)
+mcor <- mcor %>% group_by(Var2) %>% mutate(avg_abs_cor = mean(abs(value))) %>% select(c('LV'='Var2'),avg_abs_cor) %>%
+  unique()
+lvs <- mcor$LV[order(-mcor$avg_abs_cor)]
+lvs <- as.character(lvs[1:2])
+lv_vars <- round(100 * colVars(Zh_plsr)/sum(colVars(Xh)),2)
+lv1_var <- round(100 * var(Zh_plsr[,c(lvs[1])])/sum(apply(Xh,2,var)),2)
+lv2_var <- round(100 * var(Zh_plsr[,c(lvs[2])])/sum(apply(Xh,2,var)),2)
+invivo_plsr <- as.data.frame(Zh_plsr[,c(lvs[1],lvs[2])])
+invivo_plsr <- cbind(invivo_plsr,as.data.frame(Yh))
+invivo_plsr <- invivo_plsr %>% gather('phenotype','Score',-all_of(lvs))
+colnames(invivo_plsr)[1:2] <- c('V1','V2')
+invivo_plsr <- invivo_plsr %>%
+  mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
+  group_by(phenotype) %>%
+  mutate(normed_score=Score/max(Score))
 #################################################################################
 ### Panel - human phenotypes correlate
 plt_pheno_cor <- ggplot(data.frame(Yh), aes(x = NAS, y = fibrosis)) +
@@ -17,7 +53,7 @@ plt_pheno_cor <- ggMarginal(plt_pheno_cor, type = "histogram", fill = "steelblue
 
 #################################################################################
 ### Panel - cross-validation of PLSR model
-performance_PLSR <- readRDS("./results/performance_df_human_plsr.rds")
+performance_PLSR <- readRDS("../results/performance_df_human_plsr.rds")
 performance_PLSR <- performance_PLSR %>% mutate(type = ifelse(type=='model',set,type))
 performance_PLSR <- performance_PLSR %>% filter(metric=='r') %>% select(-metric)
 performance_PLSR$type <- factor(performance_PLSR$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
@@ -55,23 +91,24 @@ plt_PLSR_training <- rbind(data.frame(Measured = Yh[,1], Phenotype = "MAS"), dat
                       facet_wrap(~Phenotype, scales = "free") +
                       labs(x = "Measured", y = "Predicted")
 plt_PLSR_training <- add_theme(plt_PLSR_training)
-  
+
 #################################################################################
 ### Panel - PLSR scores of human data
 plt_PLSR_human <- ggplot(invivo_plsr, aes(x=V1,y=V2,fill=normed_score)) +
                   geom_point(size = size_dot, shape = 21, color = "black", stroke = size_stroke)+
                   scale_fill_viridis_c()+
                   labs(fill = 'Score')+
-                  xlab(paste0('Human LV1 (',lv_vars[1],'%)')) + ylab(paste0('Human LV2 (',lv_vars[2],'%)')) +
+                  xlab(paste0('Human LV',substr(lvs[1],2,2),' (',lv1_var,'%)')) +
+  ylab(paste0('Human LV',substr(lvs[2],2,2),' (',lv2_var,'%)')) +
                   facet_wrap(~phenotype)
 
 plt_PLSR_human <- add_theme(plt_PLSR_human)
-
+print(plt_PLSR_human)
 ### Save panels as figures
-ggsave(filename = "./Figures/figure2/plt_pheno_cor.pdf", plot = plt_pheno_cor, units = "cm", width = 6, height = 5)
-ggsave(filename = "./Figures/figure2/plt_PLSR_CV.pdf", plot = plt_PLSR_CV, units = "cm", width = 6, height = 6)
-ggsave(filename = "./Figures/figure2/plt_PLSR_training.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 5)
-ggsave(filename = "./Figures/figure2/plt_PLSR_human.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 5)
+ggsave(filename = "figure2/plt_pheno_cor.pdf", plot = plt_pheno_cor, units = "cm", width = 6, height = 5)
+ggsave(filename = "figure2/plt_PLSR_CV.pdf", plot = plt_PLSR_CV, units = "cm", width = 6, height = 6)
+ggsave(filename = "figure2/plt_PLSR_training.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 5)
+ggsave(filename = "figure2/plt_PLSR_human.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 5)
 # Save short versions of PLSR for figure 3
-ggsave(filename = "./Figures/figure3/plt_PLSR_training_short.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 4)
-ggsave(filename = "./Figures/figure3/plt_PLSR_human_short.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 4)
+ggsave(filename = "figure3/plt_PLSR_training_short.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 4)
+ggsave(filename = "figure3/plt_PLSR_human_short.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 4)

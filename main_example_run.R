@@ -48,6 +48,11 @@ Xm <- data_list[[target_dataset]]$data_center %>% t()
 # Get Wm as the PC space of the MPS data when averaging tech replicates to capture variance due to experimental factors
 Wm <- data_list[[target_dataset]]$Wm_group %>% as.matrix()
 
+saveRDS(list(Xh=Xh,Yh=Yh,sex_inferred=sex_inferred,Xm=Xm,Wm=Wm),
+        paste0('results/processed_data_list_',
+               tolower(ref_dataset),'_',
+               tolower(target_dataset),'.rds'))
+
 # For supplementary data: Print some statistics about NAS and fibrosis distribution between sexes
 print(all(rownames(Xh)==rownames(sex_inferred)))
 pheno_stats <- as.data.frame(cbind(Yh,sex_inferred))
@@ -84,8 +89,8 @@ for (ii in 1:nrow(plsr_model@weightMN)){
 # Get regression coefficients
 Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
 # Save
-saveRDS(file = paste0('results/Wh_',tolower(target_dataset),'.rds'), object = Wh)
-saveRDS(file = paste0('results/PLSR_model_',tolower(target_dataset),'.rds'), object = plsr_model)
+saveRDS(file = paste0('results/Wh_',tolower(ref_dataset),'.rds'), object = Wh)
+saveRDS(file = paste0('results/PLSR_model_',tolower(ref_dataset),'.rds'), object = plsr_model)
 
 ### Plot human PLSR space and projected truncated data
 Zh_plsr <- plsr_model@scoreMN
@@ -112,7 +117,9 @@ invivo_plsr <- invivo_plsr %>%
                 mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype)) %>%
                 group_by(phenotype) %>% 
                 mutate(normed_score=Score/max(Score))
-
+saveRDS(invivo_plsr,paste0('results/invivo_plsr_',
+        tolower(ref_dataset),'_',
+        tolower(target_dataset),'.rds'))
 
 ################################################################################
 ## Find extra latent variables
@@ -161,7 +168,7 @@ sex_model <- opls(x = as.matrix(left_join(Zh ,
                                    select(c('sex'='V1')) %>%
                                    rownames_to_column('sample')) %>%
                     select(sex) %>% mutate(sex=factor(sex))),
-                   predI = 8,
+                   predI = 2,
                    crossvalI = 1,
                    scaleC = "center",
                    fig.pdfC = "none",
@@ -189,9 +196,8 @@ print(rf_fit$results)
 
 ### Find translatable LV of the in vitro system
 ### Run evolutionary algorithm
-Wm_combo <- get_translatable_LV_2phenotype(Xh, Yh, Wh, Wm,
-                              rbind(apply(Yh,2,mean),Bh))
-Wm_combo <- Wm_combo$Wm_new
+Wm_combo <- get_translatable_LV_2phenotype(Xh, Yh, Wh, Wm,Bh)
+Wm_combo <- Wm_combo$Wm_TC
 rownames(Wm_combo) <- rownames(Wm)
 
 # Print percentage of variance captured in TC
@@ -258,12 +264,7 @@ extra_basis_pathway_activity <- pathway_activity_interpretation(Wm_opt,
 
 colnames(Wm_combo) <- c('V1','V2')
 translatable_components_progenies <- pathway_activity_interpretation(Wm_combo,
-                                                                       Wm,
-                                                                     lim=15)
-p1 <- translatable_components_progenies$figure[[1]]
-p1 <- p1 + ggtitle('Translatable Component 1')
-p2 <- translatable_components_progenies$figure[[2]] + ggtitle('Translatable Component 2')
-print(p1+p2)
+                                                                       Wm)
 
 ### Visualize pathways in various directions of the new space-----------------------
 Wm_tot <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_total.rds'))
