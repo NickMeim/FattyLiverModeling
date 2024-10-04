@@ -220,7 +220,7 @@ plotting_df <- tuning_df  %>% gather('metric','value',-set,-fold,-LVs) %>%
 ggplot(plotting_df,aes(x=LVs,y=mu,color=set)) +
   geom_point() +
   geom_line(lwd=1)+
-  geom_errorbar(aes(ymax = mu + std/num_folds, ymin = mu - std/num_folds))+
+  geom_errorbar(aes(ymax = mu + std/sqrt(num_folds), ymin = mu - std/sqrt(num_folds)))+
   scale_x_continuous(breaks = seq(1,20,2))+
   scale_y_continuous(n.breaks = 12)+
   xlab('number of latent variables') + ylab('value') +
@@ -735,12 +735,13 @@ performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-met
   select(-type,-task)
 
 performance_all_truncated <- performance_all_plot %>%
-  filter(approach %in% c('truncated','truncated re-trained','human genes'))
+  filter(approach %in% c('truncated','truncated re-trained','human genes','shuffle X'))
 performance_all_truncated$approach <- factor(performance_all_truncated$approach,
                                         levels = c('human genes',
                                                    'truncated',
-                                                   'truncated re-trained'))
-performance_all_truncated <- performance_all_truncated %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
+                                                   'truncated re-trained',
+                                                   'shuffle X'))
+performance_all_truncated <- performance_all_truncated %>% mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage','MAS'))
 performance_all_truncated$phenotype <- factor(performance_all_truncated$phenotype)
 performance_all_truncated$phenotype <- factor(performance_all_truncated$phenotype,
                                          levels = rev(levels(performance_all_truncated$phenotype)))
@@ -765,10 +766,10 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(ap
                      x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(NA,1.02))+
   xlab('')+ ylab('pearson`s correlation') +
-  ggtitle('10-fold train performance in predicting phenotype')+
+  # ggtitle('10-fold train performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
-        plot.title = element_text(hjust = 0.5),
+        # plot.title = element_text(hjust = 0.5),
         axis.text.x = element_text(size=26), #angle = 25
         # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
@@ -783,8 +784,8 @@ p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(ap
 print(p_train)  
 ggsave('../figures/approaches_comparison_training.png',
        plot = p_train,
-       height = 10,
-       width = 12,
+       height = 8,
+       width = 10,
        units = 'in',
        dpi=600)
 
@@ -826,16 +827,14 @@ ggsave('../figures/approaches_comparison_10foldtest.eps',
        dpi=600)
 
 ### Compare the truncated versions only
-p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train') %>% filter(approach!='Wopt'),
+p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train') %>%
+                                 filter(approach!='Wopt'),
                      x='approach',y='r',color='approach',add='jitter') +
   scale_y_continuous(n.breaks = 10,limits = c(NA,NA))+
   xlab('')+ ylab('pearson`s correlation') +
-  ggtitle('10-fold train performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
-        plot.title = element_text(hjust = 0.5),
         axis.text.x = element_text(size=26), #angle = 25
-        # strip.text = element_text(face = 'bold'),
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('truncated','truncated re-trained'),
                                         c('truncated','human genes'),
@@ -848,14 +847,21 @@ p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train'
 print(p_train_truncated)  
 ggsave('../figures/truncated_all_genes_comparison_training.png',
        plot = p_train_truncated,
-       height = 10,
+       height = 12,
+       width = 12,
+       units = 'in',
+       dpi=600)
+ggsave('../figures/truncated_all_genes_comparison_training.eps',
+       device = cairo_ps,
+       plot = p_train_truncated,
+       height = 12,
        width = 12,
        units = 'in',
        dpi=600)
 
 p_test_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='test')%>% filter(approach!='Wopt'),
                     x='approach',y='r',color='approach',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.1,1,0.1),limits = c(NA,1.05))+
+  scale_y_continuous(breaks = seq(-0.4,1,0.2),limits = c(NA,1.05))+
   xlab('')+ylab('pearson`s correlation') +
   # ggtitle('10-fold test performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
@@ -868,20 +874,27 @@ p_test_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='test')%
         panel.grid.major.y = element_line(linewidth = 1)) +
   stat_compare_means(comparisons = list(c('truncated','truncated re-trained'),
                                         c('truncated','human genes'),
+                                        c('truncated','shuffle X'),
                                         c('human genes','truncated re-trained')),
                      method = 'wilcox',
                      tip.length = 0.01,
-                     label.y = c(0.7,0.8,0.9),
+                     label.y = c(0.7,0.8,0.8,0.9),
                      size = 6)+
   facet_wrap(~phenotype,nrow = 2)
 print(p_test_truncated)  
 ggsave('../figures/truncated_all_genes_comparison_10foldtest.png',
        plot = p_test_truncated,
-       height = 10,
+       height = 12,
        width = 12,
        units = 'in',
        dpi=600)
-
+ggsave('../figures/truncated_all_genes_comparison_10foldtest.eps',
+       device = cairo_ps,
+       plot = p_test_truncated,
+       height = 12,
+       width = 12,
+       units = 'in',
+       dpi=600)
 
 ### See how training performance converges
 ### when including incrementally the extra basis--------------------------------------------------------------------
