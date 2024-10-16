@@ -101,7 +101,7 @@ for (ii in 1:nrow(cpm_center)){
 pseudobulk_project <- t(cpm_center) %*% Wm_opt
 # Add metadata and make long table to plot - remove end stage because it's not covered
 # in our original dataset and remove cell types with very few cells (<10) per patient
-pseudobulk_project <- data.frame(pseudobulk_project, metadata_group) %>%
+pseudobulk_project <- data.frame(pseudobulk_project, metadata_group) %>% 
   filter(Disease.status != "end stage" &
            !(cell.annotation %in% c("unknown", "B-cell 1", "B-cell 2", "Neutrophils")) &
            nCells > 10)
