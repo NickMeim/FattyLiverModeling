@@ -5,13 +5,10 @@ A computational system biology approach for identifying and optimizing in-vitro 
 In the `src` folder there are scripts to run the approach as a package in R or Python. 
 
 ## Run the manuscript's case study analysis.
-main_example_run.R: An R script to run a line-by-line analysis of the whole approach, beginning by using a clinical dataset and an in-vitro dataset, and identifying and interpreting in the end an extra basis for better spaning the human phenotypes.
-It produces figures:
-* Figure 2e
-* Figure 3a, 3c, 3d
-* Figure 5
-* Figure
-* Supplementary Figure X for disease scores comparisons between male and female samples
+`main_example_run.R`: An R script to run a line-by-line analysis of the whole approach, beginning by using a clinical dataset and an in-vitro dataset, and identifying and interpreting in the end an extra basis for better spaning the human phenotypes.
+It produces results relevent for making the study's figures. After running you make go to the `figure` folder and run the corresponding scripts to re-produce the figures of the study.
+
+`get_MAS_Fibrosis_enrichment_score.R` : Supplementary script for gene signature enrichment using VIPER.
 
 ## Folders
 1. data : Folder where you should put your raw data. (Be careful larger files cannot be pushed into GitHub and can potentially crash it)
@@ -21,3 +18,4 @@ It produces figures:
 5. results : Storage of the results and figures of the studies.
 6. utils: Auxilary functions used by other scripts in this study.
 7. src: Scripts to run the approach as a package in R or Python.
+8. figures : Folder containing the scripts to re-produce the figures of the study. You can also store the produced figures there.

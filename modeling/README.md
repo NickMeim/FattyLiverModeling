@@ -6,9 +6,8 @@
 3. vector_space_interpretation.R: Contains functions to infer pathways and TFs activities based on a vector of gene "loadings"/"weights", and visualize the results.
 4. CrossValidationUtilFunctions.R: Contains function to perform cross-fold validation of various approaches.
 5. CrossValidationProcess.R: The script that performs all cross-fold validation and evaluation tests.
-6. calculate_pairwise_GSEA_distances.R: Code to calculate all pairswise GSEA-based distances on the hallmark, TFs, KEGGS and GO Terms levels.
 7. distance_scores.R: The function used to calculate GSEA-based distance between to list of molecular signatures.
 8. InterClinicalValidation.R: Validate the performance in predicting fibrosis and NAS in two external clinical datasets, using the extra basis found with the Govaere clinical dataset and the Kostrzewski MPS liver model.
-9. L1000_pertubation_identification.R: Identify potential perturbations from the L1000 dataset. 
-10. MLBenchmarksOfNasFibrosis.py: Python script to bechmark the performance of multiple other linear and non-linear ML models, as well as the loss of performance when backprojecting and the retrieval of performance when using the identified extra basis.
-11. multipleMLmodelsEval.R: R script to load the results of the previous script and visualize them.
+9. MLBenchmarksOfNasFibrosis.py: Python script to bechmark the performance of multiple other linear and non-linear ML models, as well as the loss of performance when backprojecting and the retrieval of performance when using the identified extra basis.
+10. multipleMLmodelsEval.R: R script to load the results of the previous script and visualize them.
+11. analyzescRNAseq_Gribben_etal.R: R script for processing single cell data from GSE202379 and map it to translatable and extra latent variables.

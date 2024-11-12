@@ -18,6 +18,8 @@ modeling/PredictPhenotypesAndSex.R
 modeling/ExtraBasis4SexIdentification.R
 modeling/FindPerturbation4TargetScore.py
 modeling/Random_opt_vectors.RData
+modeling/L1000_pertubation_identification.R
+modeling/calculate_pairwise_GSEA_distances.R
 optimization/__pycache__/
 optimization/omnipathr-log
 optimization/__pypackages__/
