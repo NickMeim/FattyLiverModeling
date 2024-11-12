@@ -28,6 +28,7 @@ optimization/maximizeExplainedVarianceUsingMean.ipynb
 optimization/MultiClinicalVarianceOpt.R
 optimization/translate_perturbed.R
 optimization/*.png
+optimization/maximizeExplainedVarianceMultiClinical.ipynb
 modeling/.Rproj.user
 modeling/omnipathr-log
 .Rproj.user
