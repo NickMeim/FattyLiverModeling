@@ -120,6 +120,11 @@ plt_pwy_LV1 <- plot_pwy_activity(translatable_components_progenies %>% filter(co
 
 plt_pwy_LV1 <- add_theme(plt_pwy_LV1)
 
+plt_pwy_LV2 <- plot_pwy_activity(translatable_components_progenies %>% filter(condition == "LV_extra2"),
+                                 plt_lim = 9, show_fill_legend = T, offset_annot = 0.8, n.breaks = 6)
+
+plt_pwy_LV2 <- add_theme(plt_pwy_LV2)
+
 #################################################################################
 ### Panel - Hallmark enrichment on LV1
 
@@ -158,6 +163,7 @@ ggsave(filename = "figures/figure5/plt_pwy_radial.pdf", plot = plt_pwy_radial, u
 ggsave(filename = "figures/figure5/plt_pwy_LV1.pdf", plot = plt_pwy_LV1, units = "cm", width = 6, height = 6)
 ggsave(filename = "figures/figure5/plt_hallmarks_LV1.pdf", plot = plt_hallmarks_LV1, units = "cm", width = 7, height = 6)
 ggsave(filename = "figures/figure5/plt_LV1_extra_chempert.pdf", plot = plt_LV1_extra_chempert, units = "cm", width = 5, height = 6)
+ggsave(filename = "figures/figure5/plt_pwy_LV2.pdf", plot = plt_pwy_LV2, units = "cm", width = 5, height = 6)
 
 
 
