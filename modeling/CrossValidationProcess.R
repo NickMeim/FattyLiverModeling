@@ -840,6 +840,7 @@ p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train'
                                         c('truncated','human genes'),
                                         c('human genes','truncated re-trained')),
                      method = 'wilcox',
+                     paired = TRUE,
                      tip.length = 0.01,
                      label.y = c(0.7,0.95,1),
                      size = 6)+
@@ -877,6 +878,7 @@ p_test_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='test')%
                                         c('truncated','shuffle X'),
                                         c('human genes','truncated re-trained')),
                      method = 'wilcox',
+                     paired=TRUE,
                      tip.length = 0.01,
                      label.y = c(0.7,0.8,0.8,0.9),
                      size = 6)+
