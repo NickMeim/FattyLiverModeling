@@ -195,3 +195,22 @@ ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_NAS.pdf",
 
 ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
        plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 3.2, height = 4.5)
+	   
+### Supp info panel: MPS TC do not match any MPS PC exactly
+dummy <- data.frame(t(Wm) %*% Wm_TC)
+colnames(dummy) <- c('TC1', 'TC2')
+dummy$PC <- rownames(dummy)
+plt_TC_MPS_similarity <- dummy %>%
+                          filter(grepl('PC', PC)) %>%
+                          mutate(PC = gsub('PC','', PC) %>% as.numeric()) %>%
+                          pivot_longer(cols = c('TC1', 'TC2'), names_to = 'TC', values_to = 'Similarity') %>%
+                          ggplot(aes(x = PC, y = abs(Similarity))) +
+                            geom_line(size = size_line, show.legend = F, color = 'steelblue') +
+                            facet_wrap(~TC, nrow = 2) +
+                            labs(x = 'MPS PC', y = 'Absolute cosine similarity')
+ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_NAS.pdf",
+       plot = add_theme(plt_TC_prediction_analytical_NAS), units = "cm", width = 3, height = 4.5)
+ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
+       plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 3.2, height = 4.5)
+ggsave(filename = "./Figures/figure3/plt_TC_MPS_similarity.pdf",
+       plot = add_theme(plt_TC_MPS_similarity), units = "cm", width = 8, height = 4.5)
