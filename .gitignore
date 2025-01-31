@@ -101,6 +101,7 @@ figures/*.eps
 figures/*.ai
 figures/SupplementaryL1000.ai
 figures/generalization_supplementary.ai
+figures/Figure2_Cadavid_et_al.pdf
 *.log
 figures/*.pdf
 .Rhistory
