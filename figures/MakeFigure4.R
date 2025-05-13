@@ -34,10 +34,10 @@ combined_plot_fibrosis <- add_theme(combined_plot_fibrosis) # Fix issue with PDF
 
 #################################################################################
 ### Panel - Cross validation of extended performance with LV extra
-performance_all_plot <- readRDS('../results/performanceall_plot.rds')
+performance_all_plot <- readRDS('../results/performanceall_plot_spearman.rds')
 
 plt_p_test <- performance_all_plot %>% filter(set=='test' & approach!='Wopt') %>%
-  ggplot(aes(x = approach, y = r, color = approach, fill = approach)) +
+  ggplot(aes(x = approach, y = rho, color = approach, fill = approach)) +
   geom_boxplot(outlier.alpha = 0, size = size_line*0.7, fill = "white", show.legend = F) +
   geom_jitter(width = 0.1, size = size_dot, shape = 21, color = "black", stroke = size_stroke, show.legend = F) +
   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
@@ -49,7 +49,7 @@ plt_p_test <- performance_all_plot %>% filter(set=='test' & approach!='Wopt') %>
                      label.y = c(1.1,0.9,0.9,0.9),
                      size = size_annotation*0.75)+
   facet_wrap(~phenotype, nrow = 2) +
-  labs(x = NULL, y = "Pearson correlation") +
+  labs(x = NULL, y = "Spearman`s rank correlation") +
   scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1.3)) +
   scale_color_brewer(palette = "Dark2") +
   scale_fill_brewer(palette = "Dark2") +
@@ -61,12 +61,12 @@ plt_p_test <- add_theme(plt_p_test) +
 
 #################################################################################
 ### Panel - Improvement in performance with each extra LV
-all_performance_res <- readRDS('../results/all_performance_res.rds')
-mu_plsr_train <- mean(all_performance_res$r[all_performance_res$set=='train' & all_performance_res$model=='PLSR'])
-sd_plsr_train<- sd(all_performance_res$r[all_performance_res$set=='train'& all_performance_res$model=='PLSR'])
-mu_plsr_test<- mean(all_performance_res$r[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
-sd_plsr_test<- sd(all_performance_res$r[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
-test_r_shuffled<- readRDS('../results/test_r_shuffled_cumulative_lvs.rds')
+all_performance_res <- readRDS('../results/all_performance_res_spearman.rds')
+mu_plsr_train <- mean(all_performance_res$rho[all_performance_res$set=='train' & all_performance_res$model=='PLSR'])
+sd_plsr_train<- sd(all_performance_res$rho[all_performance_res$set=='train'& all_performance_res$model=='PLSR'])
+mu_plsr_test<- mean(all_performance_res$rho[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
+sd_plsr_test<- sd(all_performance_res$rho[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
+test_r_shuffled<- readRDS('../results/test_r_shuffled_cumulative_lvs_spearman.rds')
 num_folds <- length(unique(all_performance_res$fold))
 plt_required_extra_basis <-
   ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
@@ -76,7 +76,7 @@ plt_required_extra_basis <-
   geom_errorbar(aes(ymax = mu + std/sqrt(num_folds),ymin = mu - std/sqrt(num_folds)),
                 width = 0.05,size=0.75)+
   ylim(NA,1) +
-  ylab('Pearson correlation')+
+  ylab('Spearman`s rank correlation')+
   ### train performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -138,20 +138,20 @@ plt_required_extra_basis <- add_theme(plt_required_extra_basis) +
 
 #################################################################################
 ### Panel - LV extras are somewhat generalizable
-results_external_data <- readRDS("../results/external_clinical_performance_of_extra_vector.rds") %>%
-                          pivot_longer(cols = 1:3, names_to = "model", values_to = "Pearson")
+results_external_data <- readRDS("../results/external_clinical_differences_results_of_extra_vector_spearman.rds") %>%
+                          pivot_longer(cols = 1:3, names_to = "model", values_to = "Spearman")
 
 results_external_data$fold <- sapply(results_external_data$fold_ids, FUN = function(x){strsplit(x, ".", fixed = T) %>% unlist()})[1,]
 
 results_external_data <- results_external_data %>%
                           group_by(dataset, set, model, fold) %>%
-                          summarize(Pearson = mean(Pearson)) %>%
+                          summarize(Spearman = mean(Spearman)) %>%
                           mutate(dataset_GEO = ifelse(dataset == "Hoang", "GSE13090", "GSE162694"),
                                  set = factor(set, levels = c("train", "test"))) # Hoang et al or Pantano et al
 
 # Plot
 plt_external_data <- results_external_data %>%
-  ggplot(aes(x = model, y = Pearson, color = model, fill = model)) +
+  ggplot(aes(x = model, y = Spearman, color = model, fill = model)) +
   geom_boxplot(outlier.alpha = 0, size = size_line*0.7, fill = "white", show.legend = F) +
   geom_jitter(width = 0.1, size = size_dot, shape = 21, color = "black", stroke = size_stroke, show.legend = F) +
   stat_compare_means(comparisons = list(c('extra.basis','PC'),
@@ -162,7 +162,7 @@ plt_external_data <- results_external_data %>%
                      #label.y = c(0.9,1.1, 0.9),
                      size = size_annotation*0.75)+
   facet_grid(rows = vars(set), cols = vars(dataset_GEO)) +
-  labs(x = NULL, y = "Pearson correlation") +
+  labs(x = NULL, y = "Spearman`s rank correlation") +
   scale_y_continuous(breaks = seq(0.25,1,0.25),limits = c(NA,1.2)) +
   scale_color_brewer(palette = "Dark2") +
   scale_fill_brewer(palette = "Dark2") +

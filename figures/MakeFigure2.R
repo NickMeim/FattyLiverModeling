@@ -53,9 +53,9 @@ plt_pheno_cor <- ggMarginal(plt_pheno_cor, type = "histogram", fill = "steelblue
 
 #################################################################################
 ### Panel - cross-validation of PLSR model
-performance_PLSR <- readRDS("../results/performance_df_human_plsr.rds")
+performance_PLSR <- readRDS("../results/performance_df_human_plsr_spearman.rds")
 performance_PLSR <- performance_PLSR %>% mutate(type = ifelse(type=='model',set,type))
-performance_PLSR <- performance_PLSR %>% filter(metric=='r') %>% select(-metric)
+performance_PLSR <- performance_PLSR %>% filter(metric=='rho') %>% select(-metric)
 performance_PLSR$type <- factor(performance_PLSR$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
 performance_PLSR <- performance_PLSR %>% mutate(phenotype = ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 
@@ -71,7 +71,7 @@ plt_PLSR_CV <- ggplot(performance_PLSR, aes(x = type, y = value, color = type, f
                                    label.y = c(1.1,0.8, 1.1, 0.95),
                                    size = size_annotation*0.5)+
                 facet_wrap(~phenotype, nrow = 2) +
-                labs(x = NULL, y = "Pearson correlation") +
+                labs(x = NULL, y = "Spearman`s rank correlation") +
                 scale_y_continuous(breaks = seq(-0.75,1,0.25),limits = c(NA,1.3)) +
                 scale_color_brewer(palette = "Dark2") +
                 scale_fill_brewer(palette = "Dark2") +
@@ -87,7 +87,7 @@ plt_PLSR_training <- rbind(data.frame(Measured = Yh[,1], Phenotype = "MAS"), dat
                     ggplot(aes(x = Measured, y = Predicted)) +
                       geom_jitter(size = size_dot*0.8, shape = 21, fill = "steelblue", color = "black", stroke = size_stroke, width = 0.1) +
                       geom_abline(slope = 1, intercept = 0, color = "black", linewidth = size_line, linetype = 2) +
-                      stat_cor(color = "black", size = size_annotation*0.7) +
+                      stat_cor(color = "black", size = size_annotation*0.7,method = 'spearman',cor.coef.name = "rho") +
                       facet_wrap(~Phenotype, scales = "free") +
                       labs(x = "Measured", y = "Predicted")
 plt_PLSR_training <- add_theme(plt_PLSR_training)

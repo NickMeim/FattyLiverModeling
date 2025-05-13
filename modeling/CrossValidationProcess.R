@@ -80,6 +80,7 @@ Xh <- Xh[best_sample,]
 ### Compare with randomized and null models
 Xh <- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh.rds')
 Yh <- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh.rds')
+rownames(Yh) <- rownames(Xh)
 Xh_test<- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Xh_test.rds')
 Yh_test<- readRDS('../preprocessing/TrainingValidationData/WholePipeline/TrainTestValPLSR/Yh_test.rds')
 
@@ -158,9 +159,13 @@ test_R2 <- NULL
 val_r <- NULL
 train_r <- NULL
 test_r <- NULL
+train_rho <- NULL
+val_rho <- NULL
+test_rho <- NULL
 val_R2_shuffled <- NULL
 val_r_shuffled <- NULL
 val_mae_shuffled <- NULL
+val_rho_shuffled <- NULL
 num_LVs <- seq(1,20)
 num_folds <- 10
 tuning_df <- data.frame()
@@ -203,15 +208,18 @@ for (i in 1:length(num_LVs)){
     val_mae[j] <- mean(abs(y_val_hat-y_val))
     val_mae_shuffled[j] <- mean(abs(y_val_hat_shuffled-y_val))
     train_mae[j] <- mean(abs(y_train_hat-y_train))
+    train_rho[j] <- mean(diag(cor(y_train_hat,y_train, method = "spearman")))
+    val_rho[j] <- mean(diag(cor(y_val_hat,y_val, method = "spearman")))
+    val_rho_shuffled[j] <- mean(diag(cor(y_val_hat_shuffled,y_val, method = "spearman")))
   }
   tuning_df <- rbind(tuning_df,
-                     data.frame(set='train',r = train_r,MAE = train_mae,R2=train_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
-                     data.frame(set='validation',r = val_r,MAE = val_mae,R2=val_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
-                     data.frame(set='shuffled',r = val_r_shuffled,MAE = val_mae_shuffled,R2=val_R2_shuffled,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)))
+                     data.frame(set='train',rho=train_rho,r = train_r,MAE = train_mae,R2=train_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
+                     data.frame(set='validation',rho=val_rho,r = val_r,MAE = val_mae,R2=val_R2,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)),
+                     data.frame(set='shuffled',rho=val_rho_shuffled,r = val_r_shuffled,MAE = val_mae_shuffled,R2=val_R2_shuffled,fold = seq(1,num_folds),LVs=rep(num_LVs[i],num_folds)))
   print(paste0('Finished fitting PLSR with ',num_LVs[i],' latent variables'))
 }
 
-# saveRDS(tuning_df,'../preprocessing/TrainingValidationData/WholePipeline/tuning_df.rds')
+saveRDS(tuning_df,'../preprocessing/TrainingValidationData/WholePipeline/tuning_df_with_spearman.rds')
 
 plotting_df <- tuning_df  %>% gather('metric','value',-set,-fold,-LVs) %>% 
   group_by(set,metric,LVs) %>% mutate(mu = mean(value)) %>% mutate(std = sd(value)) %>% ungroup() %>%
@@ -224,22 +232,22 @@ ggplot(plotting_df,aes(x=LVs,y=mu,color=set)) +
   scale_x_continuous(breaks = seq(1,20,2))+
   scale_y_continuous(n.breaks = 12)+
   xlab('number of latent variables') + ylab('value') +
-  theme_pubr(base_size = 20,base_family = 'Arial')+
-  theme(text = element_text(size=20,family = 'Arial'),
+  theme_pubr(base_size = 22,base_family = 'Arial')+
+  theme(text = element_text(size=22,family = 'Arial'),
         panel.grid.major = element_line(),
         strip.text = element_text(face = 'bold'))+
   facet_wrap(~metric,scales = 'free_y')
 
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.png',
-       width = 16,
-       height = 9,
+       width = 10,
+       height = 10,
        units = 'in',
        dpi=600)
 
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/tunning_plsr.eps',
        device = cairo_ps,
-       width = 16,
-       height = 9,
+       width = 10,
+       height = 10,
        units = 'in',
        dpi=600)
 
@@ -271,38 +279,38 @@ for (p in partitions){
       y_hat_plsr <- predict(plsr_model,Xh_parted)
       y_hat_val_plsr <- predict(plsr_model,Xh_val)
       
-      r_plsr <- diag(cor(y_hat_plsr,Yh_parted))
+      rho_plsr <- diag(cor(y_hat_plsr,Yh_parted,method = "spearman"))
       performance_train <- rbind(performance_train,
                                  data.frame(model = 'PLSR',
                                             num_LVs = LV,
                                             partition = p,
                                             sample=i,
-                                            NAS = r_plsr['NAS'],
-                                            fibrosis = r_plsr['fibrosis']))
+                                            NAS = rho_plsr['NAS'],
+                                            fibrosis = rho_plsr['fibrosis']))
       
-      r_plsr <- diag(cor(y_hat_val_plsr,Yh_val))
+      rho_plsr <- diag(cor(y_hat_val_plsr,Yh_val,method = "spearman"))
       performance_val <- rbind(performance_val,
                                data.frame(model = 'PLSR',
                                           num_LVs = LV,
                                           partition = p,
                                           sample=i,
-                                          NAS = r_plsr['NAS'],
-                                          fibrosis = r_plsr['fibrosis']))
+                                          NAS = rho_plsr['NAS'],
+                                          fibrosis = rho_plsr['fibrosis']))
       
     }
     print(paste0('Finished PLSR with ',LV,' latent variables'))
   }
 }
-# saveRDS(performance_val,'../results/performance_val_random_partitions_many_lvs.rds')
-# saveRDS(performance_train,'../results/performance_train_random_partitions_many_lvs.rds')
+# saveRDS(performance_val,'../results/performance_val_random_partitions_many_lvs_spearman.rds')
+# saveRDS(performance_train,'../results/performance_train_random_partitions_many_lvs_spearman.rds')
 
-val_plot <- performance_val %>% gather('phenotype','r',-model,-num_LVs,-partition,-sample)  %>% 
-  group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(r)) %>% 
-  mutate(std = sd(r)) %>% ungroup() %>%
+val_plot <- performance_val %>% gather('phenotype','rho',-model,-num_LVs,-partition,-sample)  %>% 
+  group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(rho)) %>% 
+  mutate(std = sd(rho)) %>% ungroup() %>%
   unique() 
-train_plot <- performance_train %>% gather('phenotype','r',-model,-num_LVs,-partition,-sample)  %>% 
-  group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(r)) %>% 
-  mutate(std = sd(r)) %>% ungroup() %>%
+train_plot <- performance_train %>% gather('phenotype','rho',-model,-num_LVs,-partition,-sample)  %>% 
+  group_by(model,num_LVs,partition,phenotype) %>% mutate(mu = mean(rho)) %>% 
+  mutate(std = sd(rho)) %>% ungroup() %>%
   unique()
 performance_plot <- rbind(train_plot %>% mutate(set='train'),
                           val_plot %>% mutate(set='test'))
@@ -310,14 +318,14 @@ performance_plot$partition <- factor(performance_plot$partition,levels = partiti
 performance_plot <- performance_plot %>% mutate(partition = paste0('train size = ',partition,'%'))
 
 ggplot(performance_plot,
-       aes(x=num_LVs,y=r,colour=set,shape=phenotype))+
+       aes(x=num_LVs,y=rho,colour=set,shape=phenotype))+
   geom_smooth(aes(linetype=phenotype),lwd=1)+ 
   # geom_point()+ 
   # geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
   scale_x_continuous(breaks = seq(1,20,2))+
   scale_y_continuous(breaks = seq(0.5,1,0.1))+
   xlab('number of latent variables') +
-  ylab('pearson`s r')+
+  ylab('spearman`s rank correlation coefficient')+
   theme_pubr(base_family = 'Arial',base_size = 18)+
   theme(text = element_text(size=18,family = 'Arial'),
         legend.position = 'right',
@@ -347,14 +355,20 @@ test_mae <- NULL
 val_r <- NULL
 train_r <- NULL
 test_r <- NULL
+train_rho <- NULL
+val_rho <- NULL
+test_rho <- NULL
 num_folds <- 10
 tuning_df <- data.frame()
 all_models <- NULL
 test_r_shuffle_y <- NULL
+test_rho_shuffle_y <- NULL
 test_mae_shuffle_y <- NULL
 test_r_shuffle_x <- NULL
 test_mae_shuffle_x <- NULL
+test_rho_shuffle_x <- NULL
 test_r_random_x <- NULL
+test_rho_random_x <- NULL
 test_mae_random_x <- NULL
 for (j in 1:num_folds){
   message(paste0('Begun fold ',j))
@@ -374,10 +388,13 @@ for (j in 1:num_folds){
   y_val_hat <- predict(plsr_model,x_val)
   y_hat_test <- predict(plsr_model,Xh_test)
   
+  train_rho[j] <- mean(diag(cor(y_train_hat,y_train,method = 'spearman')))
+  val_rho[j] <- mean(diag(cor(y_val_hat,y_val,method = 'spearman')))
+  test_rho[j]<- mean(diag(cor(y_hat_test,Yh_test,method = 'spearman')))
+  print(paste0('NAS = ',diag(cor(y_hat_test,Yh_test,method = 'spearman'))['NAS'],' , Fibrosis = ',diag(cor(y_hat_test,Yh_test,method = 'spearman'))['fibrosis']))
   train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
   val_r[j] <- mean(diag(cor(y_val_hat,y_val)))
   test_r[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  print(paste0('NAS = ',diag(cor(y_hat_test,Yh_test))['NAS'],' , Fibrosis = ',diag(cor(y_hat_test,Yh_test))['fibrosis']))
   val_mae[j] <- mean(abs(y_val_hat-y_val))
   train_mae[j] <- mean(abs(y_train_hat-y_train))
   test_mae[j] <- mean(abs(y_hat_test-Yh_test))
@@ -394,7 +411,7 @@ for (j in 1:num_folds){
                                info.txtC = "none")
   y_hat_test <- predict(plsr_model_shuffle_y,Xh_test)
   test_r_shuffle_y[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  # test_R2_shuffle_y[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  test_rho_shuffle_y[j] <- mean(diag(cor(y_hat_test,Yh_test,method = 'spearman')))
   test_mae_shuffle_y[j] <- mean(abs(y_hat_test-Yh_test))
   
   print('Finished shuffled labels model')
@@ -411,7 +428,7 @@ for (j in 1:num_folds){
                                info.txtC = "none")
   y_hat_test <- predict(plsr_model_shuffle_x,Xh_test)
   test_r_shuffle_x[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  # test_R2_shuffle_x[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  test_rho_shuffle_x[j] <- mean(diag(cor(y_hat_test,Yh_test,method = 'spearman')))
   test_mae_shuffle_x[j] <- mean(abs(y_hat_test-Yh_test))
   
   print('Finished shuffled features model')
@@ -429,29 +446,29 @@ for (j in 1:num_folds){
                               info.txtC = "none")
   y_hat_test <- predict(plsr_model_random_x,Xh_test)
   test_r_random_x[j]<- mean(diag(cor(y_hat_test,Yh_test)))
-  # test_R2_random_x[j] <- mean(diag(cor(y_hat_test,Yh_test)^2))
+  test_rho_random_x[j] <- mean(diag(cor(y_hat_test,Yh_test,method = 'spearman')))
   test_mae_random_x[j] <- mean(abs(y_hat_test-Yh_test))
   
   print('Finished random features model')
 }
-performance_df <- rbind(data.frame(set='train',r = train_r,MAE = train_mae,fold = seq(1,num_folds)),
-                        data.frame(set='validation',r = val_r,MAE = val_mae,fold = seq(1,num_folds)),
-                        data.frame(set='test',r = test_r,MAE = test_mae,fold = seq(1,num_folds)),
-                        data.frame(set='shuffle Y',r = test_r_shuffle_y,MAE = test_mae_shuffle_y,fold = seq(1,num_folds)),
-                        data.frame(set='shuffle X',r = test_r_shuffle_x,MAE = test_mae_shuffle_x,fold = seq(1,num_folds)),
-                        data.frame(set='random X',r = test_r_random_x,MAE = test_mae_random_x,fold = seq(1,num_folds)))
-# saveRDS(performance_df,'../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.rds')
+performance_df <- rbind(data.frame(set='train',rho=train_rho,r = train_r,MAE = train_mae,fold = seq(1,num_folds)),
+                        data.frame(set='validation',rho=val_rho,r = val_r,MAE = val_mae,fold = seq(1,num_folds)),
+                        data.frame(set='test',rho=test_rho,r = test_r,MAE = test_mae,fold = seq(1,num_folds)),
+                        data.frame(set='shuffle Y',rho = test_rho_shuffle_y,r = test_r_shuffle_y,MAE = test_mae_shuffle_y,fold = seq(1,num_folds)),
+                        data.frame(set='shuffle X',rho = test_rho_shuffle_x,r = test_r_shuffle_x,MAE = test_mae_shuffle_x,fold = seq(1,num_folds)),
+                        data.frame(set='random X',rho = test_rho_random_x,r = test_r_random_x,MAE = test_mae_random_x,fold = seq(1,num_folds)))
+# saveRDS(performance_df,'../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned_spearman.rds')
 
 avg_mae <- mean(abs(Yh_test-apply(Yh,2,mean)))
 plotting_performance_df <- performance_df %>% 
   gather('metric','value',-set,-fold) %>%
-  mutate(metric=ifelse(metric=='r','pearson`s r',metric))
+  mutate(metric=ifelse(metric=='r','pearson`s r',ifelse(metric=='rho','spearman`s rank correlation',metric)))
 plotting_performance_df$set <- factor(plotting_performance_df$set,
                                       levels = c('train','validation','test','shuffle Y','shuffle X','random X'))
 p <- (ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='value',color = 'set',add='jitter')+
     scale_y_continuous(n.breaks = 15)+
     geom_hline(yintercept = avg_mae,linetype='dashed',color='black',lwd=1)+
-    annotate('text',x=3,y=1.95,size=6,label = 'error from the mean of the data')+
+    annotate('text',x=2,y=1.95,size=6,label = 'error from the mean of the data')+
     xlab('')+
     theme(text = element_text(size=20,family = 'Arial'),
           legend.position = 'none',
@@ -464,7 +481,7 @@ p <- (ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='val
                                           c('test','random X')),
                        method = 'wilcox',label = 'p.signif',
                        tip.length = 0.01,
-                       label.y = c(1,1.5,1.6,1.7)) +
+                       label.y = c(1,1.7,1.8,1.9)) +
     facet_wrap(~metric)) /
   (ggboxplot(plotting_performance_df %>% filter(metric!='MAE'),x='set',y='value',color = 'set',add='jitter')+
      scale_y_continuous(breaks = seq(-0.5,1,0.1))+
@@ -486,14 +503,14 @@ p <- (ggboxplot(plotting_performance_df %>% filter(metric=='MAE'),x='set',y='val
 print(p)
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.png',
        plot = p,
-       width = 12,
+       width = 15,
        height = 9,
        units = 'in',
        dpi = 600)
 ggsave('../preprocessing/TrainingValidationData/WholePipeline/performance_df_tuned.eps',
        plot = p,
        device = cairo_ps,
-       width = 12,
+       width = 15,
        height = 9,
        units = 'in',
        dpi = 600)
@@ -583,8 +600,7 @@ performance_1 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_plsr',
                                                     LVs = num_LVS)
-# saveRDS(performance_1,'../results/performance_df_human_plsr.rds')
-#Plot
+# saveRDS(performance_1,'../results/performance_df_human_plsr_spearman.rds')
 
 
 # Task b)
@@ -594,14 +610,14 @@ performance_2 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected',
                                                     LVs = num_LVS)
-# saveRDS(performance_2,'../results/performance_df_human_backprojected.rds')
+# saveRDS(performance_2,'../results/performance_df_human_backprojected_spearman.rds')
 performance_2$type <- factor(performance_2$type ,levels=c('model','shuffle W','shuffle X','shuffle Y','shuffle Bh'))
 performance_2$set <- factor(performance_2$set ,levels=c('train','test'))
-performance_2 <- performance_2 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+performance_2 <- performance_2 %>% filter(metric=='rho') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(rho = mean(value)) %>%
   ungroup() %>% select(-value,-phenotype) %>% unique()
-ggboxplot(performance_2,x='type',y='r',color='type',add='jitter') +
+ggboxplot(performance_2,x='type',y='rho',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+ylab('pearson`s correlation')+
+  xlab('')+ylab('spearman`s rank correlation')+
   theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=18),
@@ -622,15 +638,15 @@ performance_3 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected_retrained',
                                                     LVs = num_LVS)
-# saveRDS(performance_3,'../results/performance_df_human_backprojected_retrained.rds')
+saveRDS(performance_3,'../results/performance_df_human_backprojected_retrained_spearman.rds')
 #Plot
 performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W'))
 performance_3$set <- factor(performance_3$set ,levels=c('train','test'))
-performance_3 <- performance_3 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+performance_3 <- performance_3 %>% filter(metric=='rho') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(rho = mean(value)) %>%
   ungroup() %>% select(-value,-phenotype) %>% unique()
-ggboxplot(performance_3,x='type',y='r',color='type',add='jitter') +
+ggboxplot(performance_3,x='type',y='rho',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+ylab('pearson`s correlation')+
+  xlab('')+ylab('spearman`s rank correlation')+
   theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=18),
@@ -649,15 +665,15 @@ performance_4 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected_into_translatable_lvs',
                                                     LVs = num_LVS)
-# saveRDS(performance_4,'../results/performance_df_translatable_lvs.rds')
+# saveRDS(performance_4,'../results/performance_df_translatable_lvs_spearman.rds')
 #Plot
 performance_4$type <- factor(performance_4$type ,levels=c('model','shuffle W','shuffle Bh'))
 performance_4$set <- factor(performance_4$set ,levels=c('train','test'))
-performance_4 <- performance_4 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+performance_4 <- performance_4 %>% filter(metric=='rho') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(rho = mean(value)) %>%
   ungroup() %>% select(-value,-phenotype) %>% unique()
-ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
+ggboxplot(performance_4,x='type',y='rho',color='type',add='jitter') +
   scale_y_continuous(n.breaks = 10)+
-  xlab('')+ylab('pearson`s correlation')+
+  xlab('')+ylab('spearman`s rank correlation')+
   theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=18),
@@ -670,22 +686,23 @@ ggboxplot(performance_4,x='type',y='r',color='type',add='jitter') +
                      tip.length = 0.01,
                      step.increase = 0.04,
                      size=6)
+
 performance_6 <- cross_validation_complete_pipeline(Wm,
                                                     folds = num_folds,
                                                     file_loc = loc ,
                                                     target_dataset = target_dataset,
                                                     task = 'analytical_optimal',
                                                     LVs = num_LVS)
-# saveRDS(performance_6,'../results/performance_df_analytical.rds')
+saveRDS(performance_6,'../results/performance_df_analytical_spearman.rds')
 
 performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
-performance_6 <- performance_6 %>% filter(metric=='r') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(r = mean(value)) %>%
+performance_6 <- performance_6 %>% filter(metric=='rho') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(rho = mean(value)) %>%
   ungroup() %>% select(-value,-phenotype) %>% unique()
-ggboxplot(performance_6,x='type',y='r',color='type',add='jitter') +
-  scale_y_continuous(breaks = seq(round(min(performance_6$r),1),1,0.1),
+ggboxplot(performance_6,x='type',y='rho',color='type',add='jitter') +
+  scale_y_continuous(breaks = seq(round(min(performance_6$rho),1),1,0.1),
                      limits = c(NA,1.15))+
-  xlab('')+ylab('pearson`s correlation')+
+  xlab('')+ylab('pspearman`s rank correlation')+
   theme(text = element_text(size=22,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=18),
@@ -697,7 +714,7 @@ ggboxplot(performance_6,x='type',y='r',color='type',add='jitter') +
                      method = 'wilcox',
                      tip.length = 0.01,size=6)# ,label.y = c(0.82, 0.87, 0.92)
 
-ggsave('../results/performance_df_analytical.png',
+ggsave('../results/performance_df_analytical_spearman.png',
        height = 9,
        width = 12,
        units = 'in',
@@ -706,11 +723,11 @@ ggsave('../results/performance_df_analytical.png',
 
 
 ### Combine all results and make a nice figure--------------------------------------------------------------------
-performance_1 <- readRDS('../results/performance_df_human_plsr.rds')
-performance_2 <- readRDS('../results/performance_df_human_backprojected.rds')
-performance_3 <- readRDS('../results/performance_df_human_backprojected_retrained.rds')
-performance_4 <- readRDS('../results/performance_df_translatable_lvs.rds')
-performance_6 <- readRDS('../results/performance_df_analytical.rds')
+performance_1 <- readRDS('../results/performance_df_human_plsr_spearman.rds')
+performance_2 <- readRDS('../results/performance_df_human_backprojected_spearman.rds')
+performance_3 <- readRDS('../results/performance_df_human_backprojected_retrained_spearman.rds')
+performance_4 <- readRDS('../results/performance_df_translatable_lvs_spearman.rds')
+performance_6 <- readRDS('../results/performance_df_analytical_spearman.rds')
 
 performance_all <- rbind(performance_1,
                          performance_2,
@@ -719,7 +736,7 @@ performance_all <- rbind(performance_1,
                          performance_6)
 
 ### Select what to show in the figure
-performance_all_plot <- performance_all %>%  filter(metric=='r') %>% select(-metric) %>% mutate(r=value) %>% select(-value)%>%
+performance_all_plot <- performance_all %>%  filter(metric=='rho') %>% select(-metric) %>% mutate(rho=value) %>% select(-value)%>%
   mutate(keep=ifelse(task=='human_plsr',ifelse(type %in% c('model','shuffle X'),TRUE,FALSE),
                      ifelse(type=='model',TRUE,FALSE))) %>% 
   filter(keep==TRUE) %>% select(-keep) %>%
@@ -760,12 +777,12 @@ performance_all_plot$phenotype <- factor(performance_all_plot$phenotype)
 performance_all_plot$phenotype <- factor(performance_all_plot$phenotype,
                                          levels = rev(levels(performance_all_plot$phenotype)))
 # Save data frame
-saveRDS(performance_all_plot,'../results/performanceall_plot.rds')
+saveRDS(performance_all_plot,'../results/performanceall_plot_spearman.rds')
 
 p_train <- ggboxplot(performance_all_plot %>% filter(set=='train') %>% filter(approach!='Wopt'),
-                     x='approach',y='r',color='approach',add='jitter') +
+                     x='approach',y='rho',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(0.4,1,0.05),limits = c(NA,1.02))+
-  xlab('')+ ylab('pearson`s correlation') +
+  xlab('')+ ylab('speaman`s rank correlation') +
   # ggtitle('10-fold train performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
@@ -790,9 +807,9 @@ ggsave('../figures/approaches_comparison_training.png',
        dpi=600)
 
 p_test <- ggboxplot(performance_all_plot %>% filter(set=='test')%>% filter(approach!='Wopt'),
-                    x='approach',y='r',color='approach',add='jitter') +
+                    x='approach',y='rho',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(-0.5,1,0.15),limits = c(NA,1.05))+
-  xlab('')+ylab('pearson`s correlation') +
+  xlab('')+ylab('spearman`s rank correlation') +
   # ggtitle('10-fold test performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
@@ -829,9 +846,9 @@ ggsave('../figures/approaches_comparison_10foldtest.eps',
 ### Compare the truncated versions only
 p_train_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='train') %>%
                                  filter(approach!='Wopt'),
-                     x='approach',y='r',color='approach',add='jitter') +
+                     x='approach',y='rho',color='approach',add='jitter') +
   scale_y_continuous(n.breaks = 10,limits = c(NA,NA))+
-  xlab('')+ ylab('pearson`s correlation') +
+  xlab('')+ ylab('spearman`s rank correlation') +
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
         axis.text.x = element_text(size=26), #angle = 25
@@ -861,9 +878,9 @@ ggsave('../figures/truncated_all_genes_comparison_training.eps',
        dpi=600)
 
 p_test_truncated <- ggboxplot(performance_all_truncated %>% filter(set=='test')%>% filter(approach!='Wopt'),
-                    x='approach',y='r',color='approach',add='jitter') +
+                    x='approach',y='rho',color='approach',add='jitter') +
   scale_y_continuous(breaks = seq(-0.4,1,0.2),limits = c(NA,1.05))+
-  xlab('')+ylab('pearson`s correlation') +
+  xlab('')+ylab('spearman`s rank correlation') +
   # ggtitle('10-fold test performance in predicting phenotype')+
   theme(text = element_text(size=26,family = 'Arial'),
         legend.position = 'none',
@@ -900,16 +917,16 @@ ggsave('../figures/truncated_all_genes_comparison_10foldtest.eps',
 
 ### See how training performance converges
 ### when including incrementally the extra basis--------------------------------------------------------------------
-train_r <- NULL
-train_r_translatables <- NULL
-train_r_basis_1 <- NULL
-train_r_all_extra_bases <- NULL
+train_rho <- NULL
+train_rho_translatables <- NULL
+train_rho_basis_1 <- NULL
+train_rho_all_extra_bases <- NULL
 
-test_r <- NULL
-test_r_shuffled <- NULL
-test_r_translatables <- NULL
-test_r_basis_1 <- NULL
-test_r_all_extra_bases <- NULL
+test_rho <- NULL
+test_rho_shuffled <- NULL
+test_rho_translatables <- NULL
+test_rho_basis_1 <- NULL
+test_rho_all_extra_bases <- NULL
 
 df_scatterPlot <- data.frame()
 df_scatterPlot_backproj <- data.frame()
@@ -930,8 +947,8 @@ for (j in 1:num_folds){
                      info.txtC = "none")
   y_train_hat <- predict(plsr_model,x_train)
   y_val_hat <- predict(plsr_model,x_val)
-  train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
-  test_r[j] <- mean(diag(cor(y_val_hat,y_val)))
+  train_rho[j] <- mean(diag(cor(y_train_hat,y_train,method='spearman')))
+  test_rho[j] <- mean(diag(cor(y_val_hat,y_val,method='spearman')))
   
   df_scatterPlot <- rbind(df_scatterPlot,
                           left_join(data.frame(y_val) %>% 
@@ -981,7 +998,7 @@ for (j in 1:num_folds){
                                fig.pdfC = "none",
                                info.txtC = "none")
   y_hat_val <- predict(plsr_model_shuffle_x,x_val)
-  test_r_shuffled[j]<- mean(diag(cor(y_hat_val,y_val)))
+  test_rho_shuffled[j]<- mean(diag(cor(y_hat_val,y_val,method='spearman')))
   
   message('Finished running initial PLSR for humans')
   
@@ -990,9 +1007,9 @@ for (j in 1:num_folds){
   Wm_new <- Wm_new$Wm_TC
   colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
   y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-  train_r_translatables[j] <- mean(diag(cor(y_hat_train,y_train)))
+  train_rho_translatables[j] <- mean(diag(cor(y_hat_train,y_train,method='spearman')))
   y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-  test_r_translatables[j] <- mean(diag(cor(y_hat_test,y_val)))
+  test_rho_translatables[j] <- mean(diag(cor(y_hat_test,y_val,method='spearman')))
   
   message('Finished linear combination of translatable components')
   
@@ -1007,15 +1024,15 @@ for (j in 1:num_folds){
   Wm_tot <- cbind(Wm, Wm_opt)
   # predict with one extra basis vectors
   y_hat_train <- cbind(1, x_train %*% Wm_tot_1 %*% t(Wm_tot_1) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-  train_r_basis_1[j] <- mean(diag(cor(y_hat_train,y_train)))
+  train_rho_basis_1[j] <- mean(diag(cor(y_hat_train,y_train,method='spearman')))
   y_hat_test <- cbind(1, x_val %*% Wm_tot_1 %*% t(Wm_tot_1) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-  test_r_basis_1[j] <- mean(diag(cor(y_hat_test,y_val)))
+  test_rho_basis_1[j] <- mean(diag(cor(y_hat_test,y_val,method='spearman')))
   message('Finished analytical solution performance with 1 extra vector')
   # predict with one extra basis vectors
   y_hat_train <- cbind(1, x_train %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-  train_r_all_extra_bases[j] <- mean(diag(cor(y_hat_train,y_train)))
+  train_rho_all_extra_bases[j] <- mean(diag(cor(y_hat_train,y_train,method='spearman')))
   y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
-  test_r_all_extra_bases[j] <- mean(diag(cor(y_hat_test,y_val)))
+  test_rho_all_extra_bases[j] <- mean(diag(cor(y_hat_test,y_val,method='spearman')))
   message('Finished analytical solution performance with 2 extra vectors')
 }
 
@@ -1023,18 +1040,19 @@ for (j in 1:num_folds){
 # Calculate correlation coefficients
 cor_results <- df_scatterPlot %>%
   group_by(phenotype) %>%
-  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  summarise(cor_test = list(cor.test(true, prediction,method='spearman'))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
-ggplot(df_scatterPlot,aes(x = true,y=prediction)) +
-  geom_jitter(width = 0.05,color='#4682B4') + 
-  geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
+ggplot(df_scatterPlot, aes(x = true, y = prediction)) +
+  geom_jitter(width = 0.05, color = '#4682B4') + 
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed', color = 'black', linewidth = 1.5) +
   geom_text(data = cor_results, 
-            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
-  facet_wrap(~phenotype,scales = 'free')+
-  theme_pubr(base_family = 'Arial',base_size=25)+
-  theme(text = element_text(family = 'Arial',size=25),
+            aes(x = -Inf, y = Inf, 
+                label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+            hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
+  facet_wrap(~phenotype, scales = 'free') +
+  theme_pubr(base_family = 'Arial', base_size = 25) +
+  theme(text = element_text(family = 'Arial', size = 25),
         panel.grid.major = element_line())
 ggsave('../figures/10foldTest_Scatterplot_human_plsr.png',
           height = 6,
@@ -1045,15 +1063,16 @@ ggsave('../figures/10foldTest_Scatterplot_human_plsr.png',
 # repreat for backprojection
 cor_resultst_backproj <- df_scatterPlot_backproj %>%
   group_by(phenotype) %>%
-  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  summarise(cor_test = list(cor.test(true, prediction,method = 'spearman'))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value))
 ggplot(df_scatterPlot_backproj,aes(x = true,y=prediction)) +
   geom_jitter(width = 0.05,color='#4682B4') + 
   geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
-  geom_text(data = cor_resultst_backproj, 
-            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+ geom_text(data = cor_resultst_backproj, 
+            aes(x = -Inf, y = Inf, 
+                label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+            hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
   facet_wrap(~phenotype,scales = 'free')+
   theme_pubr(base_family = 'Arial',base_size=25)+
   theme(text = element_text(family = 'Arial',size=25),
@@ -1083,7 +1102,7 @@ all_scatter_plot <- left_join(data.frame(Yh) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 all_cor_results <- all_scatter_plot %>%
   group_by(phenotype) %>%
-  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  summarise(cor_test = list(cor.test(true, prediction,method = 'spearman'))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
@@ -1092,8 +1111,9 @@ ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
   geom_jitter(width = 0.05,color='#4682B4') + 
   geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = all_cor_results, 
-            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+            aes(x = -Inf, y = Inf, 
+                label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+            hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
   facet_wrap(~phenotype,scales = 'free')+
   theme_pubr(base_family = 'Arial',base_size=28)+
   theme(text = element_text(family = 'Arial',size=28),
@@ -1108,8 +1128,9 @@ ggplot(all_scatter_plot,aes(x = true,y=prediction)) +
   geom_jitter(width = 0.05,color='#4682B4') + 
   geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = all_cor_results, 
-            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+            aes(x = -Inf, y = Inf, 
+                label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+            hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
   facet_wrap(~phenotype,scales = 'free')+
   theme_pubr(base_family = 'Arial',base_size=28)+
   theme(text = element_text(family = 'Arial',size=28),
@@ -1152,7 +1173,7 @@ all_scatter_plot_backproj <- left_join(data.frame(Yh) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 all_cor_results_backproj <- all_scatter_plot_backproj %>%
   group_by(phenotype) %>%
-  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  summarise(cor_test = list(cor.test(true, prediction,method = 'spearman'))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
@@ -1160,8 +1181,9 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
   geom_jitter(width = 0.05,color='#4682B4') + 
   geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
   geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
-            aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-            hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+              aes(x = -Inf, y = Inf, 
+                  label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+              hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
   ylab('Predicted') + xlab('Measured')+
   ylim(c(0,4))+
   facet_wrap(~phenotype,scales = 'free')+
@@ -1174,8 +1196,9 @@ all_cor_results_backproj <- all_scatter_plot_backproj %>%
      geom_jitter(width = 0.05,color='#4682B4') + 
      geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
      geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
-               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+               aes(x = -Inf, y = Inf, 
+                   label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+               hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
      ylab('Predicted') + xlab('Measured')+
      ylim(c(0,8))+
      facet_wrap(~phenotype,scales = 'free')+
@@ -1197,8 +1220,9 @@ ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
     geom_jitter(width = 0.05,color='#4682B4') + 
     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
     geom_text(data = all_cor_results_backproj%>% filter(phenotype=='Fibrosis stage'), 
-              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-              hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+              aes(x = -Inf, y = Inf, 
+                  label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+              hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
     ylab('Predicted') + xlab('Measured')+
     ylim(c(0,4))+
     facet_wrap(~phenotype,scales = 'free')+
@@ -1213,8 +1237,9 @@ ggsave('../figures/AllData_backproj_Scatterplot_human_plsr.png',
      geom_jitter(width = 0.05,color='#4682B4') + 
      geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
      geom_text(data = all_cor_results_backproj%>% filter(phenotype!='Fibrosis stage'), 
-               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-               hjust = 0, vjust =  1.5, size = 9, family = 'Arial') +
+               aes(x = -Inf, y = Inf, 
+                   label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+               hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
      ylab('Predicted') + xlab('Measured')+
      ylim(c(0,8))+
      facet_wrap(~phenotype,scales = 'free')+
@@ -1246,7 +1271,7 @@ all_scatter_plot_backproj_retrained <- left_join(data.frame(Yh) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
 all_cor_results_backproj_retrained <- all_scatter_plot_backproj_retrained %>%
   group_by(phenotype) %>%
-  summarise(cor_test = list(cor.test(true, prediction))) %>%
+  summarise(cor_test = list(cor.test(true, prediction,method='spearman'))) %>%
   mutate(cor_coef = map_dbl(cor_test, ~ .x$estimate),
          p_value = map_dbl(cor_test, ~ .x$p.value)) %>%
   mutate(phenotype=ifelse(phenotype=='fibrosis','Fibrosis stage',phenotype))
@@ -1254,8 +1279,9 @@ all_cor_results_backproj_retrained <- all_scatter_plot_backproj_retrained %>%
     geom_jitter(width = 0.05,color='#4682B4') + 
     geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
     geom_text(data = all_cor_results_backproj_retrained%>% filter(phenotype=='Fibrosis stage'), 
-              aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-              hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+              aes(x = -Inf, y = Inf, 
+                  label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+              hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
     ylab('Predicted') + xlab('Measured')+
     ylim(c(0,4))+
     facet_wrap(~phenotype,scales = 'free')+
@@ -1268,8 +1294,9 @@ all_cor_results_backproj_retrained <- all_scatter_plot_backproj_retrained %>%
      geom_jitter(width = 0.05,color='#4682B4') + 
      geom_abline(slope=1,intercept = 0,linetype = 'dashed',color='black',linewidth = 1.5)+
      geom_text(data = all_cor_results_backproj_retrained%>% filter(phenotype!='Fibrosis stage'), 
-               aes(x = 0, y = Inf, label = sprintf("r = %.2f, p = %.2g", cor_coef, p_value)),
-               hjust = 0, vjust =  1.5, size = 8, family = 'Arial') +
+               aes(x = -Inf, y = Inf, 
+                   label = sprintf("rho~'='~%.2f*','~p~'='~%.2g", cor_coef, p_value)),
+               hjust = -0.1, vjust = 1.5, size = 8, family = 'Arial', parse = TRUE) +
      ylab('Predicted') + xlab('Measured')+
      ylim(c(0,8))+
      facet_wrap(~phenotype,scales = 'free')+
@@ -1288,42 +1315,42 @@ ggsave('../figures/AllData_backproj_retrained_Scatterplot_human_plsr.png',
        units = 'in',
        dpi=600)
 ### Now see convergence of performance
-train_performance_res <- rbind(data.frame(r = train_r,
-                                          fold = seq(1,length(train_r)),
-                                          model = rep('PLSR',length(train_r))),
-                               data.frame(r = train_r_translatables,
-                                          fold = seq(1,length(train_r_translatables)),
-                                          model = rep('translatable PCs',length(train_r_translatables))),
-                               data.frame(r = train_r_basis_1,
-                                          fold = seq(1,length(train_r_basis_1)),
-                                          model = rep('PCs + extra LV1',length(train_r_basis_1))),
-                               data.frame(r = train_r_all_extra_bases,
-                                          fold = seq(1,length(train_r_all_extra_bases)),
-                                          model = rep('PCs + extra LV1 + extra LV2',length(train_r_all_extra_bases))))
+train_performance_res <- rbind(data.frame(rho = train_rho,
+                                          fold = seq(1,length(train_rho)),
+                                          model = rep('PLSR',length(train_rho))),
+                               data.frame(rho = train_rho_translatables,
+                                          fold = seq(1,length(train_rho_translatables)),
+                                          model = rep('translatable PCs',length(train_rho_translatables))),
+                               data.frame(rho = train_rho_basis_1,
+                                          fold = seq(1,length(train_rho_basis_1)),
+                                          model = rep('PCs + extra LV1',length(train_rho_basis_1))),
+                               data.frame(rho = train_rho_all_extra_bases,
+                                          fold = seq(1,length(train_rho_all_extra_bases)),
+                                          model = rep('PCs + extra LV1 + extra LV2',length(train_rho_all_extra_bases))))
 train_performance_res <- train_performance_res %>% group_by(model) %>% 
-  mutate(mu = mean(r)) %>% mutate(std = sd(r)) %>%
-  mutate(min_r = min(r)) %>% mutate(max_r = max(r))%>%
+  mutate(mu = mean(rho)) %>% mutate(std = sd(rho)) %>%
+  mutate(min_rho = min(rho)) %>% mutate(max_rho = max(rho))%>%
   ungroup() %>% mutate(set='train')
-mu_plsr_train <- mean(train_r)
-sd_plsr_train <- sd(train_r)
-test_performance_res <- rbind(data.frame(r = test_r,
-                                          fold = seq(1,length(test_r)),
-                                          model = rep('PLSR',length(test_r))),
-                               data.frame(r = test_r_translatables,
-                                          fold = seq(1,length(test_r_translatables)),
-                                          model = rep('translatable PCs',length(test_r_translatables))),
-                               data.frame(r = test_r_basis_1,
-                                          fold = seq(1,length(test_r_basis_1)),
-                                          model = rep('PCs + extra LV1',length(test_r_basis_1))),
-                               data.frame(r = test_r_all_extra_bases,
-                                          fold = seq(1,length(test_r_all_extra_bases)),
-                                          model = rep('PCs + extra LV1 + extra LV2',length(test_r_all_extra_bases))))
+mu_plsr_train <- mean(train_rho)
+sd_plsr_train <- sd(train_rho)
+test_performance_res <- rbind(data.frame(rho = test_rho,
+                                          fold = seq(1,length(test_rho)),
+                                          model = rep('PLSR',length(test_rho))),
+                               data.frame(rho = test_rho_translatables,
+                                          fold = seq(1,length(test_rho_translatables)),
+                                          model = rep('translatable PCs',length(test_rho_translatables))),
+                               data.frame(rho = test_rho_basis_1,
+                                          fold = seq(1,length(test_rho_basis_1)),
+                                          model = rep('PCs + extra LV1',length(test_rho_basis_1))),
+                               data.frame(rho = test_rho_all_extra_bases,
+                                          fold = seq(1,length(test_rho_all_extra_bases)),
+                                          model = rep('PCs + extra LV1 + extra LV2',length(test_rho_all_extra_bases))))
 test_performance_res <- test_performance_res %>% group_by(model) %>% 
-  mutate(mu = mean(r)) %>% mutate(std = sd(r)) %>%
-  mutate(min_r = min(r)) %>% mutate(max_r = max(r))%>%
+  mutate(mu = mean(rho)) %>% mutate(std = sd(rho)) %>%
+  mutate(min_rho = min(rho)) %>% mutate(max_rho = max(rho))%>%
   ungroup() %>% mutate(set='test')
-mu_plsr_test <- mean(test_r)
-sd_plsr_test <- sd(test_r)
+mu_plsr_test <- mean(test_rho)
+sd_plsr_test <- sd(test_rho)
 all_performance_res <- rbind(train_performance_res,
                              test_performance_res)
 all_performance_res$model <- factor(all_performance_res$model,
@@ -1333,8 +1360,8 @@ all_performance_res$model <- factor(all_performance_res$model,
                                                'PCs + extra LV1 + extra LV2'))
 
 # Save
-saveRDS(all_performance_res,'../results/all_performance_res.rds')
-saveRDS(test_r_shuffled,'../results/test_r_shuffled_cumulative_lvs.rds')
+saveRDS(all_performance_res,'../results/all_performance_res_spearman.rds')
+saveRDS(test_rho_shuffled,'../results/test_r_shuffled_cumulative_lvs_spearman.rds')
 
 plt_required_extra_basis <- 
   ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
@@ -1344,7 +1371,7 @@ plt_required_extra_basis <-
   geom_errorbar(aes(ymax = mu + std/sqrt(num_folds),ymin = mu - std/sqrt(num_folds)),
                 width = 0.05,size=0.75)+
   ylim(NA,1) +
-  ylab('Pearson correlation')+
+  ylab('Spearman`s rank correlation')+
   ### train performance shaded area
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
@@ -1379,14 +1406,14 @@ plt_required_extra_basis <-
   geom_ribbon(inherit.aes = FALSE,
               xmin=1,xmax=3,
               aes(x=seq(1,3,length.out=nrow(all_performance_res %>% filter(model!='PLSR'))),
-                  ymin = mean(test_r_shuffled) - sd(test_r_shuffled)/sqrt(num_folds), 
-                  ymax = mean(test_r_shuffled) + sd(test_r_shuffled)/sqrt(num_folds)), 
+                  ymin = mean(test_rho_shuffled) - sd(test_rho_shuffled)/sqrt(num_folds), 
+                  ymax = mean(test_rho_shuffled) + sd(test_rho_shuffled)/sqrt(num_folds)), 
               fill = "#F564E3", alpha = 0.25) +  # Shaded area
-  annotate("segment", x = 1, xend = 3, y = mean(test_r_shuffled), 
-           yend = mean(test_r_shuffled), 
+  annotate("segment", x = 1, xend = 3, y = mean(test_rho_shuffled), 
+           yend = mean(test_rho_shuffled), 
            color = "#F564E3", linewidth = 1,linetype='dashed') +
   annotate('text',x=1,
-           y=mean(test_r_shuffled) + 0.03,
+           y=mean(test_rho_shuffled) + 0.03,
            label="shuffled model performance", 
            hjust = 0 , 
            size=size_annotation)+

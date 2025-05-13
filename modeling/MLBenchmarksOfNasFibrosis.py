@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from sklearn.svm import SVR, LinearSVR
 from sklearn.linear_model import Lasso,Ridge,ElasticNet
 from sklearn.cross_decomposition import PLSRegression
@@ -13,7 +12,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import GridSearchCV
 import joblib
 import xgboost as XGB
-from scipy.stats import pearsonr
+from scipy.stats import rankdata
 import pyreadr
 from pathlib import Path
 import argparse
@@ -31,10 +30,45 @@ def pearson_r(y_true, y_pred):
     r = r_num / r_den
     return r #torch.mean(r)
 
+def pair_spearmanr_torch(x, y, axis=0):
+    # Rank-transform using double argsort trick (torch has no rankdata)
+    def rank_tensor(a, axis):
+        sorter = a.argsort(dim=axis)
+        ranks = torch.zeros_like(a, dtype=torch.float, device=a.device)
+        if axis == 0:
+            ranks[sorter, torch.arange(a.size(1))] = torch.arange(1, a.size(0)+1, device=a.device).unsqueeze(1).float()
+        else:
+            ranks[torch.arange(a.size(0)).unsqueeze(1), sorter] = torch.arange(1, a.size(1)+1, device=a.device).float()
+        return ranks
+    x_ranked = rank_tensor(x, axis)
+    y_ranked = rank_tensor(y, axis)
+    # Now compute Pearson correlation on ranked data
+    mx = x_ranked.mean(dim=axis, keepdim=True)
+    my = y_ranked.mean(dim=axis, keepdim=True)
+    xm = x_ranked - mx
+    ym = y_ranked - my
+    r_num = (xm * ym).sum(dim=axis)
+    r_den = torch.sqrt((xm**2).sum(dim=axis) * (ym**2).sum(dim=axis))
+    r = r_num / r_den
+    return r
+
 def pair_pearsonr(x, y, axis=0):
     mx = np.mean(x, axis=axis, keepdims=True)
     my = np.mean(y, axis=axis, keepdims=True)
     xm, ym = x-mx, y-my
+    r_num = np.add.reduce(xm * ym, axis=axis)
+    r_den = np.sqrt((xm*xm).sum(axis=axis) * (ym*ym).sum(axis=axis))
+    r = r_num / r_den
+    return r
+
+def pair_spearmanr(x, y, axis=0):
+    # Rank the data along the specified axis
+    x_ranked = np.apply_along_axis(rankdata, axis, x)
+    y_ranked = np.apply_along_axis(rankdata, axis, y)
+    # Now compute Pearson correlation on ranked data
+    mx = np.mean(x_ranked, axis=axis, keepdims=True)
+    my = np.mean(y_ranked, axis=axis, keepdims=True)
+    xm, ym = x_ranked - mx, y_ranked - my
     r_num = np.add.reduce(xm * ym, axis=axis)
     r_den = np.sqrt((xm*xm).sum(axis=axis) * (ym*ym).sum(axis=axis))
     r = r_num / r_den
@@ -61,7 +95,7 @@ def L2Regularization(deepLearningModel, L2):
 ### Initialize the parsed arguments
 parser = argparse.ArgumentParser(description='Run different ML models')
 parser.add_argument('--model_types', metavar='N', type=str, nargs='*', help='models to train',default=['knn' ,'svmLinear','svmRBF','svmPoly','lasso','ridge','elasticNet','neuralNet','xgboost','rf','PLSR'])
-parser.add_argument('--cv_files_location', action='store',help='location of files used in CV training of originalPLSR model',default='../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/')
+parser.add_argument('--cv_files_location', action='store',help='location of files used in CV training of original PLSR model',default='../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/')
 parser.add_argument('--clinical_files_location', action='store',help='location of external clinical files',default='../preprocessing/TrainingValidationData/external_clinical_data/')
 parser.add_argument('--clinical_datasets', metavar='N', type=str, nargs='*', help='names of the external clinical datasets',default=['Hoang','Pantano'])
 parser.add_argument('--in_vitro_matrices_loc', action='store',help='location of gene weights/loadings/extra basis matrices of the in-vitro data',default='../results/')
@@ -161,15 +195,15 @@ for model in models:
     print('Begun fitting and evaluation for model: %s'%model_types[k])
     folder = '../results/MLresults/'+model_types[k]+'/'
     Path(folder).mkdir(parents=True, exist_ok=True)
-    val_r_extrl = np.zeros((num_folds,len(clinical_datasets)))
-    val_r_extrl_backproj = np.zeros((num_folds,len(clinical_datasets)))
-    val_r_extrl_extra = np.zeros((num_folds,len(clinical_datasets)))
-    val_r = []
-    train_r = []
-    val_r_backproj = []
-    train_r_backproj = []
-    val_r_extra = []
-    train_r_extra = [] 
+    val_rho_extrl = np.zeros((num_folds,len(clinical_datasets)))
+    val_rho_extrl_backproj = np.zeros((num_folds,len(clinical_datasets)))
+    val_rho_extrl_extra = np.zeros((num_folds,len(clinical_datasets)))
+    val_rho = []
+    train_rho = []
+    val_rho_backproj = []
+    train_rho_backproj = []
+    val_rho_extra = []
+    train_rho_extra = [] 
     for i in range(num_folds):
         x_train = pyreadr.read_r(cv_files_location+'Xh_train'+str(i+1)+'.rds')
         x_train = x_train[None]
@@ -185,51 +219,51 @@ for model in models:
             yhat_train = model.predict(x_train)
             yhat_val = model.predict(x_val)
             joblib.dump(model, folder + 'model' + str(i) + '.pkl')
-            train_r.append(pair_pearsonr(y_train.to_numpy(), yhat_train, axis=0).mean())
-            val_r.append(pair_pearsonr(y_val.to_numpy(), yhat_val, axis=0).mean())
+            train_rho.append(pair_spearmanr(y_train.to_numpy(), yhat_train, axis=0).mean())
+            val_rho.append(pair_spearmanr(y_val.to_numpy(), yhat_val, axis=0).mean())
 
             # prediction after backprojection
             #first for training data
             Xback_train = x_train.to_numpy() @  Wm @ Wm.T
             Xback_train = pd.DataFrame(Xback_train, index=x_train.index, columns=x_train.columns)
             yhat_train_backproj = model.predict(Xback_train)
-            train_r_backproj.append(pair_pearsonr(y_train.to_numpy(), yhat_train_backproj, axis=0).mean())
+            train_rho_backproj.append(pair_spearmanr(y_train.to_numpy(), yhat_train_backproj, axis=0).mean())
             # repeat for valdiation
             Xback_val = x_val.to_numpy() @  Wm @ Wm.T
             Xback_val = pd.DataFrame(Xback_val, index=x_val.index, columns=x_val.columns)
             yhat_val_backproj = model.predict(Xback_val)
-            val_r_backproj.append(pair_pearsonr(y_val.to_numpy(), yhat_val_backproj, axis=0).mean())
+            val_rho_backproj.append(pair_spearmanr(y_val.to_numpy(), yhat_val_backproj, axis=0).mean())
 
             # prediction after backprojection with Wm_total
             #first for training data
             Xextra_train = x_train.to_numpy() @  Wm_total @ Wm_total.T
             Xextra_train = pd.DataFrame(Xextra_train, index=x_train.index, columns=x_train.columns)
             yhat_train_extra = model.predict(Xextra_train)
-            train_r_extra.append(pair_pearsonr(y_train.to_numpy(), yhat_train_extra, axis=0).mean())
+            train_rho_extra.append(pair_spearmanr(y_train.to_numpy(), yhat_train_extra, axis=0).mean())
             # repeat for valdiation
             Xextra_val = x_val.to_numpy() @  Wm_total @ Wm_total.T
             Xextra_val = pd.DataFrame(Xextra_val, index=x_val.index, columns=x_val.columns)
             yhat_val_extra = model.predict(Xextra_val)
-            val_r_extra.append(pair_pearsonr(y_val.to_numpy(), yhat_val_extra, axis=0).mean())
+            val_rho_extra.append(pair_spearmanr(y_val.to_numpy(), yhat_val_extra, axis=0).mean())
 
             # evaluate in external clinical datasets
             for j in range(len(clinical_datasets)):
                 X = pd.read_csv(clinical_files_location+'/'+clinical_datasets[j]+'/'+'X.csv',index_col=0)
                 Y = pd.read_csv(clinical_files_location+'/'+clinical_datasets[j]+'/'+'Y.csv',index_col=0)
                 yhat_val_ext = model.predict(X)
-                val_r_extrl[i][j] = pair_pearsonr(Y.to_numpy(), yhat_val_ext, axis=0).mean()
+                val_rho_extrl[i][j] = pair_spearmanr(Y.to_numpy(), yhat_val_ext, axis=0).mean()
 
                 # prediction after backprojection
                 X2 = X.to_numpy() @  Wm @ Wm.T
                 X2 = pd.DataFrame(X2, index=X.index, columns=X.columns)
                 yhat_val_backproj = model.predict(X2)
-                val_r_extrl_backproj[i][j] = pair_pearsonr(Y.to_numpy(), yhat_val_backproj, axis=0).mean()
+                val_rho_extrl_backproj[i][j] = pair_spearmanr(Y.to_numpy(), yhat_val_backproj, axis=0).mean()
 
                 # prediction after backprojection with Wm_total
                 X2 = X.to_numpy() @  Wm_total @ Wm_total.T
                 X2 = pd.DataFrame(X2, index=X.index, columns=X.columns)
                 yhat_val_extra = model.predict(X2)
-                val_r_extrl_extra[i][j] = pair_pearsonr(Y.to_numpy(), yhat_val_extra, axis=0).mean()
+                val_rho_extrl_extra[i][j] = pair_spearmanr(Y.to_numpy(), yhat_val_extra, axis=0).mean()
         else:
             Wm_gpu = torch.tensor(Wm,dtype=torch.double).to(device)
             Wm_total_gpu = torch.tensor(Wm_total,dtype=torch.double).to(device)
@@ -268,7 +302,7 @@ for model in models:
                     loss.backward()
                     optimizer.step()
                     all_losses.append(loss.item())
-                    r = torch.mean(pearson_r(dataOut, Yhat))
+                    r = torch.mean(pair_spearmanr_torch(dataOut, Yhat))
                     all_r.append(r.item())
                 if(e%10==0 or e==0 or e==epochs-1):
                     print('Fold {}, Epoch {}/{} : Loss = {}, r = {}'.format(i,e+1,epochs,np.mean(all_losses),np.mean(all_r)))
@@ -281,82 +315,82 @@ for model in models:
             yhat_train = model(torch.tensor(x_train.values).to(device))
             yhat_val = model(torch.tensor(x_val.values).to(device))
             torch.save(model, folder+'model'+str(i)+'.pt')
-            train_r.append(pearson_r(torch.tensor(y_train.values,dtype=torch.double).to(device), yhat_train).mean().item())
-            val_r.append(pearson_r(torch.tensor(y_val.values,dtype=torch.double).to(device), yhat_val).mean().item())
+            train_rho.append(pair_spearmanr_torch(torch.tensor(y_train.values,dtype=torch.double).to(device), yhat_train).mean().item())
+            val_rho.append(pair_spearmanr_torch(torch.tensor(y_val.values,dtype=torch.double).to(device), yhat_val).mean().item())
 
             # prediction after backprojection
             #first for training data
             Xback_train = x_train.to_numpy() @  Wm @ Wm.T
             yhat_train_backproj = model(torch.tensor(Xback_train).to(device))
-            train_r_backproj.append(pearson_r(torch.tensor(y_train.to_numpy(),dtype=torch.double).to(device), yhat_train_backproj).mean().item())
+            train_rho_backproj.append(pair_spearmanr_torch(torch.tensor(y_train.to_numpy(),dtype=torch.double).to(device), yhat_train_backproj).mean().item())
             # repeat for valdiation
             Xback_val = x_val.to_numpy() @  Wm @ Wm.T
             yhat_val_backproj = model(torch.tensor(Xback_val).to(device))
-            val_r_backproj.append(pearson_r(torch.tensor(y_val.to_numpy(),dtype=torch.double).to(device), yhat_val_backproj).mean().item())
+            val_rho_backproj.append(pair_spearmanr_torch(torch.tensor(y_val.to_numpy(),dtype=torch.double).to(device), yhat_val_backproj).mean().item())
 
             # prediction after backprojection with Wm_total
             #first for training data
             Xextra_train = x_train.to_numpy() @  Wm_total @ Wm_total.T
             yhat_train_extra = model(torch.tensor(Xextra_train).to(device))
-            train_r_extra.append(pearson_r(torch.tensor(y_train.to_numpy(),dtype=torch.double).to(device), yhat_train_extra).mean().item())
+            train_rho_extra.append(pair_spearmanr_torch(torch.tensor(y_train.to_numpy(),dtype=torch.double).to(device), yhat_train_extra).mean().item())
             # repeat for valdiation
             Xextra_val = x_val.to_numpy() @  Wm_total @ Wm_total.T
             yhat_val_extra = model(torch.tensor(Xextra_val).to(device))
-            val_r_extra.append(pearson_r(torch.tensor(y_val.to_numpy(),dtype=torch.double).to(device), yhat_val_extra).mean().item())
+            val_rho_extra.append(pair_spearmanr_torch(torch.tensor(y_val.to_numpy(),dtype=torch.double).to(device), yhat_val_extra).mean().item())
 
             # evaluate in external clinical datasets
             for j in range(len(clinical_datasets)):
                 X = torch.tensor(pd.read_csv(clinical_files_location+'/'+clinical_datasets[j]+'/'+'X.csv',index_col=0).values,dtype=torch.double).to(device)
                 Y = torch.tensor(pd.read_csv(clinical_files_location+'/'+clinical_datasets[j]+'/'+'Y.csv',index_col=0).values,dtype=torch.double).to(device)
                 yhat_val_ext = model(X)
-                val_r_extrl[i][j] = pearson_r(Y, yhat_val_ext).mean().item()
+                val_rho_extrl[i][j] = pair_spearmanr_torch(Y, yhat_val_ext).mean().item()
 
                 # prediction after backprojection
                 X2 = X @  Wm_gpu @ Wm_gpu.T
                 yhat_val_backproj = model(X2)
-                val_r_extrl_backproj[i][j] = pearson_r(Y, yhat_val_backproj).mean().item()
+                val_rho_extrl_backproj[i][j] = pair_spearmanr_torch(Y, yhat_val_backproj).mean().item()
                 
                 # prediction after backprojection with Wm_total
                 X2 = X @  Wm_total_gpu @ Wm_total_gpu.T
                 yhat_val_extra = model(X2)
-                val_r_extrl_extra[i][j] = pearson_r(Y, yhat_val_extra).mean().item()
+                val_rho_extrl_extra[i][j] = pair_spearmanr_torch(Y, yhat_val_extra).mean().item()
         print('Finished fold %s'%i)
-    res_val = pd.DataFrame({'human genes':val_r,'back-projected':val_r_backproj,'optimized MPS':val_r_extra})
+    res_val = pd.DataFrame({'human genes':val_rho,'back-projected':val_rho_backproj,'optimized MPS':val_rho_extra})
     res_val['fold'] = [xx for xx in range(num_folds)]
     res_val['model'] = model_types[k]
     res_val['set'] = 'test'
-    res_train = pd.DataFrame({'human genes':train_r,'back-projected':train_r_backproj,'optimized MPS':train_r_extra})
+    res_train = pd.DataFrame({'human genes':train_rho,'back-projected':train_rho_backproj,'optimized MPS':train_rho_extra})
     res_train['fold'] = [xx for xx in range(num_folds)]
     res_train['model'] = model_types[k]
     res_train['set'] = 'train'
     df_res_cv = pd.concat([res_val,res_train])
-    df_res_cv.to_csv(folder+'df_res_cv.csv')
+    df_res_cv.to_csv(folder+'df_res_cv_spearman.csv')
 
-    val_r_extrl = pd.DataFrame(val_r_extrl)
-    val_r_extrl = val_r_extrl.reset_index()
-    val_r_extrl.columns =  ['fold']+clinical_datasets
-    val_r_extrl['model'] = model_types[k]
-    val_r_extrl = pd.melt(val_r_extrl, id_vars=['model','fold'], var_name='dataset', value_name='r')
-    val_r_extrl['set'] = 'external dataset'
-    val_r_extrl['input'] = 'human genes'
+    val_rho_extrl = pd.DataFrame(val_rho_extrl)
+    val_rho_extrl = val_rho_extrl.reset_index()
+    val_rho_extrl.columns =  ['fold']+clinical_datasets
+    val_rho_extrl['model'] = model_types[k]
+    val_rho_extrl = pd.melt(val_rho_extrl, id_vars=['model','fold'], var_name='dataset', value_name='rho')
+    val_rho_extrl['set'] = 'external dataset'
+    val_rho_extrl['input'] = 'human genes'
 
-    val_r_extrl_backproj = pd.DataFrame(val_r_extrl_backproj)
-    val_r_extrl_backproj = val_r_extrl_backproj.reset_index()
-    val_r_extrl_backproj.columns = ['fold']+clinical_datasets
-    val_r_extrl_backproj['model'] = model_types[k]
-    val_r_extrl_backproj = pd.melt(val_r_extrl_backproj, id_vars=['model','fold'], var_name='dataset', value_name='r')
-    val_r_extrl_backproj['set'] = 'external dataset'
-    val_r_extrl_backproj['input'] = 'back-projected'
+    val_rho_extrl_backproj = pd.DataFrame(val_rho_extrl_backproj)
+    val_rho_extrl_backproj = val_rho_extrl_backproj.reset_index()
+    val_rho_extrl_backproj.columns = ['fold']+clinical_datasets
+    val_rho_extrl_backproj['model'] = model_types[k]
+    val_rho_extrl_backproj = pd.melt(val_rho_extrl_backproj, id_vars=['model','fold'], var_name='dataset', value_name='rho')
+    val_rho_extrl_backproj['set'] = 'external dataset'
+    val_rho_extrl_backproj['input'] = 'back-projected'
 
-    val_r_extrl_extra = pd.DataFrame(val_r_extrl_extra)
-    val_r_extrl_extra = val_r_extrl_extra.reset_index()
-    val_r_extrl_extra.columns =  ['fold']+clinical_datasets
-    val_r_extrl_extra['model'] = model_types[k]
-    val_r_extrl_extra = pd.melt(val_r_extrl_extra, id_vars=['model','fold'], var_name='dataset', value_name='r')
-    val_r_extrl_extra['set'] = 'external dataset'
-    val_r_extrl_extra['input'] = 'optimized MPS'
+    val_rho_extrl_extra = pd.DataFrame(val_rho_extrl_extra)
+    val_rho_extrl_extra = val_rho_extrl_extra.reset_index()
+    val_rho_extrl_extra.columns =  ['fold']+clinical_datasets
+    val_rho_extrl_extra['model'] = model_types[k]
+    val_rho_extrl_extra = pd.melt(val_rho_extrl_extra, id_vars=['model','fold'], var_name='dataset', value_name='rho')
+    val_rho_extrl_extra['set'] = 'external dataset'
+    val_rho_extrl_extra['input'] = 'optimized MPS'
     
-    df_res_external  = pd.concat([val_r_extrl,val_r_extrl_backproj,val_r_extrl_extra])
-    df_res_external.to_csv(folder+'df_res_external.csv')
+    df_res_external  = pd.concat([val_rho_extrl,val_rho_extrl_backproj,val_rho_extrl_extra])
+    df_res_external.to_csv(folder+'df_res_external_spearman.csv')
 
     k+=1
