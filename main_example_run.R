@@ -147,14 +147,14 @@ for (theta in thetas){
   Wproj <- Wm_opt %*% u
   Wtmp <- cbind(Wm,Wproj)
   Yhat <- cbind(1, Xh %*% Wtmp %*% t(Wtmp) %*% Wh) %*% rbind(apply(Yh,2,mean),Bh)
-  corr_nas <- cor(Yhat[,1],Zh$NAS)
-  corr_fib <- cor(Yhat[,2],Zh$fibrosis)
+  corr_nas <- cor(Yhat[,1],Zh$NAS,method = 'spearman')
+  corr_fib <- cor(Yhat[,2],Zh$fibrosis,method = 'spearman')
   df <- rbind(df,
               data.frame(theta = theta,phenotype = 'NAS',corr=corr_nas),
               data.frame(theta = theta,phenotype = 'fibrosis',corr=corr_fib))
 }
 # Save
-saveRDS(df, paste0("results/df_correlation_radial_", tolower(target_dataset), ".rds"))
+saveRDS(df, paste0("results/df_correlation_radial_", tolower(target_dataset), "_speamaned.rds"))
 
 
 ### Can you even predict sex extra LVs ?
@@ -513,4 +513,5 @@ resp_net <- merge(resp_net, metadata_human, by = "Response_ID")
 extra_basis_inferred_perts <- perturnation_activity_inference(Wm_opt,metadata_human,dorotheaData,resp_net)
 saveRDS(extra_basis_inferred_perts, paste0("results/extra_basis_", tolower(target_dataset),"_inferred_perts.rds"))
 
-extra_TC_inferred_perts <- perturnation_activity_inference(Wm_combo,metadata_human,dorotheaData,resp_net)
+# colnames(Wm_combo) <- NULL
+# extra_TC_inferred_perts <- perturnation_activity_inference(Wm_combo,metadata_human,dorotheaData,resp_net)

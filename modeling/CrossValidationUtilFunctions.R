@@ -26,40 +26,49 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                                         'human_backprojected_retrained',
                                                         'human_backprojected_into_translatable_lvs',
                                                         'analytical_optimal'),
-                                               LVs=9){
+                                               LVs=8){
   val_mae <- matrix(0,nrow = folds,ncol = 2)
   train_mae <- matrix(0,nrow = folds,ncol = 2)
   val_r <- matrix(0,nrow = folds,ncol = 2)
   train_r <- matrix(0,nrow = folds,ncol = 2)
-  val_r <- matrix(0,nrow = folds,ncol = 2)
+  val_rho <- matrix(0,nrow = folds,ncol = 2)  # New: Spearman's correlation for validation
+  train_rho <- matrix(0,nrow = folds,ncol = 2) # New: Spearman's correlation for training
   all_models <- NULL
   val_r_shuffle_y <- matrix(0,nrow = folds,ncol = 2)
+  val_rho_shuffle_y <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_shuffle_y <- matrix(0,nrow = folds,ncol = 2)
   val_r_shuffle_x <- matrix(0,nrow = folds,ncol = 2)
+  val_rho_shuffle_x <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_shuffle_x <- matrix(0,nrow = folds,ncol = 2)
   val_r_random_x <- matrix(0,nrow = folds,ncol = 2)
+  val_rho_random_x <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_random_x <- matrix(0,nrow = folds,ncol = 2)
   performance_df <- NULL
   train_r_shuffle_w <- matrix(0,nrow = folds,ncol = 2)
   val_r_shuffle_w <- matrix(0,nrow = folds,ncol = 2)
+  train_rho_shuffle_w <- matrix(0,nrow = folds,ncol = 2) # New
+  val_rho_shuffle_w <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_shuffle_w <- matrix(0,nrow = folds,ncol = 2)
   train_mae_shuffle_w <- matrix(0,nrow = folds,ncol = 2)
   train_r_shuffle_bh <- matrix(0,nrow = folds,ncol = 2)
   val_r_shuffle_bh <- matrix(0,nrow = folds,ncol = 2)
+  train_rho_shuffle_bh <- matrix(0,nrow = folds,ncol = 2) # New
+  val_rho_shuffle_bh <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_shuffle_bh <- matrix(0,nrow = folds,ncol = 2)
   train_mae_shuffle_bh <- matrix(0,nrow = folds,ncol = 2)
-  # train_r_random_w <- matrix(0,nrow = folds,ncol = 2)
-  # val_r_random_w <- matrix(0,nrow = folds,ncol = 2)
-  # val_mae_random_w <- matrix(0,nrow = folds,ncol = 2)
-  # train_mae_random_w <- matrix(0,nrow = folds,ncol = 2)
   train_r_shuffle_wopt <- matrix(0,nrow = folds,ncol = 2)
   val_r_shuffle_wopt <- matrix(0,nrow = folds,ncol = 2)
+  train_rho_shuffle_wopt <- matrix(0,nrow = folds,ncol = 2) # New
+  val_rho_shuffle_wopt <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_shuffle_wopt <- matrix(0,nrow = folds,ncol = 2)
   train_mae_shuffle_wopt <- matrix(0,nrow = folds,ncol = 2)
   val_r_scramble_x <- matrix(0,nrow = folds,ncol = 2)
   train_r_scramble_x <- matrix(0,nrow = folds,ncol = 2)
+  val_rho_scramble_x <- matrix(0,nrow = folds,ncol = 2) # New
+  train_rho_scramble_x <- matrix(0,nrow = folds,ncol = 2) # New
   val_mae_scramble_x <- matrix(0,nrow = folds,ncol = 2)
   train_mae_scramble_x <- matrix(0,nrow = folds,ncol = 2)
+  
   for (j in 1:folds){
     message(paste0('Begun fold ',j))
     x_train <- readRDS(paste0(file_loc,'Xh_train',j,'.rds'))
@@ -78,9 +87,11 @@ cross_validation_complete_pipeline <- function(W_invitro,
     y_val_hat <- predict(plsr_model,x_val)
     train_r[j,] <- diag(cor(y_train_hat,y_train))
     val_r[j,] <- diag(cor(y_val_hat,y_val))
+    train_rho[j,] <- diag(cor(y_train_hat,y_train, method = "spearman")) # New
+    val_rho[j,] <- diag(cor(y_val_hat,y_val, method = "spearman")) # New
     val_mae[j,] <- apply(abs(y_val_hat-y_val),2,mean)
     train_mae[j,] <- apply(abs(y_train_hat-y_train),2,mean)
-
+    
     ### shuffled labels model
     y_train_shuffled <- y_train[sample.int(nrow(y_train)),]
     rownames(y_train_shuffled) <- rownames(y_train)
@@ -93,6 +104,7 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                  info.txtC = "none")
     y_hat_val <- predict(plsr_model_shuffle_y,x_val)
     val_r_shuffle_y[j,]<- diag(cor(y_hat_val,y_val))
+    val_rho_shuffle_y[j,]<- diag(cor(y_hat_val,y_val, method = "spearman")) # New
     val_mae_shuffle_y[j,] <- apply(abs(y_hat_val-y_val),2,mean)
     
     ### shuffled features model
@@ -107,6 +119,7 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                  info.txtC = "none")
     y_hat_val <- predict(plsr_model_shuffle_x,x_val)
     val_r_shuffle_x[j,]<- diag(cor(y_hat_val,y_val))
+    val_rho_shuffle_x[j,]<- diag(cor(y_hat_val,y_val, method = "spearman")) # New
     val_mae_shuffle_x[j,] <- apply(abs(y_hat_val-y_val),2,mean)
     
     ### random features model
@@ -122,6 +135,7 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                 info.txtC = "none")
     y_hat_test <- predict(plsr_model_random_x,x_val)
     val_r_random_x[j,]<- diag(cor(y_hat_test,y_val))
+    val_rho_random_x[j,]<- diag(cor(y_hat_test,y_val, method = "spearman")) # New
     val_mae_random_x[j,] <- apply(abs(y_hat_test-y_val),2,mean)
     
     # Get Wh of PLSR
@@ -132,7 +146,6 @@ cross_validation_complete_pipeline <- function(W_invitro,
       Wh[rownames(plsr_model@weightMN)[ii], ] <- plsr_model@weightMN[ii,]
     }
     # Get regression coefficients
-    # Bh <- matrix(lm(y_train ~ x_train %*% Wh) %>% coef(), ncol = 2)
     Bh <- t(plsr_model@weightMN) %*% plsr_model@coefficientMN
     
     # Define projection matrices to make more readable
@@ -148,6 +161,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       y_hat_train <- cbind(1, Thm_train)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
       train_r[j,] <- diag(cor(y_hat_train,y_train))
       val_r[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -161,6 +176,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       y_hat_train <- cbind(1, Thm_train_shuffled)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
       train_r_shuffle_w[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_w[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_w[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_w[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_w[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_w[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -173,6 +190,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       y_hat_train <- cbind(1, Thm_train)  %*% Bshuffled
       train_r_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_bh[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_bh[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -189,6 +208,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       }
       train_r[j,] <- diag(cor(y_hat_train,y_train))
       val_r[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -210,18 +231,21 @@ cross_validation_complete_pipeline <- function(W_invitro,
       }
       train_r_shuffle_w[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_w[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_w[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_w[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_w[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_w[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
     }else if (task=='human_backprojected_into_translatable_lvs'){
-      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh))
-      Wm_new <- Wm_new$Wm_new
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro,Bh)
+      Wm_new <- Wm_new$Wm_TC
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       train_r[j,] <- diag(cor(y_hat_train,y_train))
       val_r[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -229,59 +253,60 @@ cross_validation_complete_pipeline <- function(W_invitro,
       W_invitro_suffled <- W_invitro[sample.int(nrow(W_invitro)),]
       rownames(W_invitro_suffled) <- rownames(W_invitro)
       colnames(W_invitro_suffled) <- colnames(W_invitro)
-      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro_suffled,
-                                    rbind(apply(y_train,2,mean),Bh))
-      Wm_new <- Wm_new$Wm_new
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro_suffled,Bh)
+      Wm_new <- Wm_new$Wm_TC
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       train_r_shuffle_w[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_w[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_w[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_w[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_w[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_w[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
       ##shuffle x_train
       x_train_shuffled <- x_train[,sample.int(ncol(x_train))]
       colnames(x_train_shuffled) <- colnames(x_train)
-      Wm_new <- get_translatable_LV_2phenotype(x_train_shuffled, y_train, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh))
-      Wm_new <- Wm_new$Wm_new
+      Wm_new <- get_translatable_LV_2phenotype(x_train_shuffled, y_train, Wh, W_invitro,Bh)
+      Wm_new <- Wm_new$Wm_TC
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       val_r_shuffle_x[j,] <- diag(cor(y_hat_test,y_val))
+      val_rho_shuffle_x[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_x[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       
       ### shuffled labels model
       y_train_shuffled <- y_train[sample.int(nrow(y_train)),]
       rownames(y_train_shuffled) <- rownames(y_train)
-      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train_shuffled, Wh, W_invitro,
-                                    rbind(apply(y_train,2,mean),Bh))
-      Wm_new <- Wm_new$Wm_new
+      Wm_new <- get_translatable_LV_2phenotype(x_train, y_train_shuffled, Wh, W_invitro,Bh)
+      Wm_new <- Wm_new$Wm_TC
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       val_r_shuffle_y[j,] <- diag(cor(y_hat_test,y_val))
+      val_rho_shuffle_y[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_y[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       
       ##shuffle Bh
       Bshuffled <- Bh[sample.int(nrow(Bh)),]
       rownames(Bshuffled) <- rownames(Bh)
       colnames(Bshuffled) <- colnames(Bh)
-      Bshuffled <- rbind(apply(y_train,2,mean),Bshuffled)
+      # Bshuffled <- rbind(apply(y_train,2,mean),Bshuffled)
       Wm_new <- get_translatable_LV_2phenotype(x_train, y_train, Wh, W_invitro,
-                                    Bshuffled)
-      Wm_new <- Wm_new$Wm_new
+                                               Bshuffled)
+      Wm_new <- Wm_new$Wm_TC
       colnames(Wm_new) <- paste0(target_dataset,"_LVdata",1:ncol(Wm_new))
       y_hat_train <- cbind(1, x_train %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       y_hat_test <- cbind(1, x_val %*% Wm_new %*% t(Wm_new) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       train_r_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_bh[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_bh[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
     }else if (task=='analytical_optimal'){
-      # phi <- cbind(1, Wh)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
       phi <- Wh %*% Bh
-      # phi <- phi/sqrt(apply(phi^2,2,sum))
       Wm_opt <- analytical_solution_opt(y=y_train,
                                         W_invitro = W_invitro,
                                         phi = phi)
@@ -292,6 +317,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       train_r[j,] <- diag(cor(y_hat_train,y_train))
       val_r[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -306,6 +333,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       train_r_shuffle_wopt[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_wopt[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_wopt[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_wopt[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_wopt[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_wopt[j,] <- apply(abs(y_hat_train-y_train),2,mean)
       
@@ -324,6 +353,8 @@ cross_validation_complete_pipeline <- function(W_invitro,
       y_hat_test <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
       train_r_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train))
       val_r_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val))
+      train_rho_shuffle_bh[j,] <- diag(cor(y_hat_train,y_train, method = "spearman")) # New
+      val_rho_shuffle_bh[j,] <- diag(cor(y_hat_test,y_val, method = "spearman")) # New
       val_mae_shuffle_bh[j,] <- apply(abs(y_hat_test-y_val),2,mean)
       train_mae_shuffle_bh[j,] <- apply(abs(y_hat_train-y_train),2,mean)
     }
@@ -332,14 +363,24 @@ cross_validation_complete_pipeline <- function(W_invitro,
   if (task=='human_plsr'){
     performance_df_r <- rbind(data.frame(set='train',type='model',NAS = train_r[,1],fibrosis = train_r[,2],fold = seq(1,num_folds),task=task) %>%
                                 gather('phenotype','value',-set,-type,-fold,-task),
-                            data.frame(set='test',type='model',NAS = val_r[,1],fibrosis = val_r[,2],fold = seq(1,num_folds),task=task)%>%
-                              gather('phenotype','value',-set,-type,-fold,-task),
-                            data.frame(set='test',type='shuffle Y',NAS = val_r_shuffle_y[,1],fibrosis = val_r_shuffle_y[,2],fold = seq(1,num_folds),task=task)%>%
-                              gather('phenotype','value',-set,-type,-fold,-task),
-                            data.frame(set='test',type='shuffle X',NAS = val_r_shuffle_x[,1],fibrosis = val_r_shuffle_x[,2],fold = seq(1,num_folds),task=task)%>%
-                              gather('phenotype','value',-set,-type,-fold,-task),
-                            data.frame(set='test',type='random X',NAS = val_r_random_x[,1],fibrosis = val_r_random_x[,2],fold = seq(1,num_folds),task=task)%>%
-                              gather('phenotype','value',-set,-type,-fold,-task))
+                              data.frame(set='test',type='model',NAS = val_r[,1],fibrosis = val_r[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='test',type='shuffle Y',NAS = val_r_shuffle_y[,1],fibrosis = val_r_shuffle_y[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='test',type='shuffle X',NAS = val_r_shuffle_x[,1],fibrosis = val_r_shuffle_x[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='test',type='random X',NAS = val_r_random_x[,1],fibrosis = val_r_random_x[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task))
+    performance_df_rho <- rbind(data.frame(set='train',type='model',NAS = train_rho[,1],fibrosis = train_rho[,2],fold = seq(1,num_folds),task=task) %>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='model',NAS = val_rho[,1],fibrosis = val_rho[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle Y',NAS = val_rho_shuffle_y[,1],fibrosis = val_rho_shuffle_y[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle X',NAS = val_rho_shuffle_x[,1],fibrosis = val_rho_shuffle_x[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='random X',NAS = val_rho_random_x[,1],fibrosis = val_rho_random_x[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task))
     performance_df_mae <- rbind(data.frame(set='train',type='model',NAS = train_mae[,1],fibrosis = train_mae[,2],fold = seq(1,num_folds),task=task) %>%
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='model',NAS = val_mae[,1],fibrosis = val_mae[,2],fold = seq(1,num_folds),task=task)%>%
@@ -351,20 +392,34 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                 data.frame(set='test',type='random X',NAS = val_mae_random_x[,1],fibrosis = val_mae_random_x[,2],fold = seq(1,num_folds),task=task)%>%
                                   gather('phenotype','value',-set,-type,-fold,-task))
     
-    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),performance_df_mae %>% mutate(metric = 'MAE'))
+    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),
+                            performance_df_rho %>% mutate(metric = 'rho'), # New
+                            performance_df_mae %>% mutate(metric = 'MAE'))
   }else if (task=='human_backprojected'){
     performance_df_r <- rbind(data.frame(set='train',type='model',NAS = train_r[,1],fibrosis = train_r[,2],fold = seq(1,num_folds),task=task) %>%
-                               gather('phenotype','value',-set,-type,-fold,-task),
-                             data.frame(set='test',type='model',NAS = val_r[,1],fibrosis = val_r[,2],fold = seq(1,num_folds),task=task)%>%
-                               gather('phenotype','value',-set,-type,-fold,-task),
-                             data.frame(set='train',type='shuffle W',NAS = train_r_shuffle_w[,1],fibrosis = train_r_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>%
-                               gather('phenotype','value',-set,-type,-fold,-task),
-                             data.frame(set='test',type='shuffle W',NAS = val_r_shuffle_w[,1],fibrosis = val_r_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>%
-                               gather('phenotype','value',-set,-type,-fold,-task),
-                             data.frame(set='train',type='shuffle Bh',NAS = train_r_shuffle_bh[,1],fibrosis = train_r_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
-                               gather('phenotype','value',-set,-type,-fold,-task),
-                             data.frame(set='test',type='shuffle Bh',NAS = val_r_shuffle_bh[,1],fibrosis = val_r_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
-                               gather('phenotype','value',-set,-type,-fold,-task))
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='test',type='model',NAS = val_r[,1],fibrosis = val_r[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='train',type='shuffle W',NAS = train_r_shuffle_w[,1],fibrosis = train_r_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='test',type='shuffle W',NAS = val_r_shuffle_w[,1],fibrosis = val_r_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='train',type='shuffle Bh',NAS = train_r_shuffle_bh[,1],fibrosis = train_r_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task),
+                              data.frame(set='test',type='shuffle Bh',NAS = val_r_shuffle_bh[,1],fibrosis = val_r_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
+                                gather('phenotype','value',-set,-type,-fold,-task))
+    performance_df_rho <- rbind(data.frame(set='train',type='model',NAS = train_rho[,1],fibrosis = train_rho[,2],fold = seq(1,num_folds),task=task) %>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='model',NAS = val_rho[,1],fibrosis = val_rho[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle W',NAS = train_rho_shuffle_w[,1],fibrosis = train_rho_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle W',NAS = val_rho_shuffle_w[,1],fibrosis = val_rho_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle Bh',NAS = train_rho_shuffle_bh[,1],fibrosis = train_rho_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle Bh',NAS = val_rho_shuffle_bh[,1],fibrosis = val_rho_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task))
     performance_df_mae <- rbind(data.frame(set='train',type='model',NAS = train_mae[,1],fibrosis = train_mae[,2],fold = seq(1,num_folds),task=task) %>%
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='model',NAS = val_mae[,1],fibrosis = val_mae[,2],fold = seq(1,num_folds),task=task)%>%
@@ -377,7 +432,9 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='shuffle Bh',NAS = val_mae_shuffle_bh[,1],fibrosis = val_mae_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
                                   gather('phenotype','value',-set,-type,-fold,-task))
-    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),performance_df_mae %>% mutate(metric = 'MAE'))
+    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),
+                            performance_df_rho %>% mutate(metric = 'rho'), # New
+                            performance_df_mae %>% mutate(metric = 'MAE'))
   }else if (task=='human_backprojected_retrained'){
     performance_df_r <- rbind(data.frame(set='train',type='model',NAS = train_r[,1],fibrosis = train_r[,2],fold = seq(1,num_folds),task=task) %>%
                                 gather('phenotype','value',-set,-type,-fold,-task),
@@ -387,6 +444,14 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                 gather('phenotype','value',-set,-type,-fold,-task),
                               data.frame(set='test',type='shuffle W',NAS = val_r_shuffle_w[,1],fibrosis = val_r_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>%
                                 gather('phenotype','value',-set,-type,-fold,-task))
+    performance_df_rho <- rbind(data.frame(set='train',type='model',NAS = train_rho[,1],fibrosis = train_rho[,2],fold = seq(1,num_folds),task=task) %>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='model',NAS = val_rho[,1],fibrosis = val_rho[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle W',NAS = train_rho_shuffle_w[,1],fibrosis = train_rho_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle W',NAS = val_rho_shuffle_w[,1],fibrosis = val_rho_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task))
     performance_df_mae <- rbind(data.frame(set='train',type='model',NAS = train_mae[,1],fibrosis = train_mae[,2],fold = seq(1,num_folds),task=task) %>%
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='model',NAS = val_mae[,1],fibrosis = val_mae[,2],fold = seq(1,num_folds),task=task)%>%
@@ -395,7 +460,9 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='shuffle W',NAS = val_mae_shuffle_w[,1],fibrosis = val_mae_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>%
                                   gather('phenotype','value',-set,-type,-fold,-task))
-    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),performance_df_mae %>% mutate(metric = 'MAE'))
+    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),
+                            performance_df_rho %>% mutate(metric = 'rho'), # New
+                            performance_df_mae %>% mutate(metric = 'MAE'))
   }else if (task=='human_backprojected_into_translatable_lvs'){
     performance_df_r <- rbind(data.frame(set='train',type='model',NAS = train_r[,1],fibrosis = train_r[,2],fold = seq(1,num_folds),task=task) %>%
                                 gather('phenotype','value',-set,-type,-fold,-task),
@@ -409,6 +476,18 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                 gather('phenotype','value',-set,-type,-fold,-task),
                               data.frame(set='test',type='shuffle Bh',NAS = val_r_shuffle_bh[,1],fibrosis = val_r_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
                                 gather('phenotype','value',-set,-type,-fold,-task))
+    performance_df_rho <- rbind(data.frame(set='train',type='model',NAS = train_rho[,1],fibrosis = train_rho[,2],fold = seq(1,num_folds),task=task) %>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='model',NAS = val_rho[,1],fibrosis = val_rho[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle W',NAS = train_rho_shuffle_w[,1],fibrosis = train_rho_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle W',NAS = val_rho_shuffle_w[,1],fibrosis = val_rho_shuffle_w[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle Bh',NAS = train_rho_shuffle_bh[,1],fibrosis = train_rho_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle Bh',NAS = val_rho_shuffle_bh[,1],fibrosis = val_rho_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task))
     performance_df_mae <- rbind(data.frame(set='train',type='model',NAS = train_mae[,1],fibrosis = train_mae[,2],fold = seq(1,num_folds),task=task) %>%
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='model',NAS = val_mae[,1],fibrosis = val_mae[,2],fold = seq(1,num_folds),task=task)%>%
@@ -421,7 +500,9 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='shuffle Bh',NAS = val_mae_shuffle_bh[,1],fibrosis = val_mae_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
                                   gather('phenotype','value',-set,-type,-fold,-task))
-    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),performance_df_mae %>% mutate(metric = 'MAE'))
+    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),
+                            performance_df_rho %>% mutate(metric = 'rho'), # New
+                            performance_df_mae %>% mutate(metric = 'MAE'))
   }else{
     performance_df_r <- rbind(data.frame(set='train',type='model',NAS = train_r[,1],fibrosis = train_r[,2],fold = seq(1,num_folds),task=task) %>%
                                 gather('phenotype','value',-set,-type,-fold,-task),
@@ -435,6 +516,18 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                 gather('phenotype','value',-set,-type,-fold,-task),
                               data.frame(set='test',type='shuffle Bh',NAS = val_r_shuffle_bh[,1],fibrosis = val_r_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
                                 gather('phenotype','value',-set,-type,-fold,-task))
+    performance_df_rho <- rbind(data.frame(set='train',type='model',NAS = train_rho[,1],fibrosis = train_rho[,2],fold = seq(1,num_folds),task=task) %>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='model',NAS = val_rho[,1],fibrosis = val_rho[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle Wopt',NAS = train_rho_shuffle_wopt[,1],fibrosis = train_rho_shuffle_wopt[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle Wopt',NAS = val_rho_shuffle_wopt[,1],fibrosis = val_rho_shuffle_wopt[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='train',type='shuffle Bh',NAS = train_rho_shuffle_bh[,1],fibrosis = train_rho_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task),
+                                data.frame(set='test',type='shuffle Bh',NAS = val_rho_shuffle_bh[,1],fibrosis = val_rho_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>% # New
+                                  gather('phenotype','value',-set,-type,-fold,-task))
     performance_df_mae <- rbind(data.frame(set='train',type='model',NAS = train_mae[,1],fibrosis = train_mae[,2],fold = seq(1,num_folds),task=task) %>%
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='model',NAS = val_mae[,1],fibrosis = val_mae[,2],fold = seq(1,num_folds),task=task)%>%
@@ -447,7 +540,9 @@ cross_validation_complete_pipeline <- function(W_invitro,
                                   gather('phenotype','value',-set,-type,-fold,-task),
                                 data.frame(set='test',type='shuffle Bh',NAS = val_mae_shuffle_bh[,1],fibrosis = val_mae_shuffle_bh[,2],fold = seq(1,num_folds),task=task)%>%
                                   gather('phenotype','value',-set,-type,-fold,-task))
-    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),performance_df_mae %>% mutate(metric = 'MAE'))
+    performance_df <- rbind(performance_df_r %>% mutate(metric = 'r'),
+                            performance_df_rho %>% mutate(metric = 'rho'), # New
+                            performance_df_mae %>% mutate(metric = 'MAE'))
   }
   return(performance_df)
 }

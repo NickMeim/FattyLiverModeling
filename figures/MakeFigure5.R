@@ -24,7 +24,7 @@ Xm <- processed_data_list$Xm
 ### Panel - Radial plots
 
 # Load results and process
-df_radial <- readRDS(paste0("results/df_correlation_radial_", tolower(target_dataset), ".rds"))
+df_radial <- readRDS(paste0("results/df_correlation_radial_", tolower(target_dataset), "_speamaned.rds"))
 
 df_mu_radial <- df_radial %>% group_by(theta) %>% mutate(mu = mean(corr)) %>% ungroup() %>%
   select(-corr,-phenotype) %>% unique() %>%
@@ -47,7 +47,7 @@ plt_cor_radial <-   ggplot(df_radial %>% filter(theta<=90),
   geom_hline(yintercept = 0.4,color='black',lwd = size_line)+
   geom_vline(xintercept = 90,color='black',lwd = size_line)+
   coord_radial(start = 0, end = 0.5*pi, inner.radius = 0.4, expand = F, direction = 1) +
-  labs(y = "Pearson correlation", x = 'LV extra 2') +
+  labs(y = "Spearman`s rank correlation", x = 'LV extra 2') +
   ggtitle('LV extra 1') +
   scale_color_brewer(palette = "Dark2")
 
