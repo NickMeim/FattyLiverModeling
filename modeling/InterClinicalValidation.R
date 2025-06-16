@@ -75,12 +75,12 @@ for (dataset in external_clinical_datasets){
   colnames(Y) <- c('NAS','fibrosis')
   ### Run a small 5-fold cross validation procedure for 
   data_splits <- createMultiFolds(y = Y[,2], k = 10, times = 10)
-  train_r <- NULL
-  val_r <- NULL
-  train_r_backproj <- NULL
-  val_r_backproj <- NULL
-  train_r_extra <- NULL
-  val_r_extra <- NULL
+  train_rho <- NULL
+  val_rho <- NULL
+  train_rho_backproj <- NULL
+  val_rho_backproj <- NULL
+  train_rho_extra <- NULL
+  val_rho_extra <- NULL
   j <- 1
   for (ind in data_splits){
     name_fold_id <- names(data_splits)[j]
@@ -97,8 +97,8 @@ for (dataset in external_clinical_datasets){
                        info.txtC = "none")
     y_train_hat <- predict(plsr_model,x_train)
     y_val_hat <- predict(plsr_model,x_val)
-    train_r[j] <- mean(diag(cor(y_train_hat,y_train)))
-    val_r[j] <- mean(diag(cor(y_val_hat,y_val)))
+    train_rho[j] <- mean(diag(cor(y_train_hat,y_train,method ='spearman')))
+    val_rho[j] <- mean(diag(cor(y_val_hat,y_val,method ='spearman')))
     
     # Get Wh of PLSR
     Wh <- matrix(data = 0, ncol = ncol(plsr_model@weightMN), nrow = ncol(Xh))
@@ -118,34 +118,34 @@ for (dataset in external_clinical_datasets){
     y_train_hat <- cbind(1, x_train %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
     y_val_hat <- cbind(1, x_val %*% Wm_tot %*% t(Wm_tot) %*% Wh) %*% rbind(apply(y_train,2,mean),Bh)
     
-    train_r_extra[j] <- mean(diag(cor(y_train_hat,y_train)))
-    val_r_extra[j] <- mean(diag(cor(y_val_hat,y_val)))
+    train_rho_extra[j] <- mean(diag(cor(y_train_hat,y_train,method ='spearman')))
+    val_rho_extra[j] <- mean(diag(cor(y_val_hat,y_val,method ='spearman')))
     
     ### simple backprojection 
     y_val_hat <- cbind(1, Thm_val)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
     y_train_hat <- cbind(1, Thm_train)  %*% rbind(apply(y_train,2,mean),t(plsr_model@weightMN) %*% plsr_model@coefficientMN)
-    train_r_backproj[j] <- mean(diag(cor(y_train_hat,y_train)))
-    val_r_backproj[j] <- mean(diag(cor(y_val_hat,y_val)))
+    train_rho_backproj[j] <- mean(diag(cor(y_train_hat,y_train,method ='spearman')))
+    val_rho_backproj[j] <- mean(diag(cor(y_val_hat,y_val,method ='spearman')))
     
     print(paste0('Finished ',j,' fold out of ',length(data_splits)))
     j <- j+1
   }
-  tmp_train <- data.frame(PLSR = train_r,PC = train_r_backproj,'extra basis'=train_r_extra,fold_ids = names(data_splits)) %>% 
+  tmp_train <- data.frame(PLSR = train_rho,PC = train_rho_backproj,'extra basis'=train_rho_extra,fold_ids = names(data_splits)) %>% 
     mutate(dataset = dataset) %>% mutate(set = 'train')
-  tmp_val <- data.frame(PLSR = val_r,PC =val_r_backproj,'extra basis'=val_r_extra,fold_ids = names(data_splits)) %>% 
+  tmp_val <- data.frame(PLSR = val_rho,PC =val_rho_backproj,'extra basis'=val_rho_extra,fold_ids = names(data_splits)) %>% 
     mutate(dataset = dataset) %>% mutate(set = 'test')
   df_results <- rbind(df_results,tmp_train,tmp_val)
 }
-# saveRDS(predictions_results,'../results/external_clinical_differences_results_of_extra_vector.rds')
-# #df_results <- readRDS('../results/external_clinical_performance_of_extra_vector.rds')
-df_results <- df_results %>% gather('model','r',-dataset,-set,-fold_ids)
+# saveRDS(df_results,'../results/external_clinical_differences_results_of_extra_vector_spearman.rds')
+#df_results <- readRDS('../results/external_clinical_performance_of_extra_vector_spearman.rds')
+df_results <- df_results %>% gather('model','rho',-dataset,-set,-fold_ids)
 # df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','extra basis',
 #                                                    ifelse(model!='PLSR','in-vitro PCs','original PLSR')))
 df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','optimized MPS',
                                                    ifelse(model!='PLSR','truncated','human genes')))
 df_results$model <- factor(df_results$model,levels = c('human genes','truncated','optimized MPS'))
 df_results <- df_results %>% separate('fold_ids',into = c('fold','repetition')) %>%
-  group_by(dataset,model,set,repetition) %>% mutate(r_mu = mean(r))  %>% ungroup()%>%
+  group_by(dataset,model,set,repetition) %>% mutate(rho_mu = mean(rho))  %>% ungroup()%>%
   select(-repetition,-fold) %>% unique()
 
 ### Visualize 
@@ -159,10 +159,10 @@ model_comparisons <- list(
 )
 df_results$set <- factor(df_results$set,levels=c('train','test')) 
 df_results  <- left_join(df_results,
-                 df_results %>% select(-r) %>% unique() %>% 
-                   group_by(dataset,model,set) %>% mutate(total_se = sd(r_mu)) %>%
+                 df_results %>% select(-rho) %>% unique() %>% 
+                   group_by(dataset,model,set) %>% mutate(total_se = sd(rho_mu)) %>%
                    ungroup())
-df_results <- df_results %>% group_by(dataset,model,set) %>%  mutate(all_mu = mean(r_mu)) %>% ungroup()
+df_results <- df_results %>% group_by(dataset,model,set) %>%  mutate(all_mu = mean(rho_mu)) %>% ungroup()
 # p1 <- ggviolin(df_results %>% filter(dataset=='Hoang'),x='model',y='r',fill = 'model') +
 #   geom_boxplot(data=df_results %>% select(dataset,model,set,r_mu) %>% unique() %>% filter(dataset=='Hoang'),
 #                aes(x=model,y=r_mu,fill=model),
@@ -183,10 +183,10 @@ df_results <- df_results %>% group_by(dataset,model,set) %>%  mutate(all_mu = me
 #                                         c('human genes','truncated')),
 #                      label.y = c(0.98,0.98,1.03),
 #                      method = 'wilcox')
-p1 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,r_mu) %>% unique(),
-                x='model',y='r_mu',color = 'model',add='jitter') +
-  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.45,NA))+
-  xlab('')+ ylab('pearson`s correlation')+
+p1 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,rho_mu) %>% unique(),
+                x='model',y='rho_mu',color = 'model',add='jitter') +
+  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.40,NA))+
+  xlab('')+ ylab('spearman`s rank correlation')+
   ggtitle('Hoang')+
   theme(text = element_text(size = 30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
@@ -204,10 +204,10 @@ p1 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,m
                      size=8
                      )
 # print(p1)
-p2 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,r_mu) %>% unique(),
-                x='model',y='r_mu',color = 'model',add='jitter') +
-  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.45,NA))+
-  xlab('')+ ylab('pearson`s correlation')+
+p2 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,rho_mu) %>% unique(),
+                x='model',y='rho_mu',color = 'model',add='jitter') +
+  scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.4,NA))+
+  xlab('')+ ylab('spearman`s rank correlation')+
   ggtitle('Pantano')+
   theme(text = element_text(size = 30,family = 'Arial'),
         plot.title = element_text(hjust = 0.5),
@@ -246,9 +246,9 @@ external_clinical_datasets <- c("Hoang","Pantano")
 df_results <- data.frame()
 num_folds <- 10
 num_LVs <- 8
-val_r_shuffle_y <- matrix(0,nrow = 10,ncol = 2)
-val_r_shuffle_x <- matrix(0,nrow = 10,ncol = 2)
-val_r <- matrix(0,nrow = 10,ncol = 2)
+val_rho_shuffle_y <- matrix(0,nrow = 10,ncol = 2)
+val_rho_shuffle_x <- matrix(0,nrow = 10,ncol = 2)
+val_rho <- matrix(0,nrow = 10,ncol = 2)
 predictions_results <- data.frame()
 for (i in 1:num_folds){
   x_train <- readRDS(paste0('../preprocessing/TrainingValidationData/WholePipeline/crossfoldPLSR/Xh_train',i,'.rds'))
@@ -299,7 +299,7 @@ for (i in 1:num_folds){
     
     ## PLSR original
     y_val_hat <- predict(plsr_model,X)
-    val_r[i,j] <- mean(diag(cor(y_val_hat,Y)))
+    val_rho[i,j] <- mean(diag(cor(y_val_hat,Y,method = 'spearman')))
     tmp_plsr <- rbind(data.frame(score= Y[,'NAS'],
                                  prediction = y_val_hat[,'NAS']) %>% mutate(phenotype='NAS'),
                       data.frame(score= Y[,'fibrosis'],
@@ -309,33 +309,33 @@ for (i in 1:num_folds){
     
     ## Shuffled labels
     y_hat_val <- predict(plsr_model_shuffle_y,X)
-    val_r_shuffle_y[i,j]<- mean(diag(cor(y_hat_val,Y)))
+    val_rho_shuffle_y[i,j]<- mean(diag(cor(y_hat_val,Y,method = 'spearman')))
     
     ## Shuffled features
     y_hat_val <- predict(plsr_model_shuffle_x,X)
-    val_r_shuffle_x[i,j]<- mean(diag(cor(y_hat_val,Y)))
+    val_rho_shuffle_x[i,j]<- mean(diag(cor(y_hat_val,Y,method = 'spearman')))
     
     j <- j+1
   }
   
   print(paste0('Finished ',i,' fold out of ',num_folds))
 }
-colnames(val_r) <- external_clinical_datasets
-colnames(val_r_shuffle_x) <- external_clinical_datasets
-colnames(val_r_shuffle_y) <- external_clinical_datasets
-df_results <- rbind(as.data.frame(val_r) %>% mutate(model = 'PLSR'),
-                    as.data.frame(val_r_shuffle_x) %>% mutate(model = 'shuffled features'),
-                    as.data.frame(val_r_shuffle_y) %>% mutate(model = 'shuffled labels'))
-df_results <- df_results %>% gather('dataset','r',-model)
+colnames(val_rho) <- external_clinical_datasets
+colnames(val_rho_shuffle_x) <- external_clinical_datasets
+colnames(val_rho_shuffle_y) <- external_clinical_datasets
+df_results <- rbind(as.data.frame(val_rho) %>% mutate(model = 'PLSR'),
+                    as.data.frame(val_rho_shuffle_x) %>% mutate(model = 'shuffled features'),
+                    as.data.frame(val_rho_shuffle_y) %>% mutate(model = 'shuffled labels'))
+df_results <- df_results %>% gather('dataset','rho',-model)
 df_results$model <- factor(df_results$model,levels = c('PLSR','shuffled labels','shuffled features'))
 
 model_comparisons <- list(
   c('PLSR', 'shuffled labels'),
   c('PLSR', 'shuffled features')
 )
-p <- ggboxplot(df_results,x='model',y='r',color = 'model',add='jitter') +
-  scale_y_continuous(breaks = seq(-0.2,1,0.1),limits = c(-0.25,1))+
-  xlab('')+ ylab('pearson`s correlation')+
+p <- ggboxplot(df_results,x='model',y='rho',color = 'model',add='jitter') +
+  scale_y_continuous(breaks = seq(-0.2,1,0.1),limits = c(-0.26,1))+
+  xlab('')+ ylab('spearman`s rank correlation')+
   # ggtitle('PLSR generalization in other in-vivo human datasets')+
   theme(text = element_text(size = 24,family = 'Arial'),
         axis.text.x = element_text(size = 22),
@@ -370,7 +370,7 @@ predictions_results <- predictions_results %>% mutate(prediction = ifelse(phenot
                                                                           prediction))
 ggscatter(predictions_results %>% filter(phenotype=='NAS') %>% filter(dataset=='Hoang') %>%
                          mutate(fold = paste0('fold no:',fold)),
-                       x='score',y='prediction',cor.coef = TRUE) +
+                       x='score',y='prediction',cor.coef = TRUE,cor.method = "spearman") +
   scale_y_continuous(limits = c(0,8))+
   xlab('Measured')+ ylab('Predicted')+
   geom_abline(slope=1)+
@@ -390,7 +390,7 @@ ggsave('../figures/PLSR_predictions_nas_hoang.eps',
        dpi = 600)
 ggscatter(predictions_results %>% filter(phenotype=='fibrosis') %>% filter(dataset=='Hoang') %>%
             mutate(fold = paste0('fold no:',fold)),
-          x='score',y='prediction',cor.coef = TRUE) +
+          x='score',y='prediction',cor.coef = TRUE,cor.method = "spearman") +
   scale_y_continuous(limits = c(0,4))+
   xlab('Measured')+ ylab('Predicted')+
   geom_abline(slope=1)+
@@ -410,7 +410,7 @@ ggsave('../figures/PLSR_predictions_fibrosis_hoang.eps',
        dpi = 600)
 ggscatter(predictions_results %>% filter(phenotype=='NAS') %>% filter(dataset=='Pantano') %>%
             mutate(fold = paste0('fold no:',fold)),
-          x='score',y='prediction',cor.coef = TRUE) +
+          x='score',y='prediction',cor.coef = TRUE,cor.method = "spearman") +
   scale_y_continuous(limits = c(0,8))+
   xlab('Measured')+ ylab('Predicted')+
   geom_abline(slope=1)+
@@ -430,7 +430,7 @@ ggsave('../figures/PLSR_predictions_nas_pantano.eps',
        dpi = 600)
 ggscatter(predictions_results %>% filter(phenotype=='fibrosis') %>% filter(dataset=='Pantano') %>%
             mutate(fold = paste0('fold no:',fold)),
-          x='score',y='prediction',cor.coef = TRUE) +
+          x='score',y='prediction',cor.coef = TRUE,cor.method = "spearman") +
   scale_y_continuous(limits = c(0,4))+
   xlab('Measured')+ ylab('Predicted')+
   geom_abline(slope=1)+

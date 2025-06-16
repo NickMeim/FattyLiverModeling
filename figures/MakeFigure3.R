@@ -106,7 +106,7 @@ plt_PLSR_training_back <- rbind(data.frame(Measured = Yh[,1], Phenotype = "MAS")
                                                          high = c(4,8)),
                                        aes(x = low, xend = high, y = low, yend = high),
                                        color = "black", linewidth = size_line, linetype = 2) +
-                          stat_cor(color = "black", size = size_annotation*0.7) +
+                          stat_cor(color = "black", size = size_annotation*0.7,method = 'spearman',cor.coef.name = 'rho') +
                           facet_wrap(~Phenotype, scales = "free") +
                           labs(x = "Measured", y = "Predicted")
 plt_PLSR_training_back <- add_theme(plt_PLSR_training_back)
@@ -195,7 +195,7 @@ ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_NAS.pdf",
 
 ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
        plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 3.2, height = 4.5)
-	   
+
 ### Supp info panel: MPS TC do not match any MPS PC exactly
 dummy <- data.frame(t(Wm) %*% Wm_TC)
 colnames(dummy) <- c('TC1', 'TC2')
