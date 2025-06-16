@@ -142,7 +142,7 @@ plt_hallmarks_LV1 <- add_theme(plt_hallmarks_LV1)
 
 #################################################################################
 ### Panel - ChemPert inference
-extra_basis_inferred_perts <- readRDS(paste0("results/extra_basis_", tolower(target_dataset),"_inferred_perts.rds"))
+extra_basis_inferred_perts <- readRDS(paste0("results/utilityRDS/extra_basis_", tolower(target_dataset),"_inferred_perts.rds"))
 
 plt_LV1_extra_chempert <- extra_basis_inferred_perts[[2]] %>% filter(condition == "V1") %>%
                               ggplot(aes(x=as.numeric(reorder(perturbation,activity)),y=activity)) +
