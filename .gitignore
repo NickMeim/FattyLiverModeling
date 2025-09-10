@@ -1,3 +1,6 @@
+results/liv2trans_results_*
+results/alldata_combos_hallmark_results.rds
+results/alldata_combos_pathway_results.rds
 insilico_case_study
 insilico_case_study/*
 src/matlab/*

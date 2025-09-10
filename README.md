@@ -10,6 +10,8 @@ It produces results relevent for making the study's figures. After running you m
 
 `get_MAS_Fibrosis_enrichment_score.R` : Supplementary script for gene signature enrichment using VIPER.
 
+`RunLIV2TRANS_for_datasets_pairs.R` : Supplementary script for running LIV2TRANS for all available combos of in vivo / in vitro datasets.
+
 ## Folders
 1. data : Folder where you should put your raw data. (Be careful larger files cannot be pushed into GitHub and can potentially crash it)
 2. preprocessing : Pre-processed data along with algorithms for the pre-processing of the raw data. (Be careful larger files cannot be pushed into GitHub and can potentially crash it)

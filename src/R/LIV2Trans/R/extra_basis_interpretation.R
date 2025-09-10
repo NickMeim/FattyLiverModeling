@@ -53,9 +53,6 @@ pathway_activity_interpretation <- function(W,W_PCspace,plotting=TRUE,lim=8){
 
   extra_basis_paths <- extra_basis_paths %>% group_by(condition,Pathway) %>%
     mutate(p_value=sum(abs(PC_space_paths)>=abs(score))/length(PC_space_paths))
-  extra_basis_paths  <- extra_basis_paths %>%
-    mutate(p.adj = p_value*length(unique(extra_basis_paths$Pathway))) %>%
-    mutate(p.adj = ifelse(p.adj>1,1,p.adj))
 
   plots <- NULL
   for (i in 1:ncol(W)){

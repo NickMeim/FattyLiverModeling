@@ -3,7 +3,7 @@ Type: Package
 Title: Identifies an extra basis to better predict in vivo phenotypes from in vitro models
 Version: 1.0.1
 Author: Nikolaos Meimetis
-Maintainer: The package maintainer <meimetis@mit.edu>
+Maintainer: The package maintainer is <meimetis@mit.edu>
 Description: This package train a PLSR or PLS-DA model to predict in vivo phenotype from molecular features.    Then it has the ability to identify an extra basis vector for the molecular space of an in vitro model so that the loss of performance when passing in vivo data through the in vitro pricipal component space is minimized.
 License: MIT + file LICENSE
 Imports:

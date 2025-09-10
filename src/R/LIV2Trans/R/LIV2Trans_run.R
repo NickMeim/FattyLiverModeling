@@ -278,21 +278,21 @@ get_translatable_LV_2phenotype <- function(Xh, Yh, Wh, Wm, Bh){
   for (ii in 1:ncol(Yh)){
     Yh[,ii] <- Yh[,ii] - Yh_mean[ii]
   }
-  
+
   # Get predicted phenotypes (centered) with all PCs
   # Find translatable components
   Yh_pred <- Xh %*% Wm %*% t(Wm) %*% Wh %*% Bh
   # Auxiliary matrices
   Xhat <- Xh %*% Wm
   phi <- t(Wm) %*% Wh %*% Bh
-  
+
   # Initialize optimal weights alpha
   alpha_opt <- NULL
-  
+
   # The TCs seemed to be spanned by the columns of phi, so we use those as a first estimate.
   # If phenotypes are fully independent this will be the final solution with no particular ordering
   alpha_0 <- apply(phi, MARGIN = 2, FUN = function(x){x/sqrt(sum(x^2))})
-  
+
   # Find a single vector that provides a good tradeoff in predicting all phenotypes
   # NOTE: Line search for the case of two phenotypes to find an optimal tradeoff.
   w <- seq(0,1,0.01)
@@ -310,24 +310,24 @@ get_translatable_LV_2phenotype <- function(Xh, Yh, Wh, Wm, Bh){
   w_min <- w[min(rowSums(error_TC)) == rowSums(error_TC)]
   # Append optimal solution as the first TC
   alpha_opt <- cbind(alpha_opt, norm_v(w_min*alpha_0[,1] + (1-w_min)*alpha_0[,2]))
-  
+
   # For two phenotypes a second TC is enough and can be calculated directly to be orthogonal to
   # the first one but still be spanned by phi1 and phi2. For more phenotypes (i.e. components)
   # we can find a new set of basis by doing regression on each deflated phenotype
   # i.e. lm(Xhat %*% phi - Xhat %*% alpha_opt %*% t(alpha_opt) %*% phi ~ Xhat - 1)
-  
+
   # For now, simply get the second TC as an orthogonal vector. Analytical solution
   c1 <- w_min + (1-w_min)*as.numeric(t(alpha_0[,1]) %*% alpha_0[,2])
   c2 <- w_min*as.numeric(t(alpha_0[,2]) %*% alpha_0[,1]) + (1-w_min)
-  
+
   alpha_opt <- cbind(alpha_opt,
                      norm_v(c2*alpha_0[,1] - c1*alpha_0[,2]))
-  
+
   # Convert to TCs and return
   Wm_TC <- Wm %*% alpha_opt
   colnames(Wm_TC) <- paste0("TC", 1:ncol(Wm_TC))
   return(list(Wm_TC = Wm_TC, alpha0 = alpha_0))
-  
+
 }
 
 #### Main run functions-----------------------------------------
@@ -363,15 +363,21 @@ liv2trans_run <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
                                     phi = phi)
   Wm_tot <- cbind(W_invitro, Wm_opt)
 
-  message('Calculating translatable components that contain most of the current predictive power...')
-  ### Find translatable LV of the in vitro system
-  ### Run evolutionary algorithm
-  Wm_combo <- get_translatable_LV_2phenotype (X_invivo, Y_invivo, Wh, W_invitro,Bh)
-  Wm_combo <- Wm_combo$Wm_TC
+  #Calculating translatable components that contain most of the current predictive power
+  if (ncol(Wm)>1){
+    message('Calculating translatable components that contain most of the current predictive power...')
+    ### Find translatable LV of the in vitro system
+    ### Run evolutionary algorithm
+    Wm_combo <- get_translatable_LV_2phenotype(X_invivo, Y_invivo, Wh, W_invitro,Bh)
+    Wm_combo <- Wm_combo$Wm_TC
+    rownames(Wm_combo) <- rownames(W_invitro)
+  }else{
+    message('Too few independent in vitro conditions (only 1 PC), PC1 is the translatable direction...')
+    Wm_combo <- W_invitro
+  }
 
   rownames(Wm_tot) <- rownames(W_invitro)
   rownames(Wm_opt) <- rownames(W_invitro)
-  rownames(Wm_combo) <- rownames(W_invitro)
   rownames(Wh) <- rownames(W_invitro)
 
   # evaluate performance of plsr model, and truncation with W_invitro , with
@@ -388,6 +394,9 @@ liv2trans_run <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
     mae_model <- mean(apply(abs(yhat-Y_invivo),2,mean))
     mae_extra_basis <- mean(apply(abs(yhat_extra_basis-Y_invivo),2,mean))
     mae_truncated <- mean(apply(abs(yhat_truncated-Y_invivo),2,mean))
+    spear_model <- mean(diag(cor(yhat,Y_invivo,method = 'spearman')))
+    spear_extra_basis <- mean(diag(cor(yhat_extra_basis,Y_invivo,method = 'spearman')))
+    spear_truncated <- mean(diag(cor(yhat_truncated,Y_invivo,method = 'spearman')))
   }else{
     r_model <- mean(cor(yhat,Y_invivo))
     r_extra_basis <- mean(cor(yhat_extra_basis,Y_invivo))
@@ -395,10 +404,14 @@ liv2trans_run <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
     mae_model <- mean(abs(yhat-Y_invivo))
     mae_extra_basis <- mean(abs(yhat_extra_basis-Y_invivo))
     mae_truncated <- mean(abs(yhat_truncated-Y_invivo))
+    spear_model <- mean(cor(yhat,Y_invivo,method = 'spearman'))
+    spear_extra_basis <- mean(cor(yhat_extra_basis,Y_invivo,method = 'spearman'))
+    spear_truncated <- mean(cor(yhat_truncated,Y_invivo,method = 'spearman'))
   }
 
   res_df = data.frame(r = c(r_model,r_extra_basis,r_truncated),
                       MAE = c(mae_model,mae_extra_basis,mae_truncated),
+                      rho = c(spear_model,spear_extra_basis,spear_truncated),
                       input = c('human features',
                                 'human features truncated via the optimized in vitro model',
                                 'human features truncated via the original in vitro model'),
@@ -435,6 +448,13 @@ liv2trans_run_CV <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
   val_mae_extra_basis <- NULL
   val_mae_truncated <- NULL
   val_mae_shuffled <- NULL
+  train_spear_model <- NULL
+  train_spear_extra_basis <- NULL
+  train_spear_truncated <- NULL
+  val_spear_model <- NULL
+  val_spear_extra_basis <- NULL
+  val_spear_truncated <- NULL
+  val_spear_shuffled <- NULL
 
   j <- 1
   for (ind in data_splits){
@@ -506,6 +526,9 @@ liv2trans_run_CV <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
       train_mae_model[j] <- mean(apply(abs(yhat-y_train),2,mean))
       train_mae_extra_basis[j] <- mean(apply(abs(yhat_extra_basis-y_train),2,mean))
       train_mae_truncated[j] <- mean(apply(abs(yhat_truncated-y_train),2,mean))
+      train_spear_model[j] <- mean(diag(cor(yhat,y_train,method = 'spearman')))
+      train_spear_extra_basis[j] <- mean(diag(cor(yhat_extra_basis,y_train,method = 'spearman')))
+      train_spear_truncated[j] <- mean(diag(cor(yhat_truncated,y_train,method = 'spearman')))
 
       val_r_model[j] <- mean(diag(cor(yhat_val,y_val)))
       val_r_extra_basis[j] <- mean(diag(cor(yhat_extra_basis_val,y_val)))
@@ -515,6 +538,10 @@ liv2trans_run_CV <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
       val_mae_extra_basis[j] <- mean(apply(abs(yhat_extra_basis_val-y_val),2,mean))
       val_mae_truncated[j] <- mean(apply(abs(yhat_truncated_val-y_val),2,mean))
       val_mae_shuffled[j] <- mean(apply(abs(yhat_val_shuffled-y_val),2,mean))
+      val_spear_model[j] <- mean(diag(cor(yhat_val,y_val,method = 'spearman')))
+      val_spear_extra_basis[j] <- mean(diag(cor(yhat_extra_basis_val,y_val,method = 'spearman')))
+      val_spear_truncated[j] <- mean(diag(cor(yhat_truncated_val,y_val,method = 'spearman')))
+      val_spear_shuffled[j] <- mean(diag(cor(yhat_val_shuffled,y_val,method = 'spearman')))
     }else{
       train_r_model[j] <- mean(cor(yhat,y_train))
       train_r_extra_basis[j] <- mean(cor(yhat_extra_basis,y_train))
@@ -522,6 +549,9 @@ liv2trans_run_CV <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
       train_mae_model[j] <- mean(abs(yhat-y_train))
       train_mae_extra_basis[j] <- mean(abs(yhat_extra_basis-y_train))
       train_mae_truncated[j] <- mean(abs(yhat_truncated-y_train))
+      train_spear_model[j] <- mean(cor(yhat,y_train,method = 'spearman'))
+      train_spear_extra_basis[j] <- mean(cor(yhat_extra_basis,y_train,method = 'spearman'))
+      train_spear_truncated[j] <- mean(cor(yhat_truncated,y_train,method = 'spearman'))
 
       val_r_model[j] <- mean(cor(yhat_val,y_val))
       val_r_extra_basis[j] <- mean(cor(yhat_extra_basis_val,y_val))
@@ -531,23 +561,30 @@ liv2trans_run_CV <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
       val_mae_extra_basis[j] <- mean(abs(yhat_extra_basis_val-y_val))
       val_mae_truncated[j] <- mean(abs(yhat_truncated_val-y_val))
       val_mae_shuffled[j] <- mean(abs(yhat_val_shuffled-y_val))
+      val_spear_model[j] <- mean(cor(yhat_val,y_val,method = 'spearman'))
+      val_spear_extra_basis[j] <- mean(cor(yhat_extra_basis_val,y_val,method = 'spearman'))
+      val_spear_truncated[j] <- mean(cor(yhat_truncated_val,y_val,method = 'spearman'))
+      val_spear_shuffled[j] <- mean(cor(yhat_val_shuffled,y_val,method = 'spearman'))
     }
     j <- j+1
   }
   res_train = rbind(data.frame(type = rep('PLSR',num_folds),
                                r = train_r_model,
+                               rho = train_spear_model,
                                MAE = train_mae_model,
                                fold = seq(1,num_folds),
                                input = rep('human features',num_folds),
                                set= rep('train',num_folds)),
                     data.frame(type = rep('PLSR',num_folds),
                                r = train_r_truncated,
+                               rho = train_spear_truncated,
                                MAE = train_mae_truncated,
                                fold = seq(1,num_folds),
                                input = rep('human features truncated via the original in vitro model',num_folds),
                                set= rep('train',num_folds)),
                     data.frame(type = rep('PLSR',num_folds),
                                r = train_r_extra_basis,
+                               rho = train_spear_extra_basis,
                                MAE = train_mae_extra_basis,
                                fold = seq(1,num_folds),
                                input = rep('human features truncated via the optimized in vitro model',num_folds),
@@ -555,24 +592,28 @@ liv2trans_run_CV <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
 
   res_val = rbind(data.frame(type = rep('PLSR',num_folds),
                                r = val_r_model,
+                               rho = val_spear_model,
                                MAE = val_mae_model,
                                fold = seq(1,num_folds),
                                input = rep('human features',num_folds),
                                set= rep('validation',num_folds)),
                     data.frame(type = rep('PLSR',num_folds),
                                r = val_r_truncated,
+                               rho = val_spear_truncated,
                                MAE = val_mae_truncated,
                                fold = seq(1,num_folds),
                                input = rep('human features truncated via the original in vitro model',num_folds),
                                set= rep('validation',num_folds)),
                     data.frame(type = rep('PLSR',num_folds),
                                r = val_r_extra_basis,
+                               rho = val_spear_extra_basis,
                                MAE = val_mae_extra_basis,
                                fold = seq(1,num_folds),
                                input = rep('human features truncated via the optimized in vitro model',num_folds),
                                set= rep('validation',num_folds)),
                   data.frame(type = rep('PLSR',num_folds),
                              r = val_r_shuffled,
+                             rho = val_spear_shuffled,
                              MAE = val_mae_shuffled,
                              fold = seq(1,num_folds),
                              input = rep('shuffled features',num_folds),
