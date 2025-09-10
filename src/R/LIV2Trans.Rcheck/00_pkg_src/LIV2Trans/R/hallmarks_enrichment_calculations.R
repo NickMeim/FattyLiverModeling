@@ -3,7 +3,8 @@ HallmarksFastenrichment <- function(signature_ids,
                            measurements,
                            axis_lab,
                            pval_adjustment=T,
-                           n_permutations=1000){
+                           n_permutations=1000,
+                           plotting=TRUE){
 
   # Load packages
   library(tidyverse)
@@ -116,7 +117,9 @@ HallmarksFastenrichment <- function(signature_ids,
                    plot.title = element_text(hjust = 0.5),
                    legend.key.size = unit(1.5, "lines"),
                    legend.position = 'none'))
-    print(p)
+    if (plotting){
+      print(p)
+    }
     plot_list[[i]] <- p
   }
   result <- list(enrich_results = df_msig, plots = plot_list)
