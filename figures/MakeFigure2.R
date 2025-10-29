@@ -4,12 +4,12 @@
 library(tidyverse)
 library(matrixStats)
 library(ggExtra)
-# root_dir <- "C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling"
-# setwd(root_dir)
-source("../utils/plotting_functions.R")
+root_dir <- "C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling"
+setwd(root_dir)
+source("utils/plotting_functions.R")
 target_dataset <- "Kostrzewski"
 ref_dataset <-  "Govaere"
-processed_data_list <- readRDS(paste0('../results/processed_data_list_',
+processed_data_list <- readRDS(paste0('results/processed_data_list_',
                                tolower(ref_dataset),'_',
                                tolower(target_dataset),'.rds'))
 Xh <- processed_data_list$Xh
@@ -17,7 +17,7 @@ Yh <- processed_data_list$Yh
 sex_inferred <- processed_data_list$sex_inferred
 Xm <- processed_data_list$Xm
 Wm <- processed_data_list$Wm
-plsr_model <- readRDS( paste0('../results/PLSR_model_',tolower(ref_dataset),'.rds'))
+plsr_model <- readRDS( paste0('results/PLSR_model_',tolower(ref_dataset),'.rds'))
 ## Get LV projections
 Zh_plsr <- plsr_model@scoreMN
 mcor <- cor(cbind(Zh_plsr,Yh))
@@ -53,7 +53,7 @@ plt_pheno_cor <- ggMarginal(plt_pheno_cor, type = "histogram", fill = "steelblue
 
 #################################################################################
 ### Panel - cross-validation of PLSR model
-performance_PLSR <- readRDS("../results/performance_df_human_plsr_spearman.rds")
+performance_PLSR <- readRDS("results/performance_df_human_plsr_spearman.rds")
 performance_PLSR <- performance_PLSR %>% mutate(type = ifelse(type=='model',set,type))
 performance_PLSR <- performance_PLSR %>% filter(metric=='rho') %>% select(-metric)
 performance_PLSR$type <- factor(performance_PLSR$type ,levels=c('train','test','shuffle Y','shuffle X','random X'))
@@ -105,10 +105,10 @@ plt_PLSR_human <- ggplot(invivo_plsr, aes(x=V1,y=V2,fill=normed_score)) +
 plt_PLSR_human <- add_theme(plt_PLSR_human)
 print(plt_PLSR_human)
 ### Save panels as figures
-ggsave(filename = "figure2/plt_pheno_cor.pdf", plot = plt_pheno_cor, units = "cm", width = 6, height = 5)
-ggsave(filename = "figure2/plt_PLSR_CV.pdf", plot = plt_PLSR_CV, units = "cm", width = 6, height = 6)
-ggsave(filename = "figure2/plt_PLSR_training.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 5)
-ggsave(filename = "figure2/plt_PLSR_human.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 5)
+ggsave(filename = "figures/figure2/plt_pheno_cor.pdf", plot = plt_pheno_cor, units = "cm", width = 6, height = 5)
+ggsave(filename = "figures/figure2/plt_PLSR_CV.pdf", plot = plt_PLSR_CV, units = "cm", width = 6, height = 6)
+ggsave(filename = "figures/figure2/plt_PLSR_training.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 5)
+ggsave(filename = "figures/figure2/plt_PLSR_human.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 5)
 # Save short versions of PLSR for figure 3
-ggsave(filename = "figure3/plt_PLSR_training_short.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 4)
-ggsave(filename = "figure3/plt_PLSR_human_short.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 4)
+ggsave(filename = "figures/figure3/plt_PLSR_training_short.pdf", plot = plt_PLSR_training, units = "cm", width = 6.5, height = 4)
+ggsave(filename = "figures/figure3/plt_PLSR_human_short.pdf", plot = plt_PLSR_human, units = "cm", width = 7.5, height = 4)

@@ -3,6 +3,7 @@
 ### These will be specific for the chosen datasets
 library(tidyverse)
 library(matrixStats)
+library(ggplot2)
 library(ggExtra)
 root_dir <- "C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling"
 setwd(root_dir)
@@ -46,7 +47,7 @@ plt_cor_radial <-   ggplot(df_radial %>% filter(theta<=90),
   scale_x_continuous(breaks = seq(0,90,15))+
   geom_hline(yintercept = 0.4,color='black',lwd = size_line)+
   geom_vline(xintercept = 90,color='black',lwd = size_line)+
-  coord_radial(start = 0, end = 0.5*pi, inner.radius = 0.4, expand = F, direction = 1) +
+  coord_radial(start = 0, end = 0.5*pi, inner.radius = 0.4, expand = F) +
   labs(y = "Spearman`s rank correlation", x = 'LV extra 2') +
   ggtitle('LV extra 1') +
   scale_color_brewer(palette = "Dark2")
@@ -88,7 +89,7 @@ plt_pwy_radial <- ggplot(df_pwy_plot  %>% gather('theta','activity',-Pathway) %>
   geom_hline(yintercept = 0,color='black',lwd=size_line)+
   geom_vline(xintercept = 90,color='black',lwd=size_line)+
   labs(y = "Absolute pathway activity", x = NULL) +
-  coord_radial(start = 0, end = 0.5*pi, inner.radius = 0.4, expand = F, direction = 1) +
+  coord_radial(start = 0, end = 0.5*pi, inner.radius = 0.4, expand = F) +
   facet_wrap(~Pathway)
 
 plt_pwy_radial <- add_theme(plt_pwy_radial)

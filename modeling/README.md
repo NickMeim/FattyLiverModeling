@@ -10,4 +10,3 @@
 8. InterClinicalValidation.R: Validate the performance in predicting fibrosis and NAS in two external clinical datasets, using the extra basis found with the Govaere clinical dataset and the Kostrzewski MPS liver model.
 9. MLBenchmarksOfNasFibrosis.py: Python script to bechmark the performance of multiple other linear and non-linear ML models, as well as the loss of performance when backprojecting and the retrieval of performance when using the identified extra basis.
 10. multipleMLmodelsEval.R: R script to load the results of the previous script and visualize them.
-11. analyzescRNAseq_Gribben_etal.R: R script for processing single cell data from GSE202379 and map it to translatable and extra latent variables.

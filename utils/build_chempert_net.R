@@ -1,6 +1,7 @@
-tf_responses <- readRDS("E:/Jose Luis/Downloads/Transcriptional_responses.rds")
+library(tidyverse)
+tf_responses <- readRDS("../data/ChemPert/Transcriptional_responses.rds")
 colnames(tf_responses)[1] <- "Response_ID"
-metadata <- read.csv("E:/Jose Luis/Downloads/Information_for_transcriptional_responses.csv")
+metadata <- read.csv("../data/ChemPert/Information_for_transcriptional_responses.csv")
 
 metadata_human <- metadata %>% filter(Species == "Human" & grepl("Hepatocy", Cell_Source))
 tf_responses_hep <- tf_responses %>% filter(Response_ID %in% metadata_human$Response_ID)

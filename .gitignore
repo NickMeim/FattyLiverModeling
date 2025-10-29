@@ -1,3 +1,4 @@
+scRNA_Gribben_et_al_analysis/GSE202379_SeuratObject_AllCells.rds.gz
 results/liv2trans_results_*
 results/alldata_combos_hallmark_results.rds
 results/alldata_combos_pathway_results.rds
@@ -41,8 +42,10 @@ data/GSE162694/GSE162694_raw_counts.csv.gz
 data/GSE168285/*.gz
 data/GSE168285/GSE168285_tpm.txt
 data/human_gene_v2.2.h5
-data/ARCHS4
-data/ARCHS4/*
+data/ARCHS4_Pantano_and_more/NAFL_expression_matrix.tsv
+data/ARCHS4_Pantano_and_more/NAFL_meta_data.tsv
+data/ARCHS4_Pantano_and_more/NAFL_NASH_expression_matrix.tsv
+data/ARCHS4_Pantano_and_more/NAFL_NASH_meta_data.tsv
 data/l1000_*
 preprocessing/all_invitro_data.rds
 preprocessing/TrainingValidationData/external_clinical_data

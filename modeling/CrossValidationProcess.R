@@ -320,8 +320,6 @@ performance_plot <- performance_plot %>% mutate(partition = paste0('train size =
 ggplot(performance_plot,
        aes(x=num_LVs,y=rho,colour=set,shape=phenotype))+
   geom_smooth(aes(linetype=phenotype),lwd=1)+ 
-  # geom_point()+ 
-  # geom_errorbar(aes(ymax = mu + std/sqrt(iterations),ymin=mu - std/sqrt(iterations)))+
   scale_x_continuous(breaks = seq(1,20,2))+
   scale_y_continuous(breaks = seq(0.5,1,0.1))+
   xlab('number of latent variables') +
@@ -638,25 +636,12 @@ performance_3 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'human_backprojected_retrained',
                                                     LVs = num_LVS)
-saveRDS(performance_3,'../results/performance_df_human_backprojected_retrained_spearman.rds')
+# saveRDS(performance_3,'../results/performance_df_human_backprojected_retrained_spearman.rds')
 #Plot
 performance_3$type <- factor(performance_3$type ,levels=c('model','shuffle W'))
 performance_3$set <- factor(performance_3$set ,levels=c('train','test'))
 performance_3 <- performance_3 %>% filter(metric=='rho') %>% select(-metric) %>% group_by(set,type,task,fold) %>% mutate(rho = mean(value)) %>%
   ungroup() %>% select(-value,-phenotype) %>% unique()
-ggboxplot(performance_3,x='type',y='rho',color='type',add='jitter') +
-  scale_y_continuous(n.breaks = 10)+
-  xlab('')+ylab('spearman`s rank correlation')+
-  theme(text = element_text(size=22,family = 'Arial'),
-        legend.position = 'none',
-        axis.text.x = element_text(size=18),
-        strip.text = element_text(face = 'bold'),
-        panel.grid.major.y = element_line(linewidth = 1)) +
-  facet_wrap(~set,scales = 'free')+
-  stat_compare_means(comparisons = list(c('model','shuffle W')),
-                     method = 'wilcox',#label = 'p.signif',
-                     tip.length = 0.01,
-                     size=6)
 
 # Task d1)
 performance_4 <- cross_validation_complete_pipeline(Wm,
@@ -693,7 +678,7 @@ performance_6 <- cross_validation_complete_pipeline(Wm,
                                                     target_dataset = target_dataset,
                                                     task = 'analytical_optimal',
                                                     LVs = num_LVS)
-saveRDS(performance_6,'../results/performance_df_analytical_spearman.rds')
+# saveRDS(performance_6,'../results/performance_df_analytical_spearman.rds')
 
 performance_6$type <- factor(performance_6$type ,levels=c('model','shuffle Wopt','shuffle Bh'))
 performance_6$set <- factor(performance_6$set ,levels=c('train','test'))
@@ -1612,10 +1597,7 @@ plot_df <- plot_df %>%
   mutate(comparison = ifelse(comparison=="LV2/LV1","LV1/LV2",comparison)) %>%
   unique()
 colnames(plot_df) <- c('comparison','partition','iteration','sim')
-# cos_sim_all <- cos_sim_all %>% 
-#   mutate(comparison = ifelse(grepl('star1',extra_basis),'LV1/PCs','LV2/PCs')) %>%
-#   select(comparison,partition,iteration,sim) 
-# plot_df <- rbind(plot_df,cos_sim_all)
+
 plot_df <- plot_df %>% group_by(comparison,partition) %>% 
   mutate(abs_mu = mean(abs(sim))) %>% mutate(abs_se = sd(abs(sim))/sqrt(max(iteration_groups))) %>%
   mutate(mu = mean(sim)) %>% mutate(se = sd(sim)/sqrt(max(iteration_groups))) %>%
@@ -1653,9 +1635,9 @@ plot_df <- as.data.frame(ordered_matrix) %>%
   mutate(partition = partition_groups) %>% mutate(LV = lv_groups) %>% mutate(iteration_groups=iteration_groups)
 row_inds <- which(grepl('LVstar1',rownames(plot_df)) & grepl('_part1_',rownames(plot_df)))
 col_inds <- c(which(grepl('LVstar1',colnames(plot_df))))
-              # which(colnames(plot_df)=='partition'),
-              # which(colnames(plot_df)=='LV'),
-              # which(colnames(plot_df)=='iteration_groups'))
+# which(colnames(plot_df)=='partition'),
+# which(colnames(plot_df)=='LV'),
+# which(colnames(plot_df)=='iteration_groups'))
 LV1s_similarities <- plot_df[row_inds,col_inds]
 # LV1s_similarities[upper.tri(LV1s_similarities,diag = TRUE)] <- -100
 LV1s_similarities <- LV1s_similarities  %>% rownames_to_column('var.x') %>%
@@ -1853,64 +1835,5 @@ ggsave('../figures/all_cumulative_similarity_pathways.eps',
        device = cairo_ps,
        width = 14,
        height = 10.5,
-       units = 'in',
-       dpi = 600)
-
-### Cumulative pathway activity
-activity_df <- as.data.frame(t(WPaths_opt_all))
-activity_df <- activity_df %>% rownames_to_column('var') %>%
-  gather('pathway','activity',-var)
-activity_df <- left_join(activity_df,groups_col)
-ggplot(activity_df %>% filter(LV=='LV1'),
-       aes(x=as.factor(partition),y=activity))+
-  ggtitle('extra LV 1')+
-  scale_y_continuous(breaks = seq(-10,10,2))+
-  geom_violin(fill = '#F8766D')+
-  xlab('data partition (%)')+
-  ylab('activity')+
-  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
-  theme_pubr(base_family = 'Arial',base_size = 27)+
-  theme(text = element_text(family = 'Arial',size = 27),
-        plot.title = element_text(hjust = 0.5),
-        axis.line.x = element_blank(),
-        axis.line.y = element_line(linewidth = 0.75),
-        panel.grid.major = element_line()) +
-  facet_wrap(~pathway,ncol = 3,scales = 'free_y')
-ggsave('../figures/LV1_cumulative_singed_activity_pathways.png',
-       width = 18,
-       height = 18,
-       units = 'in',
-       dpi = 600)
-ggsave('../figures/LV1_cumulative_singed_activity_pathways.eps',
-       device = cairo_ps,
-       width = 16,
-       height = 16,
-       units = 'in',
-       dpi = 600)
-
-ggplot(activity_df %>% filter(LV=='LV2'),
-       aes(x=as.factor(partition),y=activity))+
-  ggtitle('extra LV 2')+
-  scale_y_continuous(breaks = seq(-10,10,2))+
-  geom_violin(fill = '#00BFC4')+
-  xlab('data partition (%)')+
-  ylab('activity')+
-  geom_hline(yintercept = 0,linetype = 'solid',color='black',lwd=0.75)+
-  theme_pubr(base_family = 'Arial',base_size = 27)+
-  theme(text = element_text(family = 'Arial',size = 27),
-        plot.title = element_text(hjust = 0.5),
-        axis.line.x = element_blank(),
-        axis.line.y = element_line(linewidth = 0.75),
-        panel.grid.major = element_line()) +
-  facet_wrap(~pathway,ncol = 3,scales = 'free_y')
-ggsave('../figures/LV2_cumulative_singed_activity_pathways.png',
-       width = 18,
-       height = 18,
-       units = 'in',
-       dpi = 600)
-ggsave('../figures/LV2_cumulative_singed_activity_pathways.eps',
-       device = cairo_ps,
-       width = 16,
-       height = 16,
        units = 'in',
        dpi = 600)

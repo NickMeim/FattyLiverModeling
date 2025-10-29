@@ -18,7 +18,7 @@ target_dataset <- "Kostrzewski"
 data_list <- load_datasets(dataset_names, dir_data = '../data/')
 # Manually load also the other clinical datasets I have from ARCHS4
 geo <- 'GSE162694' # only this one has multiple NAS and fibrosis scores
-meta_data <- read.delim('../data/ARCHS4/FattyLiver_meta_data.tsv',row.names = 1)
+meta_data <- read.delim('../data/ARCHS4_Pantano_and_more/FattyLiver_meta_data.tsv',row.names = 1)
 meta_data <- meta_data %>% filter(series_id==geo)
 old_cols <- colnames(meta_data)
 meta_data <- meta_data %>% separate_rows(characteristics_ch1, sep = ",") %>%
@@ -34,7 +34,7 @@ meta_data <- meta_data %>% filter(!(is.na(`nas score`) & is.na(`fibrosis stage`)
   mutate(`fibrosis stage`=ifelse(`fibrosis stage`=='normal liver histology',0,`fibrosis stage`))
 meta_data <- meta_data %>% filter(!is.na(`nas score`)) %>% filter(!is.na(`fibrosis stage`)) %>%
   filter(`nas score`!='NA') %>% filter(`fibrosis stage`!='NA')
-expression_matrix <- readRDS('../data/ARCHS4/FattyLiver_expression_matrix.rds')
+expression_matrix <- readRDS('../data/ARCHS4_Pantano_and_more/FattyLiver_expression_matrix.rds')
 expression_matrix <- expression_matrix[,meta_data$sample]
 data_list[['Pantano']] <- list(counts = expression_matrix,
                                metadata = meta_data,
@@ -139,8 +139,6 @@ for (dataset in external_clinical_datasets){
 # saveRDS(df_results,'../results/external_clinical_differences_results_of_extra_vector_spearman.rds')
 #df_results <- readRDS('../results/external_clinical_performance_of_extra_vector_spearman.rds')
 df_results <- df_results %>% gather('model','rho',-dataset,-set,-fold_ids)
-# df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','extra basis',
-#                                                    ifelse(model!='PLSR','in-vitro PCs','original PLSR')))
 df_results <- df_results %>% mutate(model = ifelse(model=='extra.basis','optimized MPS',
                                                    ifelse(model!='PLSR','truncated','human genes')))
 df_results$model <- factor(df_results$model,levels = c('human genes','truncated','optimized MPS'))
@@ -149,10 +147,6 @@ df_results <- df_results %>% separate('fold_ids',into = c('fold','repetition')) 
   select(-repetition,-fold) %>% unique()
 
 ### Visualize 
-# model_comparisons <- list(
-#   c('original PLSR', 'extra basis'),
-#   c('extra basis', 'in-vitro PCs')
-# )
 model_comparisons <- list(
   c('human genes', 'optimized MPS'),
   c('optimized MPS', 'truncated')
@@ -163,26 +157,6 @@ df_results  <- left_join(df_results,
                    group_by(dataset,model,set) %>% mutate(total_se = sd(rho_mu)) %>%
                    ungroup())
 df_results <- df_results %>% group_by(dataset,model,set) %>%  mutate(all_mu = mean(rho_mu)) %>% ungroup()
-# p1 <- ggviolin(df_results %>% filter(dataset=='Hoang'),x='model',y='r',fill = 'model') +
-#   geom_boxplot(data=df_results %>% select(dataset,model,set,r_mu) %>% unique() %>% filter(dataset=='Hoang'),
-#                aes(x=model,y=r_mu,fill=model),
-#                width = 0.3,
-#                size=0.5,outlier.shape = NA)+
-#   scale_y_continuous(breaks = seq(0,1,0.1),limits = c(0,NA))+
-#   xlab('')+ ylab('pearson`s correlation')+
-#   ggtitle('Hoang')+
-#   theme(text = element_text(size = 20,family = 'Arial'),
-#         plot.title = element_text(hjust = 0.5),
-#         axis.text.x = element_blank(),
-#         panel.grid.major.y = element_line(linewidth = 1),
-#         panel.grid.minor.y = element_line(linewidth = 0.5),
-#         legend.position = 'bottom')+
-#   facet_wrap(~set)+
-#   stat_compare_means(comparisons = list(c('human genes','optimized MPS'),
-#                                         c('optimized MPS','truncated'),
-#                                         c('human genes','truncated')),
-#                      label.y = c(0.98,0.98,1.03),
-#                      method = 'wilcox')
 p1 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,model,rho_mu) %>% unique(),
                 x='model',y='rho_mu',color = 'model',add='jitter') +
   scale_y_continuous(breaks = seq(0.5,1,0.05),limits = c(0.40,NA))+
@@ -224,7 +198,7 @@ p2 <- ggboxplot(df_results %>% filter(dataset=='Hoang') %>% select(dataset,set,m
                      label = 'p.signif',
                      size=8)
 # print(p2)
-p <- (p1 + p2) + plot_layout(guides = "collect",axes = "collect") & theme(legend.position = 'bottom')
+p <- (p1 + p2) + plot_layout(guides = "collect",axes = "collect") + theme(legend.position = 'bottom')
 print(p)
 
 ggsave('../figures/inter_clinical_dataset_performance.png',
@@ -336,7 +310,6 @@ model_comparisons <- list(
 p <- ggboxplot(df_results,x='model',y='rho',color = 'model',add='jitter') +
   scale_y_continuous(breaks = seq(-0.2,1,0.1),limits = c(-0.26,1))+
   xlab('')+ ylab('spearman`s rank correlation')+
-  # ggtitle('PLSR generalization in other in-vivo human datasets')+
   theme(text = element_text(size = 24,family = 'Arial'),
         axis.text.x = element_text(size = 22),
         plot.title = element_text(hjust = 0.5),

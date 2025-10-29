@@ -4,13 +4,13 @@
 library(tidyverse)
 library(matrixStats)
 library(ggExtra)
-# root_dir <- "E:/Jose Luis/Documents/GitHub/FattyLiverModeling"
-# setwd(root_dir)
-source("../utils/plotting_functions.R")
+root_dir <- "C:/Users/nmeim/Documents/LiverModeling/FattyLiverModeling"
+setwd(root_dir)
+source("utils/plotting_functions.R")
 target_dataset <- "Kostrzewski"
 ref_dataset <-  "Govaere"
 dataset_names <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
-processed_data_list <- readRDS(paste0('../results/processed_data_list_',
+processed_data_list <- readRDS(paste0('results/processed_data_list_',
                                       tolower(ref_dataset),'_',
                                       tolower(target_dataset),'.rds'))
 Xh <- processed_data_list$Xh
@@ -19,7 +19,7 @@ sex_inferred <- processed_data_list$sex_inferred
 Xm <- processed_data_list$Xm
 #################################################################################
 ### Panel - Human data on LV extras
-Wm_opt <- readRDS(paste0('../results/Wm_',tolower(target_dataset),'_extra.rds'))
+Wm_opt <- readRDS(paste0('results/Wm_',tolower(target_dataset),'_extra.rds'))
 Zh <- as.data.frame(Xh %*% Wm_opt)
 Zh$NAS <- Yh[,1]
 Zh$fibrosis <- Yh[,2]
@@ -34,7 +34,7 @@ combined_plot_fibrosis <- add_theme(combined_plot_fibrosis) # Fix issue with PDF
 
 #################################################################################
 ### Panel - Cross validation of extended performance with LV extra
-performance_all_plot <- readRDS('../results/performanceall_plot_spearman.rds')
+performance_all_plot <- readRDS('results/performanceall_plot_spearman.rds')
 
 plt_p_test <- performance_all_plot %>% filter(set=='test' & approach!='Wopt') %>%
   ggplot(aes(x = approach, y = rho, color = approach, fill = approach)) +
@@ -61,12 +61,12 @@ plt_p_test <- add_theme(plt_p_test) +
 
 #################################################################################
 ### Panel - Improvement in performance with each extra LV
-all_performance_res <- readRDS('../results/all_performance_res_spearman.rds')
+all_performance_res <- readRDS('results/all_performance_res_spearman.rds')
 mu_plsr_train <- mean(all_performance_res$rho[all_performance_res$set=='train' & all_performance_res$model=='PLSR'])
 sd_plsr_train<- sd(all_performance_res$rho[all_performance_res$set=='train'& all_performance_res$model=='PLSR'])
 mu_plsr_test<- mean(all_performance_res$rho[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
 sd_plsr_test<- sd(all_performance_res$rho[all_performance_res$set=='test'& all_performance_res$model=='PLSR'])
-test_r_shuffled<- readRDS('../results/test_r_shuffled_cumulative_lvs_spearman.rds')
+test_r_shuffled<- readRDS('results/test_r_shuffled_cumulative_lvs_spearman.rds')
 num_folds <- length(unique(all_performance_res$fold))
 plt_required_extra_basis <-
   ggplot(all_performance_res %>% filter(model!='PLSR') %>% select(model,set,mu,std),
@@ -138,7 +138,7 @@ plt_required_extra_basis <- add_theme(plt_required_extra_basis) +
 
 #################################################################################
 ### Panel - LV extras are somewhat generalizable
-results_external_data <- readRDS("../results/external_clinical_differences_results_of_extra_vector_spearman.rds") %>%
+results_external_data <- readRDS("results/external_clinical_differences_results_of_extra_vector_spearman.rds") %>%
                           pivot_longer(cols = 1:3, names_to = "model", values_to = "Spearman")
 
 results_external_data$fold <- sapply(results_external_data$fold_ids, FUN = function(x){strsplit(x, ".", fixed = T) %>% unlist()})[1,]
@@ -177,10 +177,10 @@ plt_external_data <- add_theme(plt_external_data)
 ### Panel - Pathway activity of TCs
 
 ### Save panels as figures
-ggsave(filename = "figure4/plt_combined_NAS.pdf", plot = combined_plot_nas, units = "cm", width = 7, height = 5.5)
-ggsave(filename = "figure4/plt_combined_Fib.pdf", plot = combined_plot_fibrosis, units = "cm", width = 7, height = 5.5)
-ggsave(filename = "figure4/plt_required_extra_basis.pdf", plot = plt_required_extra_basis, units = "cm", width = 6, height = 6)
-ggsave(filename = "figure4/plt_p_test.pdf", plot = plt_p_test, units = "cm", width = 8, height = 9)
-ggsave(filename = "figure4/plt_external_data.pdf", plot = plt_external_data, units = "cm", width = 9, height = 6)
+ggsave(filename = "figures/figure4/plt_combined_NAS.pdf", plot = combined_plot_nas, units = "cm", width = 7, height = 5.5)
+ggsave(filename = "figures/figure4/plt_combined_Fib.pdf", plot = combined_plot_fibrosis, units = "cm", width = 7, height = 5.5)
+ggsave(filename = "figures/figure4/plt_required_extra_basis.pdf", plot = plt_required_extra_basis, units = "cm", width = 6, height = 6)
+ggsave(filename = "figures/figure4/plt_p_test.pdf", plot = plt_p_test, units = "cm", width = 8, height = 9)
+ggsave(filename = "figures/figure4/plt_external_data.pdf", plot = plt_external_data, units = "cm", width = 9, height = 6)
 
 
