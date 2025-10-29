@@ -1,5 +1,17 @@
-# FattyLiverModeling
+# Systems biology framework for the rational design of operational conditions for in vitro / in vivo translation of tissue models
 A computational system biology approach for identifying and optimizing in-vitro models that better recapitulate human patients, with a case study in MAFLD.
+Github repository of the study:
+> Systems biology framework for rational design of operational conditions for in vitro / in vivo translation of microphysiological systems <br>
+> Jose L. Cadavid<sup>1+</sup>, Nikolaos Meimetis<sup>1+</sup>, Tyler Matsuzaki<sup>1</sup>, Erin N. Tevonian<sup>1</sup>, Avlant Nilsson<sup>1,2,3</sup>, Douglas A. Lauffenburger<sup>1*</sup>
+> 1) Department of Biological Engineering, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
+> 2) Department of Mechanical Engineering, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
+> 3) Center for Gynepathology Research, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
+> * Corresponding author, lauffen@mit.edu
+> + These authors share joint first co-authorship, and they contributed equally to this work.
+
+doi: https://doi.org/10.1101/2025.01.17.633624
+
+This repository is administered by @NickMeim. For questions contact both jcadavid@mit.edu and meimetis@mit.edu
 
 ## Plug-and-play scripts
 In the `src` folder, there are scripts to run the approach as a package in R or Python. 
