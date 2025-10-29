@@ -120,55 +120,55 @@ ggsave('cumulative_human_variance_explained_by_invitro.png',
        units = 'in',
        dpi=600)  
 
-kept_conditions <- df_res[1:42,]
-df_res1 <- kept_conditions %>% separate(V1,into = data_list[[target_dataset]]$exp_factors,sep = '_',remove = FALSE) %>%
-  gather('stimuli','value',-pair_id,-V1,-V2,-var_explained,-cumulative_var_explained) %>% mutate(group = 'V1')
-df_res2 <- kept_conditions %>% separate(V2,into = data_list[[target_dataset]]$exp_factors,sep = '_',remove = FALSE) %>%
-  gather('stimuli','value',-pair_id,-V1,-V2,-var_explained,-cumulative_var_explained) %>% mutate(group = 'V2')
-df_res_gathered <- rbind(df_res1,df_res2)
-df_res_gathered <- df_res_gathered %>% arrange(-cumulative_var_explained)
-df_res_gathered <- df_res_gathered %>% mutate(stimuli = ifelse(stimuli=='NPC',paste0('NPC ',value),
-                                                               ifelse(stimuli=='Background',value,
-                                                                      stimuli))) %>%
-  mutate(value = ifelse(value %in% c('TRUE','FALSE'),value,'TRUE'))
-df_res_gathered <- df_res_gathered %>% filter(value == 'TRUE') %>% 
-  select(pair_id,stimuli,var_explained,cumulative_var_explained) %>% unique()
-ggplot(df_res_gathered %>% select(pair_id,stimuli) %>% unique() %>% 
-         group_by(stimuli) %>%
-         count() %>%
-         mutate(percentage = n / length(unique(df_res_gathered$pair_id)) * 100),
-       aes(x=reorder(stimuli,-percentage),y=percentage)) + geom_bar(stat = "identity", position = "dodge") +
-  ylab('counts (%)') + xlab('stimuli') +
-  theme_pubr(base_size = 15,base_family = 'Arial')+
-  theme(panel.grid.major = element_line(),
-        axis.line = element_blank())
-ggsave('percentage_invitro_stimuli_in_high_explainable_samples.png',
-       width = 9,
-       height = 6,
-       units = 'in',
-       dpi=600) 
-## see only controls
-df_res_controls <- rbind(df_res %>% filter(pair_id %in% df_res_gathered$pair_id) %>%
-  mutate(control = ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V1),V1,
-                          ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V2),V2,NA))) %>%
-    filter(!is.na(control)) %>% select(pair_id,cumulative_var_explained,var_explained,control) %>% unique(),
-  df_res %>% filter(pair_id %in% df_res_gathered$pair_id) %>%
-    mutate(control = ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V2),V2,
-                            ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V1),V1,NA))) %>%
-    filter(!is.na(control)) %>% select(pair_id,cumulative_var_explained,var_explained,control) %>% unique()) %>%
-  unique()
-df_res_controls <- df_res_controls %>% mutate(control = sub('_FALSE_FALSE_FALSE_FALSE','',control))
-ggplot(df_res_controls %>% select(pair_id,control) %>% unique() %>% 
-         group_by(control) %>%
-         count() %>%
-         mutate(percentage = n / length(unique(df_res_gathered$pair_id)) * 100),
-       aes(x=reorder(control,-percentage),y=percentage)) + geom_bar(stat = "identity", position = "dodge") +
-  ylab('counts (%)') + xlab('control condition') +
-  theme_pubr(base_size = 15,base_family = 'Arial')+
-  theme(panel.grid.major = element_line(),
-        axis.line = element_blank())
-ggsave('controls_percentage_invitro_stimuli_in_high_explainable_samples.png',
-       width = 9,
-       height = 6,
-       units = 'in',
-       dpi=600) 
+# kept_conditions <- df_res[1:42,]
+# df_res1 <- kept_conditions %>% separate(V1,into = data_list[[target_dataset]]$exp_factors,sep = '_',remove = FALSE) %>%
+#   gather('stimuli','value',-pair_id,-V1,-V2,-var_explained,-cumulative_var_explained) %>% mutate(group = 'V1')
+# df_res2 <- kept_conditions %>% separate(V2,into = data_list[[target_dataset]]$exp_factors,sep = '_',remove = FALSE) %>%
+#   gather('stimuli','value',-pair_id,-V1,-V2,-var_explained,-cumulative_var_explained) %>% mutate(group = 'V2')
+# df_res_gathered <- rbind(df_res1,df_res2)
+# df_res_gathered <- df_res_gathered %>% arrange(-cumulative_var_explained)
+# df_res_gathered <- df_res_gathered %>% mutate(stimuli = ifelse(stimuli=='NPC',paste0('NPC ',value),
+#                                                                ifelse(stimuli=='Background',value,
+#                                                                       stimuli))) %>%
+#   mutate(value = ifelse(value %in% c('TRUE','FALSE'),value,'TRUE'))
+# df_res_gathered <- df_res_gathered %>% filter(value == 'TRUE') %>% 
+#   select(pair_id,stimuli,var_explained,cumulative_var_explained) %>% unique()
+# ggplot(df_res_gathered %>% select(pair_id,stimuli) %>% unique() %>% 
+#          group_by(stimuli) %>%
+#          count() %>%
+#          mutate(percentage = n / length(unique(df_res_gathered$pair_id)) * 100),
+#        aes(x=reorder(stimuli,-percentage),y=percentage)) + geom_bar(stat = "identity", position = "dodge") +
+#   ylab('counts (%)') + xlab('stimuli') +
+#   theme_pubr(base_size = 15,base_family = 'Arial')+
+#   theme(panel.grid.major = element_line(),
+#         axis.line = element_blank())
+# ggsave('percentage_invitro_stimuli_in_high_explainable_samples.png',
+#        width = 9,
+#        height = 6,
+#        units = 'in',
+#        dpi=600) 
+# ## see only controls
+# df_res_controls <- rbind(df_res %>% filter(pair_id %in% df_res_gathered$pair_id) %>%
+#   mutate(control = ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V1),V1,
+#                           ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V2),V2,NA))) %>%
+#     filter(!is.na(control)) %>% select(pair_id,cumulative_var_explained,var_explained,control) %>% unique(),
+#   df_res %>% filter(pair_id %in% df_res_gathered$pair_id) %>%
+#     mutate(control = ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V2),V2,
+#                             ifelse(grepl('FALSE_FALSE_FALSE_FALSE',V1),V1,NA))) %>%
+#     filter(!is.na(control)) %>% select(pair_id,cumulative_var_explained,var_explained,control) %>% unique()) %>%
+#   unique()
+# df_res_controls <- df_res_controls %>% mutate(control = sub('_FALSE_FALSE_FALSE_FALSE','',control))
+# ggplot(df_res_controls %>% select(pair_id,control) %>% unique() %>% 
+#          group_by(control) %>%
+#          count() %>%
+#          mutate(percentage = n / length(unique(df_res_gathered$pair_id)) * 100),
+#        aes(x=reorder(control,-percentage),y=percentage)) + geom_bar(stat = "identity", position = "dodge") +
+#   ylab('counts (%)') + xlab('control condition') +
+#   theme_pubr(base_size = 15,base_family = 'Arial')+
+#   theme(panel.grid.major = element_line(),
+#         axis.line = element_blank())
+# ggsave('controls_percentage_invitro_stimuli_in_high_explainable_samples.png',
+#        width = 9,
+#        height = 6,
+#        units = 'in',
+#        dpi=600) 

@@ -1,0 +1,333 @@
+---
+title: "Analysis Gribben et al"
+output: html_notebook
+---
+
+Reanalysis of the Gribben et al snRNAseq dataset using their uploaded and annotated Seurat file
+
+```{r}
+library(tidyverse)
+library(corrplot)
+```
+
+
+# Load seurat file and extract patient ID and cell type annotation
+
+```{r}
+library(Seurat)
+seur <- readRDS(file = "GSE202379_SeuratObject_AllCells.rds")
+
+features_meta <- c("orig.ident", "Patient.ID", "Disease.status",
+                     "Lobe", "SAF.Score",
+                     "Steatosis", "Ballooning", "Inflammation",
+                     "Fibrosis.score..F0.4.",
+                     "Gender", "cell.annotation")
+
+metadata <- seur@meta.data[, features_meta] %>%
+            mutate(Group = paste0(Patient.ID,"_",cell.annotation))
+
+```
+
+Look at some plots
+
+```{r}
+
+plt_umap <- data.frame(seur@reductions[["umap_harmony_t.0"]]@cell.embeddings,
+                       cell_type = seur@meta.data[["cell.annotation"]]) %>% 
+  slice_sample(n = 3000) %>%
+  ggplot(aes(x = umap_harmony_t.0_1, y = umap_harmony_t.0_2, color = cell_type)) +
+  geom_point(alpha = 0.2) 
+
+
+
+plt_vln <- data.frame(metadata,
+                      gene = seur@assays[["SCT"]]@data["IFNG",]) %>%
+            ggplot(aes(x = cell.annotation, y = gene)) +
+            geom_violin()
+
+```
+
+# Pseudo bulk by patient ID and major cell type in their annotation
+
+```{r}
+# Pseudo-bulk by patient and cell type (will fix annotations later)
+count_mat <- seur@assays$RNA$counts
+
+# Create groupings
+groups <- metadata$Group %>% unique()
+
+count_bulk <- matrix(0, nrow = nrow(count_mat), ncol = length(groups))
+for (ii in 1:ncol(count_bulk)){
+  idx <- which(metadata$Group == groups[ii])
+  if (length(idx) > 1){
+    count_bulk[,ii] <- rowSums(count_mat[, idx])
+  } else {
+    count_bulk[,ii] <- count_mat[, idx]
+  }
+}
+
+colnames(count_bulk) <- groups
+rownames(count_bulk) <- rownames(count_mat)
+#write.table(count_bulk, file = "pseudobulk_countmat.txt", col.names = T, sep = "\t", quote = F, row.names = T)
+
+# Summarize metadata for groupings and count how many cells were added
+metadata_group <- metadata %>%
+                  group_by(Patient.ID, cell.annotation, Group,
+                           Disease.status, SAF.Score, Steatosis, 
+                           Ballooning, Inflammation, Fibrosis.score..F0.4.) %>%
+                  summarize(nCells = n())
+
+# Rename fibrosis score column
+colnames(metadata_group)[colnames(metadata_group) == "Fibrosis.score..F0.4."] <- "Fibrosis.score"
+
+# Add NAS score. Assuming that healthy control means zero for all scores
+metadata_group <- metadata_group %>%
+                  mutate(NAS = ifelse(Steatosis %in% c("healthy control", "end stage"),
+                                      0,
+                                      as.numeric(Steatosis) + as.numeric(Ballooning) + as.numeric(Inflammation)))
+
+metadata_group$NAS[metadata_group$Steatosis == "end stage"] <- "end stage"
+
+# Group by patient only
+metadata_patient <- metadata_group %>% 
+                    ungroup() %>%
+                    select(Patient.ID,
+                           Disease.status, SAF.Score, Steatosis, 
+                           Ballooning, Inflammation, Fibrosis.score, NAS) %>%
+                    unique()
+
+# Organize columns to match metadata order
+count_bulk <- count_bulk[,metadata_group$Group]
+
+# Save
+save(count_bulk, metadata_group, metadata_patient, file = "pseudobulk_data.RData")
+```
+
+Work with pseudobulk data. log cpm
+
+```{r}
+load(file = "pseudobulk_data.RData")
+cpm_pseudo <- apply(count_bulk, MARGIN = 2, FUN = function(x){log2(1 + x/sum(x)*1e6)})
+```
+
+Look at some genes
+
+```{r}
+data.frame(metadata_group, gene = cpm_pseudo["IFNG",]) %>% 
+  filter(Disease.status != "end stage" & 
+           nCells > 10 & 
+           !(cell.annotation %in% c("unknown", "B-cell 1", "B-cell 2", "Neutrophils"))) %>%
+  ggplot(aes(x = Disease.status, y = gene)) + 
+  geom_boxplot() + 
+  facet_wrap(~cell.annotation, scales = "free") + labs(y = "IFNGR1")
+```
+
+
+
+Load latent variables from Kostrzewski paper and project
+
+```{r}
+Wopt <- cbind(readRDS("E:/Jose Luis/Documents/GitHub/FattyLiverModeling/results/Wm_kostrzewski_combo.rds"),
+              readRDS("E:/Jose Luis/Documents/GitHub/FattyLiverModeling/results/Wm_kostrzewski_extra.rds"))
+
+colnames(Wopt) <- c("TC1", "TC2", "LVextra1", "LVextra2")
+
+dummy <- matrix(0, nrow = nrow(Wopt), ncol = ncol(cpm_pseudo))
+rownames(dummy) <- rownames(Wopt)
+# Organize cpm in the same order and content as the LVs
+for (ii in 1:ncol(cpm_pseudo)){
+ dummy[rownames(cpm_pseudo)[rownames(cpm_pseudo) %in% rownames(Wopt)], ii] <- cpm_pseudo[rownames(cpm_pseudo)[rownames(cpm_pseudo) %in% rownames(Wopt)], ii]
+}
+# Center rows by cell type
+for (ii in 1:nrow(dummy)){
+  for (jj in unique(metadata_group$cell.annotation)){
+    idx <- metadata_group$cell.annotation == jj
+    dummy[ii,idx] <- dummy[ii,idx] - mean(dummy[ii,idx])
+  }
+}
+
+pseudobulk_project <- t(dummy) %*% Wopt
+
+# Add metadata and make long table to plot - remove end stage because it's not covered
+# in our original dataset and remove cell types with very few cells (<10) per patient
+pseudobulk_project <- data.frame(pseudobulk_project, metadata_group) %>%
+                            filter(Disease.status != "end stage" &
+                                   !(cell.annotation %in% c("unknown", "B-cell 1", "B-cell 2", "Neutrophils")) &
+                                   nCells > 10)
+
+pseudobulk_project_long <- pseudobulk_project %>%
+                            pivot_longer(cols = all_of(colnames(Wopt)), 
+                                         names_to = "LV", values_to = "score") 
+                      
+```
+
+Make some plots
+
+```{r}
+# Make pairwise correlation plots
+dummy <- pseudobulk_project %>%
+  pivot_wider(id_cols = c("Patient.ID"), names_from = cell.annotation, values_from = LVextra2) %>%
+  select(-Patient.ID) %>% as.matrix()
+
+cor_mat <- cor(dummy, use = "pairwise.complete.obs")
+
+
+corrplot::corrplot(cor_mat, method = 'color',  
+                   col = viridis::viridis(50),
+                   type = 'lower', diag = F, 
+                   col.lim = c(0,1), tl.col = "black",
+                   addCoef.col = 'black')
+
+
+# Plot each LV score against phenotypes
+
+plt_NAS_score <- pseudobulk_project_long %>%
+                         group_by(cell.annotation, LV) %>%
+                         mutate(zscore = 2*((score - min(score))/(max(score) - min(score)) - 0.5)) %>%
+                         #filter(cell.annotation == "Hepatocytes") %>%
+                         ggplot(aes(x = zscore, y = as.numeric(NAS))) +
+                         geom_smooth(method = "lm", color = "black") +
+                         geom_jitter(color = "steelblue", width = 0.1) +
+                         facet_grid(rows = vars(cell.annotation), cols = vars(LV), scales = "free_x") +
+                         labs(x = "Scaled projected score", y = "NAS") + 
+                         theme_bw()
+
+
+plt_Fibrosis_score <- pseudobulk_project_long %>%
+                         group_by(cell.annotation, LV) %>%
+                         mutate(zscore = 2*((score - min(score))/(max(score) - min(score)) - 0.5)) %>%
+                         #filter(cell.annotation == "Hepatocytes") %>%
+                         ggplot(aes(x = zscore, y = as.numeric(Fibrosis.score))) +
+                         geom_smooth(method = "lm", color = "black") +
+                         geom_jitter(color = "steelblue", width = 0.1) +
+                         facet_grid(rows = vars(cell.annotation), cols = vars(LV), scales = "free_x") +
+                         labs(x = "Scaled projected score", y = "Fibrosis score") + 
+                         theme_bw()
+
+# Plot LV scores (non-scaled) for different cell types
+plt_Hep <- pseudobulk_project %>%
+            filter(cell.annotation == "Hepatocytes") %>%
+            ggplot(aes(x = LVextra1, y = LVextra2, color = as.numeric(NAS))) +
+              geom_point() +
+              scale_color_viridis_c()
+```
+
+Do some analysis: ANOVA against LV scores based on disease stages (Disease status and fibrosis)
+also try just linear regression against histological scores
+
+```{r}
+anova_table <- NULL
+# Loop for cell types
+for (ii in unique(pseudobulk_project_long$cell.annotation)){
+  # Loop for LVs
+  anova_dummy <- matrix(0, nrow = 1, ncol = 1 + ncol(Wopt)) %>% as.data.frame()
+  colnames(anova_dummy) <- c("cell", colnames(Wopt))
+  anova_dummy$cell <- ii
+  for (jj in colnames(Wopt)){
+    # ANOVA
+    an <- aov(score ~ factor(Disease.status),
+              data = pseudobulk_project_long %>% 
+                filter(cell.annotation == ii & LV == jj))
+    # Store pval
+    anova_dummy[1,jj] <- summary(an)[[1]][["Pr(>F)"]][1]
+  }
+  # Concatenate
+  anova_table <- rbind(anova_table, anova_dummy)
+}
+```
+
+Do this in another way: Regress phenotype against scores. More similar to what we do
+trying to predict phenotype from RNA
+
+```{r}
+# Loop for cell types and get the pvalue of multiple regression coefficients
+# and the correlation between fit and predicted scores
+
+phenotype_model_table <- NULL
+phenotype_names <- c("NAS", "Fibrosis.score")
+
+for (ii in unique(pseudobulk_project_long$cell.annotation)){
+  # Slice data frame
+  dummy <- pseudobulk_project %>% 
+      filter(cell.annotation == ii) %>%
+      select(c(all_of(phenotype_names), colnames(Wopt)))
+  for (pp in phenotype_names){
+    # Fit model
+    dummy$Y <- dummy[,pp] %>% as.numeric()
+    mod <- lm(Y ~ LVextra1 + LVextra2 + TC1 + TC2, 
+              data = dummy)
+    # Extract pvalues (ignore intercept)
+    pvals <- summary(mod)[["coefficients"]][-1,4]
+    # Extract model coefficients (ignore intercept)
+    coefs <- coef(mod)[-1]
+    # Now get correlation between data and model fit
+    cor_mod <- cor(dummy$Y, predict(mod))
+    
+    # Append
+    phenotype_model_table <- rbind(phenotype_model_table,
+                                   data.frame(cell = ii, pvals, cor_mod, coefs, phenotype = pp) %>%
+                                     mutate(LV = rownames(.)))
+  }
+}
+rownames(phenotype_model_table) <- NULL
+# Make wide
+phenotype_model_table_pval <- phenotype_model_table %>%
+                         pivot_wider(id_cols = c("cell", "phenotype"), names_from = "LV", values_from = "pvals")
+
+phenotype_model_table_coef <- phenotype_model_table %>%
+                         pivot_wider(id_cols = c("cell", "phenotype"), names_from = "LV", values_from = "coefs")
+```
+
+Make some plots
+
+```{r}
+# Plot model fit correlation
+plt_cor_model <- phenotype_model_table %>% 
+                  ggplot(aes(x = cor_mod, y = cell, fill = phenotype)) + 
+                  geom_col(position = position_dodge(width = 0.9)) +
+                  scale_fill_brewer(palette = "Dark2") +
+                  labs(x = "Pearson (data vs fit)", y = NULL, fill = "Phenotype") +
+                  lims(x = c(0,1)) +
+                  theme_bw()
+
+
+
+plt_model_pvals <- phenotype_model_table %>% 
+                    pivot_longer(cols = all_of(colnames(Wopt)), names_to = "LV", values_to = "pval") %>%
+                    ggplot(aes(x = LV, y = cell, size = -log10(pval), color = pval < 0.05)) +
+                    geom_point() +
+                    facet_wrap(~phenotype) +
+                    labs(x = NULL, y = NULL) +
+                    theme_bw()
+
+plt_cor_model
+
+
+```
+
+Nicer corrplots
+
+```{r}
+
+phen = "Fibrosis.score"
+
+dummy <- phenotype_model_table_pval %>% filter(phenotype == phen) %>% as.data.frame()
+rownames(dummy) <- dummy$cell
+dummy <- dummy[,-c(1,2)] %>% as.matrix()
+
+# Get regression coefficients
+dummy2 <- phenotype_model_table_coef %>% filter(phenotype == phen) %>% as.data.frame()
+rownames(dummy2) <- dummy2$cell
+dummy2 <- dummy2[,-c(1,2)] %>% as.matrix()
+# Scale rows?
+dummy2 <- apply(dummy2, MARGIN = 2, FUN = function(x){scale(x)})
+rownames(dummy2) <- rownames(dummy)
+
+corrplot(dummy2, p.mat = dummy, is.corr = F, method = 'color',
+         sig.level = c(0.001, 0.01, 0.05), pch.cex = 2,  pch.col = 'black',
+         insig = 'label_sig', tl.col = 'black', tl.cex = 1,
+         cl.cex = 1, cl.align.text = 'l', cl.ratio = 0.35, cl.length = 9,
+         col = COL2('RdBu', 20))
+
+```
+

@@ -68,13 +68,7 @@ plt_PCA_MPS <- add_theme(plt_PCA_MPS)
 ### Panel - PLSR scores of backprojected human data
 # Extract the necessary matrices from the opls object
 P <- plsr_model@loadingMN  # Loadings matrix (P)
-# plsr_scores <- plsr_model@scoreMN    # Scores matrix (T)
 W <- plsr_model@weightMN   # Weights matrix (W)
-# C <- plsr_model@loadingYMN # Y-loadings matrix (C)
-# E <- plsr_model@residualsMN # Residuals matrix (E)
-# U <- plsr_model@orthoScoreMN # Orthogonal scores matrix (U)
-# Manually calculate the scores (T)
-# T = X * W * (P' * W)^-1
 Zh_plsr_backprj <- Xh %*% Wm %*% t(Wm)  %*% Wh %*% solve(t(P) %*% W)
 invivo_plsr_backprj <- as.data.frame(Zh_plsr_backprj[,1:2])
 invivo_plsr_backprj <- cbind(invivo_plsr_backprj,as.data.frame(Yh))
@@ -150,13 +144,13 @@ plt_pwy_TC2 <- plot_pwy_activity(translatable_components_progenies %>% filter(co
 plt_pwy_TC2 <- add_theme(plt_pwy_TC2)
 
 ### Save panels as figures
-ggsave(filename = "./Figures/figure3/plt_PCA_MPS.pdf", plot = plt_PCA_MPS, units = "cm", width = 4, height = 4)
-ggsave(filename = "./Figures/figure3/plt_PLSR_backproject.pdf", plot = plt_PLSR_backproject, units = "cm", width = 7.5, height = 4)
-ggsave(filename = "./Figures/figure3/plt_PLSR_training_back.pdf", plot = plt_PLSR_training_back, units = "cm", width = 6.5, height = 4)
-ggsave(filename = "./Figures/figure3/plt_TC_prediction.pdf", plot = plt_TC_prediction, units = "cm", width = 6, height = 5)
-ggsave(filename = "./Figures/figure3/plt_TC_MPS.pdf", plot = plt_TC_MPS, units = "cm", width = 4, height = 5.5)
-ggsave(filename = "./Figures/figure3/plt_pwy_TC1.pdf", plot = plt_pwy_TC1, units = "cm", width = 6, height = 4.5)
-ggsave(filename = "./Figures/figure3/plt_pwy_TC2.pdf", plot = plt_pwy_TC2, units = "cm", width = 6, height = 4.5)
+ggsave(filename = "figures/figure3/plt_PCA_MPS.pdf", plot = plt_PCA_MPS, units = "cm", width = 4, height = 4)
+ggsave(filename = "figures/figure3/plt_PLSR_backproject.pdf", plot = plt_PLSR_backproject, units = "cm", width = 7.5, height = 4)
+ggsave(filename = "figures/figure3/plt_PLSR_training_back.pdf", plot = plt_PLSR_training_back, units = "cm", width = 6.5, height = 4)
+ggsave(filename = "figures/figure3/plt_TC_prediction.pdf", plot = plt_TC_prediction, units = "cm", width = 6, height = 5)
+ggsave(filename = "figures/figure3/plt_TC_MPS.pdf", plot = plt_TC_MPS, units = "cm", width = 4, height = 5.5)
+ggsave(filename = "figures/figure3/plt_pwy_TC1.pdf", plot = plt_pwy_TC1, units = "cm", width = 6, height = 4.5)
+ggsave(filename = "figures/figure3/plt_pwy_TC2.pdf", plot = plt_pwy_TC2, units = "cm", width = 6, height = 4.5)
 
 
 #################################################################################
@@ -190,10 +184,10 @@ plt_TC_prediction_analytical_NAS <- rbind(Ypred_TC1,Ypred_TC2) %>%
 
 
 
-ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_NAS.pdf",
+ggsave(filename = "figures/figure3/plt_TC_prediction_analytical_NAS.pdf",
        plot = add_theme(plt_TC_prediction_analytical_NAS), units = "cm", width = 3, height = 4.5)
 
-ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
+ggsave(filename = "figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
        plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 3.2, height = 4.5)
 
 ### Supp info panel: MPS TC do not match any MPS PC exactly
@@ -208,9 +202,9 @@ plt_TC_MPS_similarity <- dummy %>%
                             geom_line(size = size_line, show.legend = F, color = 'steelblue') +
                             facet_wrap(~TC, nrow = 2) +
                             labs(x = 'MPS PC', y = 'Absolute cosine similarity')
-ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_NAS.pdf",
+ggsave(filename = "figures//figure3/plt_TC_prediction_analytical_NAS.pdf",
        plot = add_theme(plt_TC_prediction_analytical_NAS), units = "cm", width = 3, height = 4.5)
-ggsave(filename = "./Figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
+ggsave(filename = "figures/figure3/plt_TC_prediction_analytical_Fib.pdf",
        plot = add_theme(plt_TC_prediction_analytical_Fib), units = "cm", width = 3.2, height = 4.5)
-ggsave(filename = "./Figures/figure3/plt_TC_MPS_similarity.pdf",
+ggsave(filename = "figures/figure3/plt_TC_MPS_similarity.pdf",
        plot = add_theme(plt_TC_MPS_similarity), units = "cm", width = 8, height = 4.5)

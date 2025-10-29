@@ -44,7 +44,7 @@ dataset_names <- c(in_vivo_datasets,in_vitro_datasets)
 data_list <- load_datasets(dataset_names, dir_data = 'data/')
 # Manually load also the other clinical datasets I have from ARCHS4
 geo <- 'GSE162694' # only this one has multiple NAS and fibrosis scores
-meta_data <- read.delim('data/ARCHS4/FattyLiver_meta_data.tsv',row.names = 1)
+meta_data <- read.delim('data/ARCHS4_Pantano_and_more/FattyLiver_meta_data.tsv',row.names = 1)
 meta_data <- meta_data %>% filter(series_id==geo)
 old_cols <- colnames(meta_data)
 meta_data <- meta_data %>% separate_rows(characteristics_ch1, sep = ",") %>%
@@ -60,7 +60,7 @@ meta_data <- meta_data %>% filter(!(is.na(`nas score`) & is.na(`fibrosis stage`)
   mutate(`fibrosis stage`=ifelse(`fibrosis stage`=='normal liver histology',0,`fibrosis stage`))
 meta_data <- meta_data %>% filter(!is.na(`nas score`)) %>% filter(!is.na(`fibrosis stage`)) %>%
   filter(`nas score`!='NA') %>% filter(`fibrosis stage`!='NA')
-expression_matrix <- readRDS('data/ARCHS4/FattyLiver_expression_matrix.rds')
+expression_matrix <- readRDS('data/ARCHS4_Pantano_and_more/FattyLiver_expression_matrix.rds')
 expression_matrix <- expression_matrix[,meta_data$sample]
 data_list[['Pantano']] <- list(counts = expression_matrix,
                                metadata = meta_data,
@@ -186,35 +186,3 @@ ggsave(filename = "figures/Supplementary_figure_other_invivo_invitro_pairs.png",
        width = 16, 
        height = 12,
        dpi = 600)
-
-# lim <- 3
-# p2 <- ggplot(hallmark_results %>% 
-#                filter (LV==paste0('V',i)) %>%
-#                group_by(Hallmark) %>%
-#                mutate(c = sum(padj<=0.05)) %>%
-#                ungroup() %>%
-#                filter(c >= 1) %>%
-#                dplyr::select(NES,Hallmark,padj,LV,combo),
-#              aes(x=NES,y=Hallmark,fill=NES)) + 
-#   geom_bar(stat = 'identity') +
-#   scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',
-#                        midpoint = 0,limits = c(-lim,lim))+
-#   scale_x_continuous(n.breaks = 8,limits = c(-lim,lim))+
-#   ggtitle(paste0('LV extra ',i))+
-#   ylab('Hallmark')+
-#   geom_text(aes(label = ifelse(padj <= 0.0001, "****",
-#                                ifelse(padj <= 0.001,"***",
-#                                       ifelse(padj<=0.01,"**",
-#                                              ifelse(padj<=0.05,'*',
-#                                                     ifelse(padj<=0.1,'\u2219',
-#                                                            'ns'))))),
-#                 x = ifelse(NES < 0, NES - 0.2, NES + 0.2)),
-#             size = 4,
-#             color = 'black',
-#             angle=90) +
-#   facet_wrap(~combo)+
-#   theme_minimal(base_size = 20,base_family = 'Arial')+
-#   theme(text = element_text(size = 20,family = 'Arial'),
-#         legend.position = 'right',
-#         plot.title = element_text(hjust = 0.5))
-# print(p2)
