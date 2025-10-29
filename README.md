@@ -6,8 +6,8 @@ Github repository of the study:
 > 1) Department of Biological Engineering, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
 > 2) Department of Mechanical Engineering, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
 > 3) Center for Gynepathology Research, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
-> * Corresponding author, lauffen@mit.edu
-> + These authors share joint first co-authorship, and they contributed equally to this work.
+> * *Corresponding author, lauffen@mit.edu
+> + +These authors share joint first co-authorship, and they contributed equally to this work.
 
 doi: https://doi.org/10.1101/2025.01.17.633624
 
