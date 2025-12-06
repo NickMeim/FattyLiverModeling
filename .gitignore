@@ -1,4 +1,7 @@
 scRNA_Gribben_et_al_analysis/GSE202379_SeuratObject_AllCells.rds.gz
+optimization/maximizeExplainedVariance_constraint.ipynb
+results/optimized_mps/dx_lean_govaere_kostrzewski_corrected_constraint.csv
+results/optimized_mps/pertubed_control_lean_corrected_constraint.csv
 results/liv2trans_results_*
 results/alldata_combos_hallmark_results.rds
 results/alldata_combos_pathway_results.rds
