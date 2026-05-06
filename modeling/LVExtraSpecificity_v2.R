@@ -169,6 +169,160 @@ rownames(Wm_opt_new) <- rownames(Wm_new)
 colnames(Wm_opt_new) <- c("new_LV_extra1", "new_LV_extra2")
 cor(Wm_opt_new,Wm_opt)
 
+### Check what happens when looking at top weights
+top_k <- c(5,10,30,50,100,200,300,400,500,600,700,800,900,1000)
+## 1) Tanimoto similarity
+tanimoto <- function(a, b) {
+  a <- unique(a)
+  b <- unique(b)
+  
+  union_size <- length(union(a, b))
+  if (union_size == 0) return(NA_real_)
+  
+  length(intersect(a, b)) / union_size
+}
+
+get_top_features <- function(x, k, direction = c("positive", "negative")) {
+  direction <- match.arg(direction)
+  
+  x <- sort(x, decreasing = direction == "positive")
+  
+  if (direction == "positive") {
+    x <- x[x > 0]
+  } else {
+    x <- x[x < 0]
+  }
+  
+  if (length(x) < k) return(character(0))
+  
+  names(x)[seq_len(k)]
+}
+
+calc_tanimoto_for_column <- function(col_index,W_opt,W_opt_new) {
+  old_scores <- W_opt[, col_index]
+  new_scores <- W_opt_new[, col_index]
+  
+  names(old_scores) <- rownames(W_opt)
+  names(new_scores) <- rownames(W_opt_new)
+  
+  bind_rows(
+    lapply(top_k, function(k) {
+      old_pos <- get_top_features(old_scores, k, "positive")
+      new_pos <- get_top_features(new_scores, k, "positive")
+      
+      data.frame(
+        column = paste0("Column ", col_index),
+        k = k,
+        direction = "Positive",
+        tanimoto = if (length(old_pos) == 0 || length(new_pos) == 0) NA_real_
+        else tanimoto(old_pos, new_pos)
+      )
+    }),
+    lapply(top_k, function(k) {
+      old_neg <- get_top_features(old_scores, k, "negative")
+      new_neg <- get_top_features(new_scores, k, "negative")
+      
+      data.frame(
+        column = paste0("Column ", col_index),
+        k = k,
+        direction = "Negative",
+        tanimoto = if (length(old_neg) == 0 || length(new_neg) == 0) NA_real_
+        else tanimoto(old_neg, new_neg)
+      )
+    })
+  )
+}
+
+tanimoto_results <- bind_rows(
+  calc_tanimoto_for_column(1,Wm_opt,Wm_opt_new),
+  calc_tanimoto_for_column(2,Wm_opt,Wm_opt_new)
+)
+
+## Plot both columns as facets
+p_tanimoto <- ggplot(
+  tanimoto_results,
+  aes(x = k, y = tanimoto, color = direction, group = direction)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~ column) +
+  scale_x_continuous(n.breaks = 10) +
+  scale_y_continuous(limits = c(0,1))+
+  labs(
+    x = "Top k features",
+    y = "Tanimoto similarity",
+    color = "Feature set",
+    title = "Tanimoto similarity between W_opt and W_opt_new"
+  ) +
+  theme_bw()
+print(p_tanimoto)
+ggsave(
+  filename = "../figures/tanimoto_similarity_W_opt_vs_W_opt_from_random_data.png",
+  plot = p_tanimoto,
+  width = 8,
+  height = 4
+)
+
+## 2) GSEA-based distance
+library(GeneExpressionSignature)
+library(Biobase)
+source("distance_scores.R")
+gsea_thresholds <- c(30,50,100,200,300,400,500,600,700,800,900,1000)
+
+calc_gsea_distance_for_column <- function(col_index, W_opt,W_opt_new,thresholds = gsea_thresholds) {
+  
+  num_table <- cbind(
+    W_opt     = W_opt[, col_index],
+    W_opt_new = W_opt_new[, col_index]
+  )
+  
+  rownames(num_table) <- rownames(W_opt)
+  
+  bind_rows(lapply(thresholds, function(thres) {
+    
+    dist_mat <- distance_scores(
+      num_table = num_table,
+      threshold_count = thres,
+      names = colnames(num_table)
+    )
+    
+    data.frame(
+      column = paste0("Column ", col_index),
+      threshold = thres,
+      gsea_distance = dist_mat["W_opt", "W_opt_new"]
+    )
+  }))
+}
+
+gsea_distance_results <- bind_rows(
+  calc_gsea_distance_for_column(1,Wm_opt,Wm_opt_new),
+  calc_gsea_distance_for_column(2,Wm_opt,Wm_opt_new)
+)
+
+p_gsea <- ggplot(
+  gsea_distance_results,
+  aes(x = threshold, y = gsea_distance, group = column, color = column)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  scale_x_continuous(n.breaks = 10) +
+  scale_y_continuous(limits = c(0,2))+
+  labs(
+    x = "Threshold count",
+    y = "GSEA-based distance",
+    color = "Matrix column",
+    title = "GSEA-based distance between W_opt and W_opt_new"
+  ) +
+  theme_bw()
+
+print(p_gsea)
+ggsave(
+  filename = "../figures/gsea_distance_W_opt_vs_W_opt_new.png",
+  plot = p_gsea,
+  width = 7,
+  height = 4
+)
+
 Yhat1 <- predict(liv2trans_results$model,Xh %*% Wm %*% t(Wm))
 cor(Yh,Yhat1,method='spearman')
 Yhat2 <- predict(liv2trans_results_new$model,Xh %*% Wm_new %*% t(Wm_new))
