@@ -42,6 +42,16 @@ dataset_names  <- c("Govaere", "Kostrzewski", "Wang", "Feaver")
 ref_dataset    <- "Govaere"
 target_dataset <- "Kostrzewski"
 
+# Reusable tag for all saved outputs.
+# Example: ref-Govaere__target-Kostrzewski__specificity_v3_results.RData
+clean_filename <- function(x) {
+  gsub("[^A-Za-z0-9_-]+", "_", x)
+}
+dataset_tag <- paste0(
+  "ref-", clean_filename(ref_dataset),
+  "__target-", clean_filename(target_dataset)
+)
+
 # ============================================================
 # PART 1: LOAD REAL DATA AND RUN LIV2TRANS
 # ============================================================
@@ -465,7 +475,9 @@ save(df_tanimoto, df_gsea, df_diag_cor, df_spear_true, df_rho,
      df_tanimoto_TC, df_gsea_TC, df_diag_cor_TC, df_spear_true_TC, df_rho_TC,
      rho_real, rho_theoretical, rho_TC_real, rho_TC_theoretical,
      Wm_opt, W_TC,
-     file = file.path(RESULTS_DIR, "specificity_v3_results.RData"))
+     ref_dataset, target_dataset, dataset_tag,
+     file = file.path(RESULTS_DIR,
+                      paste0(dataset_tag, "__specificity_v3_results.RData")))
 
 # ============================================================
 # PART 4: PLOTS — ONE SET PER BASELINE TYPE (LVs + TCs)
@@ -510,7 +522,9 @@ plot_tanimoto <- function(df, bl_name, label, fname_suffix) {
       subtitle = paste0("N = ", N_REPS, " replicates")
     ) +
     theme_bw(base_size = 12)
-  ggsave(paste0(FIGURES_DIR, "tanimoto_", fname_suffix, "_", bl_name, ".png"),
+  ggsave(file.path(FIGURES_DIR,
+                   paste0(dataset_tag, "__tanimoto_",
+                          fname_suffix, "_", bl_name, ".png")),
          plot = p, width = 10, height = 5, dpi = 300)
 }
 
@@ -541,7 +555,9 @@ plot_gsea <- function(df, bl_name, label, fname_suffix) {
       subtitle = paste0("N = ", N_REPS, " replicates")
     ) +
     theme_bw(base_size = 12)
-  ggsave(paste0(FIGURES_DIR, "gsea_distance_", fname_suffix, "_", bl_name, ".png"),
+  ggsave(file.path(FIGURES_DIR,
+                   paste0(dataset_tag, "__gsea_distance_",
+                          fname_suffix, "_", bl_name, ".png")),
          plot = p, width = 8, height = 5, dpi = 300)
 }
 
@@ -562,7 +578,9 @@ plot_diag_cor <- function(df, bl_name, label, fname_suffix) {
     ) +
     theme_bw(base_size = 12) +
     theme(legend.position = "none")
-  ggsave(paste0(FIGURES_DIR, "diag_cor_histogram_", fname_suffix, "_", bl_name, ".png"),
+  ggsave(file.path(FIGURES_DIR,
+                   paste0(dataset_tag, "__diag_cor_histogram_",
+                          fname_suffix, "_", bl_name, ".png")),
          plot = p, width = 8, height = 4, dpi = 300)
 }
 
@@ -593,7 +611,9 @@ plot_spear_true <- function(df, bl_name, W_real, label, fname_suffix) {
     ) +
     theme_bw(base_size = 12) +
     theme(legend.position = "none")
-  ggsave(paste0(FIGURES_DIR, "spear_true_vs_rand_histogram_", fname_suffix, "_", bl_name, ".png"),
+  ggsave(file.path(FIGURES_DIR,
+                   paste0(dataset_tag, "__spear_true_vs_rand_histogram_",
+                          fname_suffix, "_", bl_name, ".png")),
          plot = p, width = 8, height = 4, dpi = 300)
 }
 
@@ -638,7 +658,9 @@ plot_rho <- function(df, bl_name, rho_real_ref, rho_theo_ref_fn,
     ) +
     theme_bw(base_size = 12)
   
-  ggsave(paste0(FIGURES_DIR, "rho_histogram_", fname_suffix, "_", bl_name, ".png"),
+  ggsave(file.path(FIGURES_DIR,
+                   paste0(dataset_tag, "__rho_histogram_",
+                          fname_suffix, "_", bl_name, ".png")),
          plot = p, width = 10, height = 5, dpi = 300)
 }
 
@@ -673,5 +695,8 @@ for (bl_name in baseline_types) {
 
 cat("\n============================================\n")
 cat("All plots saved to:", FIGURES_DIR, "\n")
-cat("Results saved to: ", file.path(RESULTS_DIR, "specificity_v3_results.RData"), "\n", sep = "")
+cat("Results saved to: ",
+    file.path(RESULTS_DIR,
+              paste0(dataset_tag, "__specificity_v3_results.RData")),
+    "\n", sep = "")
 cat("============================================\n")
