@@ -364,7 +364,7 @@ liv2trans_run <- function(X_invivo,Y_invivo,X_invitro,W_invitro,
   Wm_tot <- cbind(W_invitro, Wm_opt)
 
   #Calculating translatable components that contain most of the current predictive power
-  if (ncol(Wm)>1){
+  if (ncol(W_invitro)>1){
     message('Calculating translatable components that contain most of the current predictive power...')
     ### Find translatable LV of the in vitro system
     ### Run evolutionary algorithm
