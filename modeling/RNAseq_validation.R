@@ -365,11 +365,15 @@ res_AlphaBeta_vs_T2D <- get_results(dds, "AlphaBeta", gene_annot) %>%
 ## Contrast IFNA+TGFB vs T2d, Contrast TGFB vs T2d, and Contrast IFNA+TGFB vs TGFB
 AlphaBeta_vs_T2D  <- get_results(dds, "AlphaBeta", gene_annot)                %>% filter(!is.na(stat))
 Beta_vs_T2D       <- get_results(dds, "Beta",      gene_annot)                %>% filter(!is.na(stat))
+BetaM_vs_T2D <- get_results(dds, "BetaM",      gene_annot)                %>% filter(!is.na(stat))
 AlphaBeta_vs_Beta <- get_results(dds, "AlphaBeta", gene_annot, ref = "Beta")  %>% filter(!is.na(stat))
+BetaM_vs_Beta <- get_results(dds, "BetaM",      gene_annot, ref = "Beta")                %>% filter(!is.na(stat))
 contrasts_list <- list(
   `IFNA+TGFB vs T2D`  = AlphaBeta_vs_T2D,
   `TGFB vs T2D`       = Beta_vs_T2D,
-  `IFNA+TGFB vs TGFB` = AlphaBeta_vs_Beta
+  `BetaM vs T2D`      = BetaM_vs_T2D,
+  `IFNA+TGFB vs TGFB` = AlphaBeta_vs_Beta,
+  `BetaM vs TGFB`     = BetaM_vs_Beta
 )
 common_genes <- Reduce(intersect, lapply(contrasts_list, `[[`, "gene_name"))
 stat_mat <- sapply(contrasts_list, function(df) {
@@ -404,8 +408,6 @@ p_pwy_contrasts <- ggplot(
   theme_minimal(base_size = 14) +
   theme(plot.title = element_text(hjust = 0.5))
 
-ggsave(file.path(fig_dir, "rnaval_pathway_contrasts.png"), p_pwy_contrasts,
-       width = 14, height = 6, dpi = 600, units = "in")
 # Hallmark enrichment per contrast
 ids  <- mapIds(org.Hs.eg.db, keys = rownames(stat_mat),
                column = "ENTREZID", keytype = "SYMBOL", multiVals = "first")
@@ -467,8 +469,62 @@ p_hm_contrasts <- ggplot(df_hm_plot, aes(x = NES, y = HM_ord, fill = NES)) +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "none")
 
+ggsave(file.path(fig_dir, "rnaval_pathway_contrasts.png"),  p_pwy_contrasts,
+       width = 14, height = 10, dpi = 600, units = "in")
 ggsave(file.path(fig_dir, "rnaval_hallmark_contrasts.png"), p_hm_contrasts,
-       width = 16, height = 9, dpi = 600, units = "in")
+       width = 16, height = 14, dpi = 600, units = "in")
+
+contrasts_list_volcano <- lapply(contrasts_list, function(df) {
+  df %>% dplyr::select(gene_name, log2FoldChange, padj)
+})
+
+df_volcano <- bind_rows(
+  lapply(names(contrasts_list_volcano), function(nm) {
+    contrasts_list_volcano[[nm]] %>%
+      filter(!is.na(padj), !is.na(log2FoldChange)) %>%
+      mutate(contrast = nm)
+  })
+)
+
+# Direction classification
+lfc_thresh  <- 1
+padj_thresh <- 0.05
+df_volcano <- df_volcano %>%
+  mutate(direction = case_when(
+    padj <= padj_thresh & log2FoldChange >  lfc_thresh ~ "Up",
+    padj <= padj_thresh & log2FoldChange < -lfc_thresh ~ "Down",
+    TRUE                                                ~ "ns"
+  ),
+  contrast = factor(contrast, levels = names(contrasts_list_volcano)))
+
+# Top 10 most significant genes per contrast for labeling
+df_top_labels <- df_volcano %>%
+  filter(direction != "ns") %>%
+  group_by(contrast) %>%
+  slice_min(padj, n = 10, with_ties = FALSE) %>%
+  ungroup()
+
+p_volcano <- ggplot(df_volcano, aes(log2FoldChange, -log10(padj))) +
+  geom_point(aes(color = direction), alpha = 0.55, size = 1.2) +
+  scale_color_manual(values = c(Up = "indianred", Down = "steelblue", ns = "grey75")) +
+  geom_hline(yintercept = -log10(padj_thresh), linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = c(-lfc_thresh, lfc_thresh),
+             linetype  = "dashed", color = "grey40") +
+  ggrepel::geom_text_repel(data = df_top_labels,
+                           aes(label = gene_name),
+                           size = 3, max.overlaps = 20,
+                           box.padding = 0.3, segment.size = 0.3) +
+  facet_wrap(~ contrast, ncol = 3, scales = "free") +
+  labs(title = "Volcano plots by contrast",
+       x     = expression(Log[2]~"fold change"),
+       y     = expression(-Log[10]~"adjusted p-value"),
+       color = "Direction") +
+  theme_bw(base_size = 13) +
+  theme(plot.title       = element_text(hjust = 0.5),
+        legend.position  = "bottom")
+
+ggsave(file.path(fig_dir, "rnaval_volcano_contrasts.png"), p_volcano,
+       width = 16, height = 10, dpi = 600, units = "in")
 
 
 ### project on MPS TCs and extraLVs
