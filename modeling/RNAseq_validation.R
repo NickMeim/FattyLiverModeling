@@ -1,5 +1,7 @@
 library(tidyverse)
 library(ggrepel)
+library(ggsignif)
+library(ggpubr)
 library(patchwork)
 library(matrixStats)
 library(ropls)
@@ -130,6 +132,12 @@ run_phenotype_models <- function(X_h, X_v, Y, meta_v, space_label, fig_dir,
       geom_jitter(width = 0.12, height = 0, size = 3.5, shape = 21, color = "black") +
       stat_summary(fun = mean, geom = "crossbar",
                    width = 0.5, color = "grey20", linewidth = 0.4) +
+      stat_compare_means(comparisons = list(c('AlphaBeta','Beta'),c("T2D", "AlphaBeta")),
+                         method = "t.test",
+                         method.args = list(
+                           alternative = "less",
+                           var.equal = FALSE
+                         ))+
       facet_wrap(~ phenotype, scales = "free_y", ncol = 2) +
       scale_fill_brewer(palette = "Set2") +
       labs(title = sprintf("RNAval predicted scores (%s) \u2014 %s model", space_label, model_name),
@@ -236,8 +244,11 @@ p_opt <- ggplot(df_proj,
        y    = "Extra LV1") +
   theme_bw()
 print(p_opt)
+ggsave('../figures/RNAval_mpsTC1_mpsExtraLV1_cpmed.png',p_opt,
+       width = 7.5, height = 5.5, dpi = 600, units = "in")
 
 Xh <- readRDS("../results/processed_data_list_govaere_kostrzewski.rds")$Xh
+Yh <- readRDS("../results/processed_data_list_govaere_kostrzewski.rds")$Yh
 # Genes common to both sides AND present in the basis
 shared <- Reduce(intersect, list(colnames(Xh), colnames(Xval), rownames(Wm_opt)))
 res_opt <- run_phenotype_models(
@@ -251,7 +262,7 @@ res_opt <- run_phenotype_models(
 
 ### Load pre-processed RNAseq and perform differential gene expression analysis---------------
 gene_expression <- read.delim('../RNAseq_validation/2C72ND-expression-matrix.tsv')
-gene_expression <- gene_expression %>% select('gene_id','gene_name','gene_biotype',
+gene_expression <- gene_expression %>% dplyr::select('gene_id','gene_name','gene_biotype',
                                               "X2C72ND_10_count","X2C72ND_11_count","X2C72ND_12_count",
                                               "X2C72ND_13_count", "X2C72ND_14_count" , "X2C72ND_15_count" ,
                                               "X2C72ND_1_count" ,"X2C72ND_2_count","X2C72ND_3_count",
@@ -280,13 +291,13 @@ exp_factors <- unique(metadata$condition)
 # Build count matrix (genes x samples), with gene_id as rownames
 # Sum raw counts across gene_ids that share a gene_name
 counts_by_name <- gene_expression %>%
-  select(-gene_id, -gene_biotype) %>%
+  dplyr::select(-gene_id, -gene_biotype) %>%
   group_by(gene_name) %>%
   summarise(across(everything(), sum), .groups = "drop")
 RNAval_dataset <- list(
   counts = counts_by_name %>% column_to_rownames('gene_name'),
   metadata = metadata %>% 
-    select(sampleName = sampleID, condition),
+    dplyr::select(sampleName = sampleID, condition),
   genes = counts_by_name$gene_name,
   exp_factors = exp_factors
 )
@@ -330,9 +341,9 @@ dds <- DESeqDataSetFromMatrix(countData = count_matrix,
 dds <- DESeq(dds)
 
 # Results helper, now keyed by gene_name
-get_results <- function(dds, condition_name, annot, alpha = 0.05) {
+get_results <- function(dds, condition_name, annot, ref = "T2D", alpha = 0.05) {
   res <- results(dds,
-                 contrast = c("condition", condition_name, "T2D"),
+                 contrast = c("condition", condition_name, ref),
                  alpha    = alpha)
   as.data.frame(res) %>%
     tibble::rownames_to_column("gene_name") %>%
@@ -350,6 +361,117 @@ res_AlphaBeta_vs_T2D <- get_results(dds, "AlphaBeta", gene_annot) %>%
   filter(gene_name %in% rownames(Wm_opt)) %>% filter(!is.na(stat))
 
 
+#### Re-run contrasts and directly infer pathway activity and geneset enrichment comparing conditions------
+## Contrast IFNA+TGFB vs T2d, Contrast TGFB vs T2d, and Contrast IFNA+TGFB vs TGFB
+AlphaBeta_vs_T2D  <- get_results(dds, "AlphaBeta", gene_annot)                %>% filter(!is.na(stat))
+Beta_vs_T2D       <- get_results(dds, "Beta",      gene_annot)                %>% filter(!is.na(stat))
+AlphaBeta_vs_Beta <- get_results(dds, "AlphaBeta", gene_annot, ref = "Beta")  %>% filter(!is.na(stat))
+contrasts_list <- list(
+  `IFNA+TGFB vs T2D`  = AlphaBeta_vs_T2D,
+  `TGFB vs T2D`       = Beta_vs_T2D,
+  `IFNA+TGFB vs TGFB` = AlphaBeta_vs_Beta
+)
+common_genes <- Reduce(intersect, lapply(contrasts_list, `[[`, "gene_name"))
+stat_mat <- sapply(contrasts_list, function(df) {
+  df$stat[match(common_genes, df$gene_name)]
+})
+rownames(stat_mat) <- common_genes
+
+net_prog <- decoupleR::get_progeny(organism = 'human', top = 500)
+pwy_act <- decoupleR::run_viper(stat_mat, net_prog,minsize = 1,verbose = TRUE) %>% dplyr::select(-statistic)
+
+# progeny returns a (contrasts × pathways) matrix
+df_pwy <- pwy_act %>%
+  dplyr::rename(contrast = condition,
+                Pathway = source)
+
+pathway_order <- c("JAK-STAT","Hypoxia","EGFR","WNT","MAPK","NFkB","Androgen",
+                   "VEGF","TNFa","Trail","PI3K","Estrogen","TGFb","p53")
+lim_pwy <- max(abs(df_pwy$score), na.rm = TRUE) * 1.15
+
+p_pwy_contrasts <- ggplot(
+  df_pwy %>% mutate(Pathway  = factor(Pathway,  levels = pathway_order),
+                    contrast = factor(contrast, levels = names(contrasts_list))),
+  aes(x = score, y = Pathway, fill = score)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient2(low = "darkblue", high = "indianred",
+                       mid = "whitesmoke", midpoint = 0,
+                       limits = c(-lim_pwy, lim_pwy)) +
+  scale_x_continuous(n.breaks = 6, limits = c(-lim_pwy, lim_pwy)) +
+  facet_wrap(~ contrast, ncol = 3) +
+  labs(title = "PROGENy pathway activity by contrast",
+       x = "Pathway activity (z-score)", y = "Pathway") +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(file.path(fig_dir, "rnaval_pathway_contrasts.png"), p_pwy_contrasts,
+       width = 14, height = 6, dpi = 600, units = "in")
+# Hallmark enrichment per contrast
+ids  <- mapIds(org.Hs.eg.db, keys = rownames(stat_mat),
+               column = "ENTREZID", keytype = "SYMBOL", multiVals = "first")
+keep <- which(!is.na(ids))
+meas <- stat_mat[keep, , drop = FALSE]
+rownames(meas) <- ids[keep]
+
+hm <- fastenrichment(colnames(meas), rownames(meas), meas,
+                     enrichment_space = "msig_db_h",
+                     n_permutations   = 10000,
+                     order_columns    = FALSE)
+
+nes_mat  <- as.matrix(hm$NES$`NES MSIG Hallmark`);   colnames(nes_mat)  <- colnames(meas)
+pval_mat <- as.matrix(hm$Pval$`Pval MSIG Hallmark`); colnames(pval_mat) <- colnames(meas)
+
+df_hm <- left_join(
+  as.data.frame(nes_mat)  %>% rownames_to_column("Hallmark") %>%
+    pivot_longer(-Hallmark, names_to = "contrast", values_to = "NES"),
+  as.data.frame(pval_mat) %>% rownames_to_column("Hallmark") %>%
+    pivot_longer(-Hallmark, names_to = "contrast", values_to = "padj"),
+  by = c("Hallmark", "contrast")) %>%
+  mutate(Hallmark = sub("^FL1000_MSIG_H_HALLMARK_", "", Hallmark),
+         Hallmark = str_replace_all(Hallmark, "_", " "),
+         Hallmark = paste0(toupper(substr(tolower(Hallmark), 1, 1)),
+                           substring(tolower(Hallmark), 2)))
+
+# per-facet ordering, with top-15 by |NES| fallback if nothing passes padj <= 0.05
+sig_label <- function(p) {
+  ifelse(is.na(p),    "",
+         ifelse(p <= 0.0001, "****",
+                ifelse(p <= 0.001,  "***",
+                       ifelse(p <= 0.01,   "**",
+                              ifelse(p <= 0.05,   "*", "")))))
+}
+df_hm_plot <- df_hm %>%
+  group_by(contrast) %>%
+  group_modify(~{
+    sig <- .x %>% filter(padj <= 0.05)
+    if (nrow(sig) == 0) .x %>% slice_max(abs(NES), n = 15) else sig
+  }) %>% ungroup() %>%
+  mutate(contrast = factor(contrast, levels = names(contrasts_list))) %>%
+  arrange(contrast, NES) %>%
+  mutate(HM_ord = paste(Hallmark, contrast, sep = "___"),
+         HM_ord = factor(HM_ord, levels = unique(HM_ord)))
+offset <- max(abs(df_hm_plot$NES), na.rm = TRUE) * 1.15 * 0.04
+
+p_hm_contrasts <- ggplot(df_hm_plot, aes(x = NES, y = HM_ord, fill = NES)) +
+  geom_bar(stat = "identity") +
+  scale_y_discrete(labels = function(x) sub("___.*$", "", x)) +
+  scale_fill_gradient2(low = "darkblue", high = "indianred",
+                       mid = "whitesmoke", midpoint = 0) +
+  geom_text(aes(label = sig_label(padj),
+                x = ifelse(NES < 0, NES - offset, NES + offset)),
+            size = 5, color = "black") +
+  facet_wrap(~ contrast, ncol = 3, scales = "free_y") +
+  labs(title = "Hallmark enrichment by contrast",
+       x = "Normalized Enrichment Score", y = "Hallmark") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+ggsave(file.path(fig_dir, "rnaval_hallmark_contrasts.png"), p_hm_contrasts,
+       width = 16, height = 9, dpi = 600, units = "in")
+
+
+### project on MPS TCs and extraLVs
 all_genes_intesection <- intersect(intersect(intersect(res_BetaDMSO_vs_T2D$gene_name,
                                    res_BetaM_vs_T2D$gene_name),
                                    res_Beta_vs_T2D$gene_name),
@@ -395,6 +517,8 @@ p_opt <- ggplot(df_proj,
        y    = "Extra LV2") +
   theme_bw()
 print(p_opt)
+ggsave('../figures/RNAval_in_MPS_extraLVs.png',p_opt,
+       width = 7.5, height = 5.5, dpi = 600, units = "in")
 
 
 Wtc <- Wm_TC[all_genes_intesection,]
@@ -412,6 +536,8 @@ p_tc <- ggplot(df_proj_tc,
        y    = "TC2") +
   theme_bw()
 print(p_tc)
+ggsave('../figures/RNAval_in_MPS_TCs.png',p_tc,
+       width = 7.5, height = 5.5, dpi = 600, units = "in")
 
 ## Re-run LIV2TRANS---------------
 # RNAval is already a packaged list:
@@ -422,6 +548,28 @@ load("../data/GSE135251_Govaere_dataset.RData")      # -> objects `data`, `metad
 Govaere <- list(counts   = data,
                 metadata = metadata,
                 genes    = rownames(data))
+rm(data, metadata)
+load("../data/GSE13090_Hoang_dataset.RData")      # -> objects `data`, `metadata`
+Hoang <- list(counts   = data,
+                metadata = metadata,
+                genes    = rownames(data))
+rm(data, metadata)
+load("../data/GSE168285_Kostrzewski_dataset.RData")      # -> objects `data`, `metadata`
+Kostrzewski <- list(counts   = data,
+                metadata = metadata,
+                genes    = rownames(data))
+rm(data, metadata)
+
+load("../data/GSE166256_Wang_dataset.RData")      # -> objects `data`, `metadata`
+Wang <- list(counts   = data,
+                    metadata = metadata,
+                    genes    = rownames(data))
+rm(data, metadata)
+
+load("../data/GSE89063_Feaver_dataset.RData")      # -> objects `data`, `metadata`
+Feaver <- list(counts   = data,
+             metadata = metadata,
+             genes    = rownames(data))
 rm(data, metadata)
 
 # -----------------------------------------------------------------------
@@ -443,6 +591,10 @@ RNAval_counts  <- prep_counts(RNAval_dataset$counts,  RNAval_dataset$genes)
 # -----------------------------------------------------------------------
 
 genes_common <- intersect(rownames(Govaere_counts), rownames(RNAval_counts))
+genes_common <- intersect(genes_common,Hoang$genes)
+genes_common <- intersect(genes_common,Kostrzewski$genes)
+genes_common <- intersect(genes_common,Wang$genes)
+genes_common <- intersect(genes_common,Feaver$genes)
 cat("Common genes:", length(genes_common), "\n")
 
 Govaere_counts <- Govaere_counts[genes_common, ]
@@ -504,11 +656,52 @@ pca_group <- prcomp(t(data_grouped_c), scale. = FALSE)
 
 # Wm = rotation matrix without the final PC (variance zero after centering K groups)
 Wm <- pca_group$rotation[, -ncol(pca_group$rotation)]
-
 liv2trans_results <- liv2trans_run(Xh, Yh, Xm, Wm)
 Wm_opt <- liv2trans_results$W_opt
 Wm_combo <- liv2trans_results$W_translatable
 
+# calculate effective capture of Wm
+compute_alpha <- function(W, phi) {
+  genes_common <- intersect(rownames(W), rownames(phi))
+  if (length(genes_common) == 0) {
+    stop("No common genes between W and phi.")
+  }
+  W_c   <- W[genes_common, , drop = FALSE]
+  phi_c <- phi[genes_common, , drop = FALSE]
+  alpha <- sapply(1:ncol(phi_c), function(j) {
+    phi_j <- phi_c[, j]
+    proj  <- as.vector(t(W_c) %*% phi_j)
+    proj^2 / sum(phi_j^2)
+  })
+  if (is.null(dim(alpha))) alpha <- matrix(alpha, ncol = ncol(phi_c))
+  rownames(alpha) <- if (is.null(colnames(W))) seq_len(ncol(W)) else colnames(W)
+  colnames(alpha) <- colnames(phi_c)
+  alpha
+}
+effective_rank <- function(alpha_vec) {
+  s1 <- sum(alpha_vec)
+  s2 <- sum(alpha_vec^2)
+  if (s2 < .Machine$double.eps) return(NA_real_)
+  (s1^2) / s2
+}
+concentration <- function(alpha_vec) {
+  r <- effective_rank(alpha_vec)
+  k <- length(alpha_vec)
+  if (is.na(r) || k <= 1) return(NA_real_)
+  1 - (r / k)
+}
+# phi_PLS from real PLSR model
+model_real <- liv2trans_results$model
+Wh_real    <- liv2trans_results$Wh
+Bh_real    <- t(model_real@weightMN) %*% model_real@coefficientMN
+phi_real   <- Wh_real %*% Bh_real          # p x q
+colnames(phi_real) <- colnames(Yh)
+k_mps   <- ncol(Wm)
+p_genes <- nrow(Wm)
+alpha_real    <- compute_alpha(Wm, phi_real)            # k x q
+r_eff_real    <- apply(alpha_real, 2, effective_rank)
+conc_real     <- apply(alpha_real, 2, concentration)
+rho_real_vec  <- colSums(alpha_real)
 
 shared_opt   <- intersect(colnames(Xm), rownames(Wm_opt))
 shared_combo <- intersect(colnames(Xm), rownames(Wm_combo))
@@ -542,7 +735,8 @@ pathway_order <- c("JAK-STAT","Hypoxia","EGFR","WNT","MAPK","NFkB","Androgen",
 
 pathway_barplot <- function(df, title, axis_label) {
   # df columns: Pathway, score, p_value, condition (V1 / V2)
-  lim <- max(abs(df$score), na.rm = TRUE) * 1.15
+  # lim <- max(abs(df$score), na.rm = TRUE) * 1.15
+  lim <- 25
   df  <- df %>%
     mutate(Pathway   = factor(Pathway, levels = pathway_order),
            condition = factor(condition,
@@ -633,6 +827,7 @@ plot_hallmark <- function(df, title, axis_label, padj_thresh = 0.1, fallback_n =
   ggplot(df_plot, aes(x = NES, y = HM_ord, fill = NES)) +
     geom_bar(stat = "identity") +
     scale_y_discrete(labels = function(x) sub("___.*$", "", x)) +
+    scale_x_continuous(limits = c(-2.7,2.7))+
     scale_fill_gradient2(low = "darkblue", high = "indianred",
                          mid = "whitesmoke", midpoint = 0) +
     facet_wrap(~ LV_label, ncol = 2, scales = "free_y") +
@@ -645,8 +840,8 @@ plot_hallmark <- function(df, title, axis_label, padj_thresh = 0.1, fallback_n =
 df_hm_extra <- hallmark_for_W(Wm_opt)
 df_hm_tc    <- hallmark_for_W(Wm_combo)
 
-p_hm_extra <- plot_hallmark(df_hm_extra, "Hallmark enrichment — Extra LVs", "Extra LV")
-p_hm_tc    <- plot_hallmark(df_hm_tc,    "Hallmark enrichment — Translatable Components", "TC")
+p_hm_extra <- plot_hallmark(df_hm_extra, "Hallmark enrichment — Extra LVs", "Extra LV",padj_thresh=0.05)
+p_hm_tc    <- plot_hallmark(df_hm_tc,    "Hallmark enrichment — Translatable Components", "TC",padj_thresh=0.05)
 
 ggsave(file.path(fig_dir, "rnaval_hallmark_extraLV.png"), p_hm_extra,
        width = 13, height = 8, dpi = 600, units = "in")
@@ -822,6 +1017,12 @@ scores_plot <- function(model_name) {
     geom_jitter(width = 0.12, height = 0, size = 3.5, shape = 21, color = "black") +
     stat_summary(fun = mean, geom = "crossbar",
                  width = 0.5, color = "grey20", linewidth = 0.4) +
+    stat_compare_means(comparisons = list(c('AlphaBeta','Beta'),c("T2D", "AlphaBeta")),
+                       method = "t.test",
+                       method.args = list(
+                         alternative = "less",
+                         var.equal = FALSE
+                       ))+
     facet_wrap(~ phenotype, scales = "free_y", ncol = 2) +
     scale_fill_brewer(palette = "Set2") +
     labs(title = paste0("RNAval predicted scores \u2014 ", model_name, " model"),
@@ -843,5 +1044,5 @@ for (mname in names(models)) {
 }
 
 # Optional: keep the underlying tables around for sanity-checking
-saveRDS(df_loocv,  "results/loocv_TC_predictions.rds")
-saveRDS(df_scores, "results/rnaval_TC_scores.rds")
+saveRDS(df_loocv,  "../results/loocv_TC_predictions.rds")
+saveRDS(df_scores, "../results/rnaval_TC_scores.rds")

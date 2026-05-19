@@ -133,7 +133,7 @@ df_msig <- readRDS(paste0("results/hallmark_enrichment_", tolower(target_dataset
 
 
 plt_hallmarks_LV1 <- ggplot(df_msig %>% filter(LV=='V1') %>% arrange(NES) %>%
-                filter(padj<=0.1), aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+
+                filter(padj<=0.05), aes(x=NES,y=reorder(Hallmark,-NES),fill=NES))+
          geom_bar(stat = 'identity', size = size_col, color = "black", show.legend = F) +
          # scale_fill_gradient(trans='log10',low = "red",high = "white",limits = c(min(df_msig$padj),1)) +
          scale_fill_gradient2(low='darkblue',high = 'indianred',mid = 'whitesmoke',midpoint = 0) +
