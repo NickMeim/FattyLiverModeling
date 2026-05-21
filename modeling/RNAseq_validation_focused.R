@@ -400,6 +400,9 @@ Xval_raw <- log2(rnaval_cpm$matrix + 1) %>%
 Xval_raw <- sweep(Xval_raw, 2, colMeans(Xval_raw), "-")
 
 aligned_raw <- align_basis_and_matrix(Xval_raw, projection_basis_loaded)
+dx <- apply(aligned_raw$X[c('AlphaBeta1','AlphaBeta2','AlphaBeta3'),],2,mean) - apply(aligned_raw$X[c('Beta1','Beta2','Beta3'),],2,mean)
+dx <- dx/sqrt(sum(dx^2))
+
 Z_raw <- aligned_raw$X %*% aligned_raw$W
 df_raw_projection <- as.data.frame(Z_raw) %>%
   rownames_to_column("sampleID") %>%
@@ -407,13 +410,16 @@ df_raw_projection <- as.data.frame(Z_raw) %>%
 
 p_raw_tc <- plot_projection(df_raw_projection, "TC1", "TC2",
                             "Raw RNAval projected into loaded TCs",
-                            "TC1", "TC2")
+                            "TC1", "TC2")+ 
+  scale_x_continuous(limits = c(-50,25)) + scale_y_continuous(limits=c(-30,25))
 p_raw_extra <- plot_projection(df_raw_projection, "extraLV1", "extraLV2",
                                "Raw RNAval projected into loaded extra LVs",
-                               "Extra LV1", "Extra LV2")
+                               "Extra LV1", "Extra LV2")+ 
+  scale_x_continuous(limits = c(-13,8)) + scale_y_continuous(limits=c(-13,20))
 p_raw_tc_extra <- plot_projection(df_raw_projection, "TC1", "extraLV1",
                                   "Raw RNAval projected into TC1 and extra LV1",
-                                  "TC1", "Extra LV1")
+                                  "TC1", "Extra LV1") +
+  scale_x_continuous(limits = c(-50,25)) + scale_y_continuous(limits=c(-13,8))
 
 save_plot("RNAval_raw_loaded_TC_extraLV_projection.png",
           (p_raw_tc | p_raw_extra) / p_raw_tc_extra,
