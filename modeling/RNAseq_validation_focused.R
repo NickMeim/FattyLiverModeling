@@ -707,7 +707,7 @@ write.csv(metrics_summary, file.path(results_dir,
 saveRDS(
   list(
     Wm_mps = Wm_mps_orth,
-    Wm_rnaval = Wm_rnaval_orth,
+    # Wm_rnaval = Wm_rnaval_orth,
     Wm_augmented = Wm_augmented,
     Xm_rnaval = rnaval_liv2trans$Xm,
     predictions = pred_df,
