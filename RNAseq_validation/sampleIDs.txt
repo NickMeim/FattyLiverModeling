@@ -1,0 +1,16 @@
+sampleID	source_id	condition
+BetaDMSO1	2C72ND_10	BetaDMSO
+BetaDMSO2	2C72ND_11	BetaDMSO
+BetaDMSO3	2C72ND_12	BetaDMSO
+BetaM1	2C72ND_13	BetaM
+BetaM2	2C72ND_14	BetaM
+BetaM3	2C72ND_15	BetaM
+T2D1	2C72ND_1	T2D
+T2D2	2C72ND_2	T2D
+T2D3	2C72ND_3	T2D
+Beta1	2C72ND_4	Beta
+Beta2	2C72ND_5	Beta
+Beta3	2C72ND_6	Beta
+AlphaBeta1	2C72ND_7	AlphaBeta
+AlphaBeta2	2C72ND_8	AlphaBeta
+AlphaBeta3	2C72ND_9	AlphaBeta
