@@ -2,7 +2,7 @@
 A computational system biology approach for identifying and optimizing in-vitro models that better recapitulate human patients, with a case study in MAFLD.
 Github repository of the study:
 > Systems biology framework for rational design of operational conditions for in vitro / in vivo translation of microphysiological systems <br>
-> Jose L. Cadavid<sup>1+</sup>, Nikolaos Meimetis<sup>1+</sup>, Tyler Matsuzaki<sup>1</sup>, Erin N. Tevonian<sup>1</sup>, Avlant Nilsson<sup>1,2,3</sup>, Douglas A. Lauffenburger<sup>1*</sup>
+> Jose L. Cadavid<sup>1+</sup>, Nikolaos Meimetis<sup>1+</sup>, Tyler Matsuzaki<sup>1</sup>, Erin N. Tevonian<sup>1</sup>, Linda G. Griffith<sup>1,2,3</sup>, Douglas A. Lauffenburger<sup>1*</sup>
 > 1) Department of Biological Engineering, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
 > 2) Department of Mechanical Engineering, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
 > 3) Center for Gynepathology Research, Massachusetts Institute of Technology, Cambridge, MA 02139, USA
@@ -60,3 +60,4 @@ It produces results relevant to making the study's figures.
 8. figures : Folder containing the scripts to reproduce the figures of the study. You can also store the produced figures there.
 9. ARCH4S_retrieval : Folder containing scripts for fethcing data from ARCHS4 and the fecthed data.
 10. scRNA_Gribben_et_al_analysis: Folder that contains the scripts and the data required to perform the supplementary snRNA analysis and thus make Supplementary Figure 11.
+11. RNAseq_validation: Folder containing count matrices and sample IDs of spheroid experiments in Figure 6. Contains script to run PCA analysis, pathway analysis and projection on LIV2TRANS latent variables
