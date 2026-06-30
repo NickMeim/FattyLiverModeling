@@ -60,3 +60,4 @@ It produces results relevant to making the study's figures.
 8. figures : Folder containing the scripts to reproduce the figures of the study. You can also store the produced figures there.
 9. ARCH4S_retrieval : Folder containing scripts for fethcing data from ARCHS4 and the fecthed data.
 10. scRNA_Gribben_et_al_analysis: Folder that contains the scripts and the data required to perform the supplementary snRNA analysis and thus make Supplementary Figure 11.
+11. RNAseq_validation: Folder containing count matrices and sample IDs of spheroid experiments in Figure 6. Contains script to run PCA analysis, pathway analysis and projection on LIV2TRANS latent variables
