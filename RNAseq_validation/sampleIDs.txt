@@ -1,0 +1,10 @@
+sampleID	source_id	condition
+1	T2D1	2C72ND_1	T2D
+2	T2D2	2C72ND_2	T2D
+3	T2D3	2C72ND_3	T2D
+4	Beta1	2C72ND_4	Beta
+5	Beta2	2C72ND_5	Beta
+6	Beta3	2C72ND_6	Beta
+7	AlphaBeta1	2C72ND_7	AlphaBeta
+8	AlphaBeta2	2C72ND_8	AlphaBeta
+9	AlphaBeta3	2C72ND_9	AlphaBeta
